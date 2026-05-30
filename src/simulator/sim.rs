@@ -198,4 +198,55 @@ mod tests {
 
         assert_eq!(output, Logic::OFF, "ON, ON gave {:?}", output);
     }
+
+    #[test]
+    fn random() {
+        let NUM_ITERS = 50;
+
+        let mut circuit = Circuit::new();
+
+        // 0
+        circuit.nets.push(Net {value: Logic::X, sinks: vec![0]});
+        // 1
+        circuit.nets.push(Net {value: Logic::X, sinks: vec![1]});
+        // 2
+        circuit.nets.push(Net {value: Logic::X, sinks: vec![1]});
+        // 3
+        circuit.nets.push(Net {value: Logic::X, sinks: vec![0]});
+
+        // 0
+        circuit.gates.push(Gate {a: 0, b: 3, out: 2});
+        // 1
+        circuit.gates.push(Gate {a: 1, b: 2, out: 3});
+
+        let mut sim = Simulator::new(circuit);
+
+        let mut outputs: Vec<Logic> = Vec::new();
+
+        for _ in 0..NUM_ITERS {
+            sim.schedule_event(0, 0, Logic::OFF);
+            sim.schedule_event(0, 1, Logic::OFF);
+
+            sim.schedule_event(5, 0, Logic::ON);
+            sim.schedule_event(5, 1, Logic::ON);
+
+            sim.run();
+
+            outputs.push(sim.read_net(2));
+
+            sim.reset();
+        }
+    
+        let count: usize = outputs
+            .iter()
+            .filter(|&&x| x == Logic::ON)
+            .count();
+
+        let proportion: f64 = count as f64 / NUM_ITERS as f64;
+        
+
+        assert!((proportion - 0.5).abs() <= 0.07, "proportion that are ON is not random but {}", proportion);
+
+        
+    }
 }
