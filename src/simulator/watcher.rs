@@ -12,4 +12,8 @@ impl Watcher {
             outputs: Vec::new(),
         }
     }
+
+    pub fn reset(&mut self) {
+        self.outputs.clear();
+    }
 }

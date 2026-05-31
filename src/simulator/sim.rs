@@ -109,7 +109,12 @@ impl Simulator {
         for net in &mut self.circuit.nets {
             net.value = Logic::X;
         }
+        
         self.wheel.reset();
+
+        for watcher in &mut self.watchers {
+            watcher.reset();
+        }
     }
 }
 
@@ -322,38 +327,10 @@ mod tests {
         sim.schedule_event(0, 0, Logic::OFF);
         sim.schedule_event(0, 1, Logic::ON);
 
-        sim.run(256);
+        sim.run(5);
 
         let output: &Vec<Logic> = sim.read_watcher(1).unwrap();
        
-
-        //assert_eq!(output[0], Logic::ON);
-
-        sim.reset();
-
-        sim.schedule_event(0, 0, Logic::ON);
-        sim.schedule_event(0, 1, Logic::ON);
-
-        sim.run(5);
-
-        //let output = sim.read_net(1);
-
-        let output: &Vec<Logic> = sim.read_watcher(1).unwrap();
-        for val in output {
-            println!("{:?}", val);
-        }
-
         assert!(false);
-
-        sim.schedule_event(0, 0, Logic::ON);
-        sim.schedule_event(0, 1, Logic::ON);
-
-        sim.run(6);
-
-        let output = sim.read_net(1);
-
-        assert_eq!(output, Logic::OFF);
-
-        sim.reset()
     }
 }
