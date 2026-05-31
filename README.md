@@ -15,7 +15,9 @@
 
 # Possible future extensions
 
-- Additional gate types beyond nand, or even logic gates
+- Additional gate types beyond nand
+    - Other logic gates
+    - support for graph or cellular atomata
 - Additional signal types beyond logic
     - spikes to simulate spiking networks
     - packets to simulate computer networks/ comm channels
