@@ -18,6 +18,7 @@
 - Additional gate types beyond nand
     - Other logic gates
     - support for graph or cellular atomata
+    - let nets represent lambda calculus operations and gates perform beta reduction 
 - Additional signal types beyond logic
     - spikes for spiking networks
     - Number types for analyzing computation graphs (like out of order execution)
