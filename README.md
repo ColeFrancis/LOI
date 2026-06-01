@@ -21,6 +21,7 @@
 - Additional gate types beyond nand
     - Other logic gates
     - support for graph or cellular atomata
+        - nets are the alive/dead cells, gates are recurrent and link all neighbors and go back to itself
     - let nets represent lambda calculus operations and gates perform beta reduction 
 - Additional signal types beyond logic
     - spikes for spiking networks
