@@ -2,7 +2,6 @@
 
 - Test oscillator logic
 - Test abilitybof time wheel to wrap around
-- swap all usize for u32
 
 - Implement ability to build a circuit from a graph
     - Graph.build_circuit() or circuit.from_graph()
