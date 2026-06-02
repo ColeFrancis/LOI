@@ -77,8 +77,8 @@ impl Simulator {
 
                 let sinks = self.network.entities[event.entity].sinks.clone();
 
-                for gate_id in sinks {
-                    let relation = &self.network.relations[gate_id];
+                for relation_id in sinks {
+                    let relation = &self.network.relations[relation_id];
                     
                     let old_out = self.network.entities[relation.out].value;
                     let new_out = eval_relation(&self.network, relation);
