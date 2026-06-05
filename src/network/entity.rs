@@ -1,7 +1,8 @@
-use crate::core::types::Logic;
-use crate::core::types::RelationId;
+use super::relation::RelationId;
 
-pub struct Entity {
-    pub value: Logic,
+pub type EntityId = usize;
+
+pub struct Entity<T> {
+    pub value: T,
     pub sinks: Vec<RelationId>,
 }

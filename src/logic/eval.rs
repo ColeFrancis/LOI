@@ -1,58 +1,50 @@
-use crate::core::types::Logic;
-use crate::network::relation::{Relation, RelationKind};
-use crate::network::network::Network;
+use crate::core::types::{Logic, LogicOp};
+use crate::core::types::{Real, RealOp};
 
-fn eval_nand(a: Logic, b: Logic) -> Logic {
-    match (a, b) {
-        (Logic::ON, Logic::ON) => Logic::OFF,
-        (Logic::OFF, _) | (_, Logic::OFF) => Logic::ON,
-        _ => Logic::X,
+pub trait Operator<T> {
+    fn eval(&self, a: T, b: T) -> T;
+}
+
+impl Operator<Logic> for LogicOp {
+    fn eval(&self, a: Logic, b: Logic) -> Logic {
+        match self {
+            LogicOp::NAND => {
+                match (a, b) {
+                    (Logic::ON, Logic::ON) => Logic::OFF,
+                    (Logic::OFF, _) | (_, Logic::OFF) => Logic::ON,
+                    _ => Logic::X,
+                }
+            }
+        }
     }
 }
 
-pub fn eval_relation(network: &Network, relation: &Relation) -> Logic {
+impl Operator<Real> for RealOp {
+    fn eval(&self, a: Real, b: Real) -> Real {
+        match self {
+            RealOp::ADD => {
+                match (a, b) {
+                    (Real::Val(val_a), Real::Val(val_b)) => Real::Val(val_a + val_b),
+                    _ => Real::X,
+                }
+            },
+            RealOp::MUL => {
+                match (a, b) {
+                    (Real::Val(val_a), Real::Val(val_b)) => Real::Val(val_a * val_b),
+                    _ => Real::X,
+                }
+            }
+        }
+    }
+}
+
+/*pub fn eval_relation<T, O>(network: &Network<T, O>, relation: &Relation<O>,) -> T
+where
+    T: Copy,
+    O: Operator<T>,
+{
     let a = network.entities[relation.a].value;
     let b = network.entities[relation.b].value;
 
-    match relation.kind {
-        RelationKind::NAND => eval_nand(a, b)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_nand_basic() {
-        let on_on = eval_nand(Logic::ON, Logic::ON);
-
-        assert_eq!(on_on, Logic::OFF, "Received {:?} for ON, ON", on_on);
-
-        let on_off = eval_nand(Logic::ON, Logic::OFF);
-
-        assert_eq!(on_off, Logic::ON, "Received {:?} for ON, OFF", on_off);
-
-        let off_on = eval_nand(Logic::OFF, Logic::ON);
-
-        assert_eq!(off_on, Logic::ON, "Received {:?} for OFF, ON", off_on);
-
-        let off_off = eval_nand(Logic::OFF, Logic::OFF);
-
-        assert_eq!(off_off, Logic::ON, "Received {:?} for OFF, OFF", off_off);
-    }#[test]
-
-    fn test_nand_unknown() {
-        let x_x = eval_nand(Logic::X, Logic::X);
-
-        assert_eq!(x_x, Logic::X, "Received {:?} for X, X", x_x);
-
-        let x_on = eval_nand(Logic::X, Logic::ON);
-
-        assert_eq!(x_on, Logic::X, "Received {:?} for X, ON", x_on);
-
-        let x_off = eval_nand(Logic::X, Logic::OFF);
-
-        assert_eq!(x_off, Logic::ON, "Received {:?} for X, OFF", x_off);
-    }
-}
+    relation.op.eval(a, b)
+}*/

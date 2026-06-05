@@ -1,12 +1,12 @@
 use super::event::Event;
 
-pub struct Wheel<const WHEEL_SIZE: usize> {
+pub struct Wheel<const WHEEL_SIZE: usize, T> {
     curr_time: usize,
     event_count: usize,
-    events: [Vec<Event>; WHEEL_SIZE],
+    events: [Vec<Event<T>>; WHEEL_SIZE],
 }
 
-impl<const WHEEL_SIZE: usize> Wheel<WHEEL_SIZE> {
+impl<const WHEEL_SIZE: usize, T> Wheel<WHEEL_SIZE, T> {
     pub fn new() -> Self {
         Wheel {
             curr_time: 0,
@@ -15,17 +15,17 @@ impl<const WHEEL_SIZE: usize> Wheel<WHEEL_SIZE> {
         }
     }
 
-    pub fn push(&mut self, event: Event) {
+    pub fn push(&mut self, event: Event<T>) {
         self.events[event.time % WHEEL_SIZE].push(event);
         self.event_count += 1;
     }
 
-    pub fn pop(&mut self) -> Option<Vec<Event>> {
+    pub fn pop(&mut self) -> Option<Vec<Event<T>>> {
         if self.event_count == 0 {
             return None;
         }
 
-        let curr_events: Vec<Event> = self.events[self.curr_time % WHEEL_SIZE]
+        let curr_events: Vec<Event<T>> = self.events[self.curr_time % WHEEL_SIZE]
             .extract_if(.., |e| e.time == self.curr_time)
             .collect();
         self.curr_time += 1;
@@ -42,11 +42,12 @@ impl<const WHEEL_SIZE: usize> Wheel<WHEEL_SIZE> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::{Logic, EntityId};
+    use crate::network::entity::EntityId;
+    use crate::core::types::Logic;
 
     const TEST_SIZE: usize = 4;
 
-    fn make_event(time: usize, entity: EntityId, value: Logic) -> Event {
+    fn make_event(time: usize, entity: EntityId, value: Logic) -> Event<Logic> {
         Event {
             time,
             entity,
@@ -56,7 +57,7 @@ mod tests {
 
     #[test]
     fn basic_push_pop() {
-        let mut wheel: Wheel<TEST_SIZE> = Wheel::new();
+        let mut wheel: Wheel<TEST_SIZE, Logic> = Wheel::new();
 
         wheel.push(make_event(0, 1, Logic::ON));
         wheel.push(make_event(2, 2, Logic::OFF));
@@ -83,7 +84,7 @@ mod tests {
 
     #[test]
     fn simultaneous_and_no_events() {
-        let mut wheel: Wheel<TEST_SIZE> = Wheel::new();
+        let mut wheel: Wheel<TEST_SIZE, Logic> = Wheel::new();
 
         wheel.push(make_event(0, 1, Logic::ON));
         wheel.push(make_event(0, 2, Logic::ON));
@@ -113,7 +114,7 @@ mod tests {
 
     #[test]
     fn wrap_around() {
-        let mut wheel: Wheel<TEST_SIZE> = Wheel::new();
+        let mut wheel: Wheel<TEST_SIZE, Logic> = Wheel::new();
 
         wheel.push(make_event(0, 0, Logic::OFF));
         wheel.push(make_event(4, 0, Logic::ON));

@@ -1,21 +1,25 @@
 use rand::seq::SliceRandom;
 
-use crate::core::types::{EntityId, Logic};
+use crate::network::entity::EntityId;
 use crate::network::network::Network;
 use super::event::Event;
 use super::scheduler::Wheel;
 use super::watcher::Watcher;
+use crate::core::types::Resettable;
+use crate::logic::eval::Operator;
 
-use crate::logic::eval::eval_relation;
-
-pub struct Simulator {
-    wheel: Wheel<256>,
-    network: Network,
-    watchers: Vec<Watcher>,
+pub struct Simulator<T, O> {
+    wheel: Wheel<256, T>,
+    network: Network<T, O>,
+    watchers: Vec<Watcher<T>>,
 }
 
-impl Simulator {
-    pub fn new(network: Network) -> Self {
+impl<T, O> Simulator<T, O> 
+where 
+    T: Resettable + Copy + std::cmp::PartialEq,
+    O: Operator<T>,
+{
+    pub fn new(network: Network<T, O>) -> Self {
         Self {
             wheel: Wheel::new(),
             network,
@@ -23,11 +27,14 @@ impl Simulator {
         }
     }
 
-    pub fn schedule_event(&mut self, time: usize, entity: EntityId, level: Logic) {
-        self.wheel.push(Event {time: time, entity: entity, new_value: level});
+    pub fn schedule_event(&mut self, time: usize, entity: EntityId, val: T) {
+        self.wheel.push(Event {time: time, entity: entity, new_value: val});
     }
 
-    pub fn read_entity(&self, entity: EntityId) -> Logic {
+    /*pub fn read_entity(&self, entity: EntityId) -> &T {
+        &self.network.entities[entity].value
+    }*/
+    pub fn read_entity(&self, entity: EntityId) -> T {
         self.network.entities[entity].value
     }
 
@@ -35,7 +42,7 @@ impl Simulator {
         self.watchers.push(Watcher::new(entity));
     }
 
-    pub fn read_watcher(& self, entity: EntityId) -> Option<&Vec<Logic>> {
+    pub fn read_watcher(& self, entity: EntityId) -> Option<&[T]> {
         for watcher in &self.watchers {
             if watcher.entity == entity {
                 return Some(&watcher.outputs);
@@ -75,13 +82,11 @@ impl Simulator {
 
                 self.network.entities[event.entity].value = event.new_value;
 
-                let sinks = self.network.entities[event.entity].sinks.clone();
-
-                for relation_id in sinks {
+                for &relation_id in &self.network.entities[event.entity].sinks {
                     let relation = &self.network.relations[relation_id];
                     
                     let old_out = self.network.entities[relation.out].value;
-                    let new_out = eval_relation(&self.network, relation);
+                    let new_out = relation.eval(&self.network); // eval_relation(&self.network, relation);
 
                     if old_out != new_out || !only_necessary_events {
                         self.wheel.push(Event {
@@ -108,9 +113,9 @@ impl Simulator {
         return Some(step);
     }
 
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self) where T: Resettable {
         for entity in &mut self.network.entities {
-            entity.value = Logic::X;
+            entity.value = T::reset();
         }
         
         self.wheel.reset();
@@ -124,14 +129,14 @@ impl Simulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::core::types::Logic;
     use crate::network::network::Network;
     use crate::network::relation::Relation;
     use crate::network::entity::Entity;
+    use crate::core::types::{Logic, LogicOp};
 
     #[test]
     fn nand_gate() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
@@ -141,9 +146,9 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![]});
 
         // 0
-        network.relations.push(Relation::new(0, 1, 2));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 1, out: 2});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         sim.schedule_event(0, 0, Logic::OFF);
         sim.schedule_event(0, 1, Logic::OFF);
@@ -179,7 +184,7 @@ mod tests {
 
     #[test]
     fn xor_gate() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0, 1]});
@@ -195,15 +200,15 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![]});
 
         // 0
-        network.relations.push(Relation::new(0, 1, 2));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 1, out: 2});
         // 1
-        network.relations.push(Relation::new(0, 2, 3));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 2, out: 3});
         // 2
-        network.relations.push(Relation::new(1, 2, 4));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 1, b: 2, out: 4});
         // 3
-        network.relations.push(Relation::new(3, 4, 5));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 3, b: 4, out: 5});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         sim.schedule_event(0, 0, Logic::OFF);
         sim.schedule_event(0, 1, Logic::OFF);
@@ -244,7 +249,7 @@ mod tests {
     fn random_state_selection() {
         let num_iters = 50;
 
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
@@ -256,11 +261,11 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
 
         // 0
-        network.relations.push(Relation::new(0, 3, 2));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 3, out: 2});
         // 1
-        network.relations.push(Relation::new(1, 2, 3));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 1, b: 2, out: 3});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         let mut outputs: Vec<Logic> = Vec::new();
 
@@ -291,11 +296,11 @@ mod tests {
 
     #[test]
     fn watcher() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         network.entities.push(Entity {value: Logic::X, sinks: vec![]});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
         sim.create_watcher(0);
 
         sim.schedule_event(0, 0, Logic::ON);
@@ -303,17 +308,17 @@ mod tests {
 
         sim.run(256, true);
 
-        let output: &Vec<Logic> = sim.read_watcher(0).unwrap();
+        let output: &[Logic] = sim.read_watcher(0).unwrap();
         for val in output {
             println!("{:?}", val);
         }
 
-        assert_eq!(output, &vec![Logic::ON, Logic::ON, Logic::OFF]);
+        assert_eq!(output, &[Logic::ON, Logic::ON, Logic::OFF]);
     }
 
     #[test]
     fn start_stop() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
@@ -325,13 +330,13 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
 
         // 0
-        network.relations.push(Relation::new(0, 0, 1));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 0, out: 1});
         // 1
-        network.relations.push(Relation::new(1, 1, 2));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 1, b: 1, out: 2});
         // 0
-        network.relations.push(Relation::new(2, 2, 3));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 2, b: 2, out: 3});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         sim.create_watcher(1);
         sim.create_watcher(3);
@@ -340,24 +345,24 @@ mod tests {
 
         sim.run(2, true);
 
-        let output_1: &Vec<Logic> = sim.read_watcher(1).unwrap();
-        let output_3: &Vec<Logic> = sim.read_watcher(3).unwrap();
+        let output_1: &[Logic] = sim.read_watcher(1).unwrap();
+        let output_3: &[Logic] = sim.read_watcher(3).unwrap();
 
-        assert_eq!(output_1, &vec![Logic::X, Logic::OFF]);
-        assert_eq!(output_3, &vec![Logic::X, Logic::X]);
+        assert_eq!(output_1, &[Logic::X, Logic::OFF]);
+        assert_eq!(output_3, &[Logic::X, Logic::X]);
 
         sim.run(10, true);
 
-        let output_1: &Vec<Logic> = sim.read_watcher(1).unwrap();
-        let output_3: &Vec<Logic> = sim.read_watcher(3).unwrap();
+        let output_1: &[Logic] = sim.read_watcher(1).unwrap();
+        let output_3: &[Logic] = sim.read_watcher(3).unwrap();
 
-        assert_eq!(output_1, &vec![Logic::X, Logic::OFF, Logic::OFF, Logic::OFF]);
-        assert_eq!(output_3, &vec![Logic::X, Logic::X, Logic::X, Logic::OFF]);
+        assert_eq!(output_1, &[Logic::X, Logic::OFF, Logic::OFF, Logic::OFF]);
+        assert_eq!(output_3, &[Logic::X, Logic::X, Logic::X, Logic::OFF]);
     }
 
     #[test]
     fn only_neccessary() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
@@ -369,11 +374,11 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![]});
 
         // 0
-        network.relations.push(Relation::new(0, 1, 2));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 1, out: 2});
         // 1
-        network.relations.push(Relation::new(2, 2, 3));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 2, b: 2, out: 3});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         sim.schedule_event(0, 0, Logic::ON);
 
@@ -392,7 +397,7 @@ mod tests {
 
     #[test]
     fn oscillation() {
-        let mut network = Network::new();
+        let mut network: Network<Logic, LogicOp> = Network::new();
 
         // 0
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
@@ -400,9 +405,9 @@ mod tests {
         network.entities.push(Entity {value: Logic::X, sinks: vec![0]});
 
         // 0
-        network.relations.push(Relation::new(0, 1, 1));
+        network.relations.push(Relation {op: LogicOp::NAND, a: 0, b: 1, out: 1});
 
-        let mut sim = Simulator::new(network);
+        let mut sim: Simulator<Logic, LogicOp> = Simulator::new(network);
 
         sim.create_watcher(1);
 
@@ -412,10 +417,10 @@ mod tests {
 
         sim.run(256, true);
 
-        let output: &Vec<Logic> = sim.read_watcher(1).unwrap();
+        let output: &[Logic] = sim.read_watcher(1).unwrap();
         
         println!("{:?}", output);
 
-        assert_eq!(output, &vec![Logic::X, Logic::ON, Logic::ON, Logic::ON, Logic::OFF, Logic::ON, Logic::OFF, Logic::ON]);
+        assert_eq!(output, &[Logic::X, Logic::ON, Logic::ON, Logic::ON, Logic::OFF, Logic::ON, Logic::OFF, Logic::ON]);
     }
 }

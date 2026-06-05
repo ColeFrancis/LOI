@@ -1,10 +1,8 @@
 # TODO
 
-- hard code gate delay as 1 (in sim.run)
+- Sim takes mutable reference to network rather than ownership?
 
-- entity tupes as generics
-    - logic
-    - reals
+- Carefully go through existing code, commenting all files and big methods and restructuring where it makes sense
 
 - network file type
     - (metadata, [in_idx0,...,in_idxn,],[oyt_idx0,...,out_idxn,],[[ent0_sink0,...,ent0sinkn,],...[],],(gate info,[gate inputs],[gate outputs],),))

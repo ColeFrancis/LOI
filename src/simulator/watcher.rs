@@ -1,11 +1,11 @@
-use crate::core::types::{EntityId, Logic};
+use crate::network::entity::EntityId;
 
-pub struct Watcher {
+pub struct Watcher<T> {
     pub entity: EntityId,
-    pub outputs: Vec<Logic>,
+    pub outputs: Vec<T>,
 }
 
-impl Watcher {
+impl<T> Watcher<T> {
     pub fn new(entity: EntityId) -> Self {
         Self {
             entity,

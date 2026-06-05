@@ -1,0 +1,1 @@
+// (metadata, [in_entity_id_0,...,in_entity_id_n,],[out_entity_id_0,...,out_identity_id_m,],[[entity_0_sink_0,...,entity_0_sink_k,],...,[],],[(relation data,in_entity_a,in_entity_b,out_entity,),...,(),],)

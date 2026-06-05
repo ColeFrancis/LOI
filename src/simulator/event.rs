@@ -1,8 +1,7 @@
-use crate::core::types::EntityId;
-use crate::core::types::Logic;
+use crate::network::entity::EntityId;
 
-pub struct Event {
+pub struct Event<T> {
     pub time: usize,
     pub entity: EntityId,
-    pub new_value: Logic,
+    pub new_value: T,
 }
