@@ -11,6 +11,7 @@
 //! - The simulator shall be as simple and generic as possible while still maintining its intended use
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/02/2026
 
 use rand::seq::SliceRandom;

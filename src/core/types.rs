@@ -7,6 +7,7 @@
 //! - Types must implement Copy, PartialEq, and Resettable
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/04/2026
 
 pub trait Resettable {

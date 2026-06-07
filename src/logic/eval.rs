@@ -5,9 +5,10 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! - Every operation for every type must be implemented
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/02/2026
 
 use crate::core::types::{Logic, Real};
@@ -24,6 +25,20 @@ impl Operator<Logic> for LogicOp {
                 match (a, b) {
                     (Logic::ON, Logic::ON) => Logic::OFF,
                     (Logic::OFF, _) | (_, Logic::OFF) => Logic::ON,
+                    _ => Logic::X,
+                }
+            }
+            LogicOp::AND => {
+                match (a, b) {
+                    (Logic::ON, Logic::ON) => Logic::ON,
+                    (Logic::OFF, _) | (_, Logic::OFF) => Logic::OFF,
+                    _ => Logic::X,
+                }
+            }
+            LogicOp::XOR => {
+                match (a, b) {
+                    (Logic::ON, Logic::ON) | (Logic::OFF, Logic::OFF) => Logic::OFF,
+                    (Logic::ON, Logic::OFF) | (Logic::OFF, Logic::ON) => Logic::ON,
                     _ => Logic::X,
                 }
             }

@@ -7,6 +7,7 @@
 //! - Netwokrs must be made up of only relations and entities
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/02/2026
 
 use super::relation::Relation;

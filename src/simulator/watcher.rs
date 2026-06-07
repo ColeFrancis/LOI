@@ -9,6 +9,7 @@
 //! - The watcher must be able to be resetted
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/02/2026
 
 use crate::network::entity::EntityId;

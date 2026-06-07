@@ -9,6 +9,7 @@
 //! - Relations must implement eval
 //!
 //! Author: Cole Francis
+//!
 //! Last Updated: 06/02/2026
 
 use super::entity::EntityId;
