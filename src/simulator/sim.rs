@@ -22,7 +22,7 @@ use super::event::Event;
 use super::scheduler::Wheel;
 use super::watcher::Watcher;
 use crate::core::types::Resettable;
-use crate::logic::eval::Operator;
+use crate::core::operations::Operator;
 
 pub struct Simulator<T, O> {
     wheel: Wheel<256, T>,
@@ -154,6 +154,23 @@ mod tests {
     use crate::network::entity::Entity;
     use crate::core::types::Logic;
     use crate::core::operations::LogicOp;
+    use crate::core::types::Real;
+    use crate::core::operations::RealOp;
+
+    fn assert_real_slice_eq(actual: &[Real], expected: &[Real], eps: f64) {
+        assert_eq!(actual.len(), expected.len());
+
+        for (a, e) in actual.iter().zip(expected.iter()) {
+            match (a, e) {
+                (Real::Val(a), Real::Val(e)) => {
+                    assert!((a - e).abs() < eps);
+                }
+                _ => {
+                    assert!(false);
+                }
+            }
+        }
+    }
 
     #[test]
     fn nand_gate() {
@@ -264,6 +281,34 @@ mod tests {
         let output = sim.read_entity(5);
 
         assert_eq!(output, Logic::OFF, "ON, ON gave {:?}", output);
+    }
+
+    #[test]
+    fn integrator() {
+        let mut network: Network<Real, RealOp> = Network::new();
+
+        // 0
+        network.entities.push(Entity {value: Real::X, sinks: vec![0]});
+        // 1
+        network.entities.push(Entity {value: Real::Val(1.0), sinks: vec![0]});
+
+        // 1
+        network.relations.push(Relation {op: RealOp::ADD, a: 0, b: 1, out: 1});
+
+        let mut sim: Simulator<Real, RealOp> = Simulator::new(network);
+
+        sim.create_watcher(1);
+
+        sim.schedule_event(0, 0, Real::Val(1.0));
+
+        sim.run(3, true);
+
+        let output: &[Real] = sim.read_watcher(1).unwrap();
+        for val in output {
+            println!("{:?}", val);
+        }
+
+        assert_real_slice_eq(output, &vec![Real::Val(1.0), Real::Val(2.0), Real::Val(3.0)], 1e-9);
     }
 
     #[test]

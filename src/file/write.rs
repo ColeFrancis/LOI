@@ -4,44 +4,55 @@
 //!
 //! ## Invariants
 //!
-//! - Files must follow this format: (metadata,[in_entity_id_0,...,],[out_entity_id_0,...,],[[entity_0_sink_0,...,],...,],[(relation data,in_entity_a,in_entity_b,out_entity,),...,],)
+//! - Files must follow this format: (metadata,[in_entity_id_0,...,],[out_entity_id_0,...,],[(const_0_id, const_0_val),...,],[[entity_0_sink_0,...,],...,],[(relation data,in_entity_a,in_entity_b,out_entity,),...,],)
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/06/2026
+//! Last Updated: 06/08/2026
 
 use std::fs::File;
 use std::io::Write;
 use std::any::type_name;
 
+use crate::network::network::Network;
+use crate::network::entity::EntityId;
+use crate::core::operations::Operator;
 
-pub fn write_file<T, O>(file_name: &str, network: &Network<T, O>, inputs: &Vec<Entity<T>>, outputs: &Vec<Entity<T>>) -> std::io::Result<()> {
-    let mut file = File::create("output.txt")?;
+
+pub fn write_file<T: std::fmt::Debug, O: Operator<T>>(file_name: &str, inputs: &Vec<EntityId>, outputs: &Vec<EntityId>, constants: &Vec<(EntityId, T)>, network: &Network<T, O>) -> std::io::Result<()> {
+    let mut file = File::create(file_name)?;
 
     write!(file, "(")?;
 
     // Metadata
-    write!(file, "{},", type_name<T>())?;
+    write!(file, "{},", type_name::<T>())?;
 
     // Inputs
     write!(file, "[")?;
-    for &id in inputs {
+    for id in inputs {
         write!(file, "{},", id)?;
     }
     write!(file,"],")?;
 
     // Outputs
     write!(file, "[")?;
-    for &id in outputs {
+    for id in outputs {
         write!(file, "{},", id)?;
     }
     write!(file,"],")?;
 
+    // Constants
+    write!(file, "[")?;
+    for (entity, val) in constants {
+        write!(file, "({},{:?}),", entity, val)?;
+    }
+    write!(file, "],")?;
+
     // Entities
     write!(file, "[")?;
-    for &entity in network.entities {
+    for entity in &network.entities {
         write!(file, "[")?;
-        for &sink in entity.sinks {
+        for sink in &entity.sinks {
             write!(file, "{},", sink)?;
         }
         write!(file, "],")?;
@@ -50,12 +61,13 @@ pub fn write_file<T, O>(file_name: &str, network: &Network<T, O>, inputs: &Vec<E
 
     // Relations
     write!(file, "[")?;
-    for &relation in network.relations {
-        write!(file, "({},{},{},{},),", relation.op.name, relation.a, relation.b, relation.out)?;
+    for relation in &network.relations {
+        write!(file, "({},{},{},{},),", relation.op.name(), relation.a, relation.b, relation.out)?;
     }
     write!(file, "],")?;
 
     write!(file, ")")?;
+
     Ok(())
 }
 
@@ -85,7 +97,7 @@ mod tests {
         let inputs = vec![0, 1];
         let outputs = vec![2];
 
-        write_file("test_output.txt", network, inputs, outputs)?;
+        write_file("test_output.txt", &inputs, &outputs, &vec![], &network)?;
 
         // TODO: Write test using read.rs
 

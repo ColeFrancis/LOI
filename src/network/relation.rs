@@ -14,7 +14,7 @@
 
 use super::entity::EntityId;
 use crate::network::network::Network;
-use crate::logic::eval::Operator;
+use crate::core::operations::Operator;
 
 pub type RelationId = usize;
 
