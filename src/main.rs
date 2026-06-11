@@ -43,7 +43,7 @@ fn main() -> std::io::Result<()> {
     let inputs = vec![0, 1];
     let outputs = vec![5];
 
-    write_file("test_output.txt", &inputs, &outputs, &vec![], &network)?;
+    write_file("test_output.nhdl", &inputs, &outputs, &vec![], &network)?;
 
     Ok(())
 }
