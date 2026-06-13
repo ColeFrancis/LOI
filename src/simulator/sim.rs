@@ -313,7 +313,7 @@ mod tests {
 
     #[test]
     fn random_state_selection() {
-        let num_iters = 50;
+        let num_iters = 100;
 
         let mut network: Network<Logic, LogicOp> = Network::new();
 

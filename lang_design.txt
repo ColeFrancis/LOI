@@ -49,7 +49,7 @@ Entities: edges of the network (graph). Contain state.
 
 Syntax is inspired by sets in mathematics
 
-ent R = Reals;
+ent R = Real;
 ent COIN = {H, T};
 ent Bool = {0, 1};
 ent Z4 = Mod(4);
