@@ -11,47 +11,20 @@
 //! Last Updated: 06/17/2026
 
 IDENT = letter (letter | digit | "_")* ;
-NUMBER = digit+ ("." digit+)? ;
 
 literal = 
-      NUMBER
-    | "true"
-    | "false" ;
+      bool_literal
+    | int_literal
+    | float_literal ;
+
+bool_literal = "true" | "false"
+int_literal = digit+ ;
+float_literal = digit+ ("." digit+)? ;
 
 type = IDENT ;
 
 arg_list =
-    expr ("," expr)* ;
-
-expr = 
-    binary_expr
-    | tuple_expr
-    | match_expr
-    | sample_expr ;
-
-binary_expr = equality ;
-
-equality =
-    comparison (("==" | "!=") comparison)* ;
-
-comparison = 
-    additive (("<" | ">" | "<=" | ">=") additive)* ;
-
-additive =
-    multiplicative (("+" | "-") multiplicative)* ;
-
-multiplicative =
-    unary (("*" | "/") unary )* ;
-
-unary =
-      ("-" | "!") primary ;
-    | primary ;
-
-primary =
-      literal
-    | IDENT
-    | tuple_expr
-    | "(" expr ")" ;
+    (IDENT "=" )? expr ("," (IDENT "=")? expr)* ;
 
 /////////////////////////////////////////////////
 
@@ -80,17 +53,17 @@ enum_ent =
 
 enum_member =
       IDENT
-    | NUMBER ;
+    | literal ;
 
 ///////////////////////////////////////////////////
 
 rel_decl =
-    "rel" IDENT ":" "(" typed_arg_list? ")" "->" type "=" (expr | block_expr) ";" ;
+    "rel" IDENT ":" "(" param_list? ")" "->" type "=" (expr | block_expr) ;
 
-typed_arg_list =
-    typed_arg ("," typed_arg)* ;
+param_list =
+    param ("," param)* ;
 
-typed_arg =
+param =
     IDENT ":" type ;
 
 block_expr = 
@@ -100,6 +73,36 @@ block_expr =
     "}" ;
 
 let_stmt = "let" IDENT "=" expr ";" ;
+
+expr = 
+    binary_expr
+    | tuple_expr
+    | match_expr
+    | sample_expr igraph;
+
+binary_expr = equality ;
+
+equality =
+    comparison (("==" | "!=") comparison)* ;
+
+comparison = 
+    additive (("<" | ">" | "<=" | ">=") additive)* ;
+
+additive =
+    multiplicative (("+" | "-") multiplicative)* ;
+
+multiplicative =
+    unary (("*" | "/") unary )* ;
+
+unary =
+      ("-" | "!") primary ;
+    | primary ;
+
+primary =
+      literal
+    | IDENT
+    | tuple_expr
+    | "(" expr ")" ;
 
 tuple_expr =
     "(" expr "," expr ("," expr)* ")" ;
@@ -161,7 +164,14 @@ init_decl =
 assignment = 
     path "=" (inst | path) ";" ;
 
-path = 
+path =
+      tuple_path
+    | simple_path ;
+
+tuple_path =
+    "(" simple_path ("," simple_path)+ ")" ;
+
+simple_path = 
     IDENT ("." IDENT)* ;
 
 inst = 

@@ -28,12 +28,13 @@ pub enum Token {
     Bool,    // Bool
     Int,    // Int
     Real,   // Real
-    Complex,    // Complex
+    Complex,// Complex
     I,      // i (sqrt(-1))
     E,      // e (constant)
     Pi,     // pi (constant)
 
     Identifier(String),
+    BoolLiteral(bool),
     IntLiteral(i64),
     RealLiteral(f64),
 
@@ -47,6 +48,8 @@ pub enum Token {
     RParen, // )
     LBrace, // {
     RBrace, // }
+
+    // TODO: >, <, >=, <=
 
     Arrow,    // ->
     FatArrow, // =>

@@ -97,7 +97,7 @@ rel COND_PROB : (x: COIN) -> COIN =
 // Produces an and gate with a 10% chance of being wrong
 rel RAND_AND : (a: Bool, b: Bool) -> Bool = 
     match (a, b) {
-        (0, 0) => Bernoulli(0.1),
+        (0, 0) => Bernoulli(0.1), 
         (0, 1) => Bernoulli(0.1),
         (1, 0) => Bernoulli(0.1),
         (1, 1) => Bernoulli(0.9),
@@ -112,6 +112,12 @@ rel THRESH : (x:R) -> Bool =
     match (x) {
         (>= 1) => 1,
         (_) => 0
+    };
+
+rel CUSTOM_BINOM : (p : Real) -> Bool = 
+    sample {
+        p => true,
+        _ => false
     };
 
 // Simulates the rule in the cellular atomata "conway's game of life"

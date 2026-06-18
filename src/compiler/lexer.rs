@@ -169,11 +169,13 @@ impl<'a> Lexer<'a> {
             "Bool"   => Token::Bool,
             "Real"   => Token::Real,
             "Int"    => Token::Int,
-            "Complex"    => Token::Complex,
+            "Complex"=> Token::Complex,
             "i"      => Token::I,
             "e"      => Token::E,
             "pi"     => Token::Pi,
-            _ => Token::Identifier(buf),
+            "true"   => Token::BoolLiteral(true),
+            "false"  => Token::BoolLiteral(false),
+            _        => Token::Identifier(buf),
         }
     }
 
