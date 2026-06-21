@@ -258,7 +258,7 @@ net Neuron {
     input spike_in: Impulse;
     output spike_out: Impulse;
 
-    init weight: Impulse = 1;
+    init weight: Real = 1.0;
 
     /*               
                            _________             ______
