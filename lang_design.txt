@@ -225,13 +225,11 @@ net DLATCH {
     q_not = NAND(r, q);
 }
 
-<<<<<<< HEAD
-
 ~ : Bool not
 * : Bool and
 + : Bool or
 ^ : Exponent
-=======
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 Leaky integrate and fire neuron example
 
@@ -343,4 +341,3 @@ net RULE_110_5 {
     c4 = RULE_110(c3, c4, c5);
     c5 = RULE_110(c4, c5, c1);
 }
->>>>>>> 39832b199ae6a9b2dabd8d7d8ebad69a9140f942
