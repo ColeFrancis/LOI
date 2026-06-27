@@ -209,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn test_literal_expr() {
+    fn test_literal_and_ident_expr() {
         let kinds: Vec<TokenKind> = vec![IntLiteral(3), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -218,10 +218,7 @@ mod tests {
         let result: Expr = parser.parse_prefix();
 
         assert_eq!(result, Expr::Literal(Literal::Int(3)));
-    }
-
-    #[test]
-    fn test_ident_expr() {
+    
         let kinds: Vec<TokenKind> = vec![Ident("hey".to_string()), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -230,6 +227,21 @@ mod tests {
         let result: Expr = parser.parse_prefix();
 
         assert_eq!(result, Expr::Ident("hey".to_string()));
+    }
+    
+    #[test]
+    fn test_unary_expr() {
+        // ---6
+        let kinds: Vec<TokenKind> = vec![Minus, Minus, Minus, IntLiteral(6), Eof];
+        let tokens: Vec<Tokens> = build_token_vec(kinds);
+        
+        let mut parser = Parser::new(tokens);
+
+        let result: Expr = parser.parse_prefix();
+        
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(- (- (- 6)))".to_string());
     }
 
     #[test]
@@ -247,10 +259,7 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(+ (+ (- 5) (* 2 a)) b)".to_string()); 
-    }
-
-    #[test]
-    fn test_paren_expr() {
+    
         // (9 + 10) * 5
         let kinds: Vec<TokenKind> = vec![LParen, IntLiteral(9), Plus, 
         IntLiteral(10), RParen, Asterisk, IntLiteral(5), Eof];
@@ -263,10 +272,7 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(* (+ 9 10) 5)".to_string()); 
-    }
-
-    #[test]
-    fn text_exp() {
+    
         //-3^(-7)^(8-2-4/-1)
         let kinds: Vec<TokenKind> = vec![Minus, IntLiteral(3), Caret, LParen, 
             Minus, IntLiteral(7), RParen, Caret, LParen, IntLiteral(8), Minus,
@@ -280,6 +286,6 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(- (^ 3 (^ (- 7) (- (- 8 2) (/ 4 (- 1))))))""(- (^ 3 (+ 2 4)))".to_string()); 
+        assert_eq!(result_str, "(- (^ 3 (^ (- 7) (- (- 8 2) (/ 4 (- 1))))))".to_string()); 
     }
 }
