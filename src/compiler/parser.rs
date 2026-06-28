@@ -48,6 +48,8 @@ impl Parser {
         }
     }
 
+    // Pratt Parser for expressions
+    //     If calling to parse expr, use min_bp = 0
     fn parse_expr(&mut self, min_bp: u8) -> Expr {
         let mut lhs = self.parse_prefix();
 
@@ -95,6 +97,13 @@ impl Parser {
 
             TokenKind::LParen => {
                 let expr = self.parse_expr(0);
+
+                // Tuple Expression
+                // while self.peek().kind == TokenKind::Comma {
+                //     self.next();
+                //     items.push(self.parse_expr(0));
+                // }
+
                 self.expect(TokenKind::RParen);
                 expr
             }
