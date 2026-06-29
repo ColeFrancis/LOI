@@ -96,16 +96,31 @@ impl Parser {
             }
 
             TokenKind::LParen => {
-                let expr = self.parse_expr(0);
-
-                // Tuple Expression
-                // while self.peek().kind == TokenKind::Comma {
-                //     self.next();
-                //     items.push(self.parse_expr(0));
-                // }
-
-                self.expect(TokenKind::RParen);
-                expr
+                let first = self.parse_expr(0);
+            
+                match self.peek().kind {
+                    TokenKind::RParen => {
+                        self.next(); // consume ')'
+                        first
+                    }
+            
+                    TokenKind::Comma => {
+                        self.next(); // consume ','
+            
+                        let mut elements = vec![expr];
+                        elements.push(self.parse_expr(0));
+                        
+                        while self.peek().kind == TokenKind::Comma {
+                            self.next();
+                            elements.push(self.parse_expr(0));
+                        }
+            
+                        self.expect(TokenKind::RParen);
+                        Expr::Tuple(TupleExpr { elements })
+                    }
+            
+                    _ => panic!("Expected ',' or ')'"),
+                }
             }
 
             TokenKind::Match => {
