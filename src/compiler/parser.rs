@@ -405,6 +405,11 @@ mod tests {
 
         assert_eq!(result_str, "(- (^ 3 (^ (- 7) (- (- 8 2) (/ 4 (- 1))))))".to_string()); 
     }
+    
+    #[test]
+    fn test_tuple_expr() {
+        assert!(false); // TODO
+    }
 
     #[test]
     fn test_match() {
