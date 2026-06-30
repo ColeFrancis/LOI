@@ -140,7 +140,7 @@ impl Parser {
                     other => panic!("Expected integer literal in mod(...), got {:?}", other),
                 };
                 self.expect(TokenKind::RParen);
-                Type::Mod(literal)
+                Type::Mod(n)
             }
             TokenKind::Ident(name) => Type::CustomType(name),
             other => panic!("Unexpected prefix token: {:?}", other),
