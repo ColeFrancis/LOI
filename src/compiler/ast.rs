@@ -35,7 +35,7 @@ pub enum Type {
     Impulse,
     Int,
     Real,
-    Mod(Literal),
+    Mod(i64),
     CustomType(Ident),
 }
 
