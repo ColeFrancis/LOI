@@ -113,7 +113,7 @@ impl Parser {
                         }
             
                         self.expect(TokenKind::RParen);
-                        Expr::Tuple(TupleExpr { elements })
+                        Expr::Tuple(elements)
                     }
             
                     _ => panic!("Expected ',' or ')'. TODO: elegant error handling"),
@@ -278,8 +278,82 @@ mod tests {
                     build_s_expr(&binary.right),
                 )
             }
+
+            // (tuple a b c)
+            Expr::Tuple(elements) => {
+                let elems = elements
+                    .iter()
+                    .map(build_s_expr)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                format!("(tuple {})", elems)
+            }
+
+            // (match x (arm 0 1) (arm _ 2))
+            Expr::Match(match_expr) => {
+                let arms = match_expr 
+                    .arms
+                    .iter()
+                    .map(build_match_arm)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                format!("(match {} {})", build_s_expr(&match_expr.scrutinee), arms)
+            }
+
             _ => {
                 panic!("build_s_expression can only handle Literals, Identifiers, Unary Expressions, and Binary Expressions");
+            }
+        }
+    }
+
+    fn build_match_arm(arm: &MatchArm) -> String {
+        let pattern = if arm.pattern.len() == 1 {
+            build_pattern(&arm.pattern[0])
+        } else {
+            let patterns = arm.pattern
+                .iter()
+                .map(build_pattern)
+                .collect::<Vec<_>>()
+                .join(" ");
+
+            format!("(or {})", patterns)
+        };
+
+        format!(
+            "(arm {} {})",
+            pattern,
+            build_s_expr(&arm.expr),
+        )
+    }
+
+    fn build_pattern(pattern: &SimplePattern) -> String {
+        match pattern {
+            SimplePattern::Default => "_".to_string(),
+
+            SimplePattern::Literal(Literal::Int(n)) => n.to_string(),
+            SimplePattern::Literal(Literal::Bool(b)) => b.to_string(),
+            SimplePattern::Literal(Literal::Real(x)) => x.to_string(),
+
+            SimplePattern::Ident(ident) => ident.to_string(),
+
+            SimplePattern::Tuple(elements) => {
+                let elems = elements
+                    .iter()
+                    .map(build_pattern)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                format!("(tuple {})", elems)
+            }
+
+            SimplePattern::Comparison(comp) => {
+                format!(
+                    "({} {})",
+                    comp_op_to_str(&comp.op),
+                    build_s_expr(&comp.expr),
+                )
             }
         }
     }
@@ -302,6 +376,15 @@ mod tests {
             BinaryOp::Lt  => "<",
             BinaryOp::Ge  => ">=",
             BinaryOp::Le  => "<=",
+        }
+    }
+
+    fn comp_op_to_str(op: &CompOp) -> &'static str {
+        match op {
+            CompOp::Gt  => ">",
+            CompOp::Lt  => "<",
+            CompOp::Ge  => ">=",
+            CompOp::Le  => "<=",
         }
     }
 
@@ -408,7 +491,33 @@ mod tests {
     
     #[test]
     fn test_tuple_expr() {
-        assert!(false); // TODO
+        // (1, 1+5, 3)
+        let kinds: Vec<TokenKind> = vec![LParen, IntLiteral(1), Comma, 
+            IntLiteral(1), Plus, IntLiteral(5), Comma,
+            IntLiteral(3), RParen, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut parser = Parser::new(tokens);
+
+        let result: Expr = parser.parse_expr(0);
+
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(tuple 1 (+ 1 5) 3)".to_string()); 
+        
+        // (1, (2, 3))
+        let kinds: Vec<TokenKind> = vec![LParen, IntLiteral(1), Comma, 
+            LParen, IntLiteral(2), Comma,
+            IntLiteral(3), RParen, RParen, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut parser = Parser::new(tokens);
+
+        let result: Expr = parser.parse_expr(0);
+
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(tuple 1 (tuple 2 3))".to_string()); 
     }
 
     #[test]
@@ -416,7 +525,7 @@ mod tests {
         // match a {
         //     1 => 1+a,
         //     _ => a,
-        // } - 1
+        // } - 2
         let kinds: Vec<TokenKind> = vec![Match, Ident("a".to_string()), LBrace, 
             IntLiteral(1), FatArrow, IntLiteral(1), Plus, Ident("a".to_string()), Comma,
             Underscore, FatArrow, Ident("a".to_string()), Comma,
@@ -427,43 +536,29 @@ mod tests {
 
         let result: Expr = parser.parse_expr(0);
 
-        assert_eq!(result, Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Match(MatchExpr {
-                scrutinee: Box::new(Expr::Ident("a".to_string())),
-                arms: vec![MatchArm {
-                    pattern: vec![SimplePattern::Literal(Literal::Int(1))],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
-                        op: BinaryOp::Add,
-                        right: Box::new(Expr::Ident("a".to_string())),
-                    })
-                }, MatchArm {
-                    pattern: vec![SimplePattern::Default],
-                    expr: Expr::Ident("a".to_string()),
-                }]
-            })),
-            op: BinaryOp::Sub,
-            right: Box::new(Expr::Literal(Literal::Int(2))),
-        }));
+        let result_str: String = build_s_expr(&result);
 
-        // TODO: Finish tuple expression parsing first
+        assert_eq!(result_str, "(- (match a (arm 1 (+ 1 a)) (arm _ a)) 2)".to_string());
+
         // match (a, b) {
-        //     (1, 0) | (0, 1) => 1,
+        //     (1, 0) | (0, 1) | (1, 1) => 1,
         //     _ => 0,
         // }
-        // let kinds: Vec<TokenKind> = vec![Match, Lparen, Ident("a".to_string()), Comma,  Ident("b".to_string()), RParen, LBrace,
-        //     Lparen, IntLiteral(1), Comma, IntLiteral(0), RParen, Pipe, Lparen, IntLiteral(0), Comma, IntLiteral(1), RParen, FatArrow, IntLiteral(1),
-        //     Underscore, FatArrow, IntLiteral(0),
-        //     RBrace, Eof];
-        // let tokens: Vec<Token> = build_token_vec(kinds);
+        let kinds: Vec<TokenKind> = vec![Match, LParen, Ident("a".to_string()), Comma,  Ident("b".to_string()), RParen, LBrace,
+                LParen, IntLiteral(1), Comma, IntLiteral(0), RParen, Pipe, 
+                LParen, IntLiteral(0), Comma, IntLiteral(1), RParen, Pipe,
+                LParen, IntLiteral(1), Comma, IntLiteral(1), RParen,
+                FatArrow, IntLiteral(1), Comma,
+            Underscore, FatArrow, IntLiteral(0),
+            RBrace, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
 
-        // let mut parser = Parser::new(tokens);
+        let mut parser = Parser::new(tokens);
 
-        // let result: Expr = parser.parse_expr(0);
+        let result: Expr = parser.parse_expr(0);
 
-        // assert_eq!(result, Expr::Match(MatchExpr {
-        //     scrutinee: Box::new(),
-        //     arms: vec![],
-        // }));
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(match (tuple a b) (arm (or (tuple 1 0) (tuple 0 1) (tuple 1 1)) 1) (arm _ 0))".to_string());
     }
 }

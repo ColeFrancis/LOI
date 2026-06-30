@@ -43,7 +43,7 @@ pub enum Expr {
     Ident(Ident),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
-    Tuple(TupleExpr),
+    Tuple(Vec<Expr>),
     Match(MatchExpr),
     Sample(SampleExpr),
 }
@@ -93,11 +93,6 @@ pub enum CompOp {
     Gt,         // >
     Le,         // <=
     Ge,         // >=
-}
-
-#[derive(PartialEq, Debug)]
-pub struct TupleExpr {
-    elements: Vec<Expr>,
 }
 
 #[derive(PartialEq, Debug)]
