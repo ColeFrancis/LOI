@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/29/2026
+//! Last Updated: 06/30/2026
 
 use super::token::{Token, TokenKind};
 use super::ast::*;
@@ -60,10 +60,10 @@ impl Parser {
 
     //     loop {
     //         let item = match self.next().kind {
-    //             TokenKind::Let   => self.parse_let_stmt();
-    //             TokenKind::Ent_t => self.parse_ent_t();
-    //             TokenKind::Rel_t => self.parse_rel_t();
-    //             TokenKind::Net   => self.parse_net();
+    //             TokenKind::Let   => Item::Let(self.parse_let_stmt()),
+    //             TokenKind::Ent_t => Item::Ent(self.parse_ent_t()),
+    //             TokenKind::Rel_t => Item::Rel(self.parse_rel_t()),
+    //             TokenKind::Net   => Item::Net(self.parse_net()),
     //             other => panic!("Unexpected prefix token: {:?}", other),
     //         }
 
@@ -74,7 +74,7 @@ impl Parser {
     // }
 
     // Let token already consumed
-    fn parse_let_stmt(&mut self) -> Item {
+    fn parse_let_stmt(&mut self) -> LetStatement {
         let name = self.expect_ident();
 
         self.expect(TokenKind::Equals);
@@ -83,14 +83,14 @@ impl Parser {
 
         self.expect(TokenKind::Semicolon);
 
-        Item::Let(LetStatement {
+        LetStatement {
             name,
             expr,
-        })
+        }
     }
 
     // Ent_t token already consumed
-    fn parse_ent_t(&mut self) -> Item {
+    fn parse_ent_t(&mut self) -> EntType {
         let name = self.expect_ident();
 
         self.expect(TokenKind::Equals);
@@ -99,10 +99,10 @@ impl Parser {
 
         self.expect(TokenKind::Semicolon);
 
-        Item::Ent(EntType {
+        EntType {
             name,
             expr
-        })
+        }
     }
 
     fn parse_ent_expr(&mut self) -> EntExpr {
@@ -148,9 +148,80 @@ impl Parser {
     }
 
     // Rel_t token already consumed
-    // fn parse_rel_t(&mut self) -> Item {
+    fn parse_rel_t(&mut self) -> RelType {
+        let name = self.expect_ident();
 
-    // }
+        self.expect(TokenKind::Colon);
+
+        self.expect(TokenKind::LParen);
+
+        let mut params = Vec::new();
+
+        while self.peek().kind != TokenKind::RParen {
+            params.push(self.parse_param());
+
+            if self.peek().kind == TokenKind::Comma {
+                self.next();
+            } else {
+                break;
+            }
+        }
+
+        self.expect(TokenKind::RParen);
+
+        self.expect(TokenKind::Arrow);
+
+        let return_type = self.parse_type();
+
+        self.expect(TokenKind::Equals);
+
+        let body = match self.peek().kind {
+            TokenKind::LBrace => RelBody::Block(self.parse_block_expr()),
+            _ => RelBody::Expr(self.parse_expr(0)),
+        };
+
+        RelType {
+            name,
+            params,
+            return_type,
+            body,
+        }
+    }
+
+    fn parse_param(&mut self) -> Param {
+        let name = self.expect_ident();
+
+        self.expect(TokenKind::Colon);
+
+        let param_type = self.parse_type();
+
+        Param {
+            name,
+            param_type,
+        }
+    }
+
+    // { not consumed
+    fn parse_block_expr(&mut self) -> BlockExpr {
+        self.expect(TokenKind::LBrace);
+
+        let mut statements = Vec::new();
+
+        while self.peek().kind == TokenKind::Let {
+            self.next();
+
+            statements.push(self.parse_let_stmt());
+        }
+
+        let expr = self.parse_expr(0);
+
+        self.expect(TokenKind::RBrace);
+
+        BlockExpr {
+            statements,
+            expr,
+        }
+    }
 
     // Net token already consumed
     // fn parse_net(&mut self) -> Item {
@@ -788,16 +859,16 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
 
-        let result: Item = parser.parse_let_stmt();
+        let result = parser.parse_let_stmt();
 
-        assert_eq!(result, Item::Let(LetStatement {
+        assert_eq!(result, LetStatement {
             name: "n".to_string(),
             expr: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Literal(Literal::Int(2))),
             })
-        }));
+        });
     }
 
     #[test]
@@ -811,11 +882,12 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
 
-        let result: Item = parser.parse_ent_t();
-        assert_eq!(result, Item::Ent(EntType {
+        let result = parser.parse_ent_t();
+
+        assert_eq!(result, EntType {
             name: "coin".to_string(),
             expr: EntExpr::SetEnt(vec!["H".to_string(), "T".to_string()]),
-        }));
+        });
         
         // ent_t z4 = Mod(4);
         let kinds: Vec<TokenKind> = vec![Ident("z4".to_string()), Equals, 
@@ -825,10 +897,86 @@ mod tests {
 
         let mut parser = Parser::new(tokens);
 
-        let result: Item = parser.parse_ent_t();
-        assert_eq!(result, Item::Ent(EntType {
+        let result = parser.parse_ent_t();
+
+        assert_eq!(result, EntType {
             name: "z4".to_string(),
-            expr: EntExpr::Type(Type::Mod(Literal::Int(4))),
-        }));
+            expr: EntExpr::Type(Type::Mod(4)),
+        });
+    }
+
+    #[test]
+    fn test_rel_t() {
+        // rel_t AND : (a:Bool, b:Bool) -> Bool = a*b
+        let kinds: Vec<TokenKind> = vec![Ident("AND".to_string()), Colon, LParen, 
+            Ident("a".to_string()), Colon, Bool, Comma,
+            Ident("b".to_string()), Colon, Bool,
+            RParen, Arrow, Bool, Equals, 
+            Ident("a".to_string()), Asterisk, Ident("b".to_string()),
+            Eof
+            ];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut parser = Parser::new(tokens);
+
+        let result = parser.parse_rel_t();
+
+        assert_eq!(result, RelType {
+            name: "AND".to_string(),
+            params: vec![Param {
+                name: "a".to_string(),
+                param_type: Type::Bool,
+            }, Param {
+                name: "b".to_string(),
+                param_type: Type::Bool,
+            }],
+            return_type: Type::Bool,
+            body: RelBody::Expr(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident("a".to_string())),
+                op: BinaryOp::Mul,
+                right: Box::new(Expr::Ident("b".to_string()))
+            })),
+        });
+
+        // rel_t FLIP : () -> Bool = {
+        //     let p = 0.5;
+
+        //     sample {
+        //         p => true,
+        //         _ => false,
+        //     }
+        // }
+        let kinds: Vec<TokenKind> = vec![Ident("FLIP".to_string()), Colon, LParen, RParen, Arrow, Bool, Equals, LBrace,
+            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
+            Sample, LBrace, Ident("p".to_string()), FatArrow, BoolLiteral(true), Comma,
+            Underscore, FatArrow, BoolLiteral(false), Comma, RBrace,
+            RBrace, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut parser = Parser::new(tokens);
+
+        let result = parser.parse_rel_t();
+
+        assert_eq!(result, RelType {
+            name: "FLIP".to_string(),
+            params: vec![],
+            return_type: Type::Bool,
+            body: RelBody::Block(BlockExpr {
+                statements: vec![LetStatement {
+                    name: "p".to_string(),
+                    expr: Expr::Literal(Literal::Real(0.5)),
+                }],
+                expr: Expr::Sample( vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Ident("p".to_string())),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                    },
+                ]),
+            }),
+        });
     }
 }
