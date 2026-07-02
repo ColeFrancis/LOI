@@ -289,14 +289,6 @@ net Neuron {
     curr_potential := BODY(spike_out, next_potential);
 }
 
-Generate blocks?:
-generate i in [0:100] {
-    Neuron {
-        spike_in := inputs[i],
-        spike_out := neurons[i],
-    };
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////
 Edge triggered, async active low reset d-flipflop (same circuit I built)
 
@@ -356,3 +348,28 @@ net RULE_110_5 {
     c4 := RULE_110(c3, c4, c5);
     c5 := RULE_110(c4, c5, c1);
 }
+
+///////////////////////
+For V2 of language:
+
+   Generate block construction:
+   cin[0:8]: Bool;
+   many ADDER {
+      a := a[i],
+      b := b[i],
+      cin := cin [i],
+      s := s[i],
+      cout := cin[i+1],
+   } for i in [0:7];
+
+
+   many Neuron {
+      spike_in[i] := in[i],
+      spike_out  := out[j],
+   } for i in [0:in_width-1], j in [0:out_width-1];
+
+   Random connections:
+   a_rand := sample {
+      0.5 => a_1,
+      _ => a_2
+   };
