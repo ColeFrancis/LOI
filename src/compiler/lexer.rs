@@ -11,7 +11,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/29/2026
+//! Last Updated: 07/01/2026
 
 use super::token::{Token, TokenKind};
 
@@ -85,7 +85,14 @@ impl<'a> Lexer<'a> {
                 }
 
                 // Punctuation
-                b':' => return Some(Token::new(TokenKind::Colon, line, col)),
+                b':' => {
+                    if self.peek() == Some(b'=') {
+                        self.next();
+                        return Some(Token::new(TokenKind::Connect, line, col));
+                    } else {
+                        return Some(Token::new(TokenKind::Colon, line, col));
+                    }
+                }
                 b';' => return Some(Token::new(TokenKind::Semicolon, line, col)),
                 b',' => return Some(Token::new(TokenKind::Comma, line, col)),
                 b'.' => return Some(Token::new(TokenKind::Period, line, col)),
@@ -200,7 +207,7 @@ impl<'a> Lexer<'a> {
         match buf.as_str() {
             "ent_t"   => TokenKind::Ent_t,
             "rel_t"   => TokenKind::Rel_t,
-            "net"     => TokenKind::Net,
+            "net_t"     => TokenKind::Net_t,
             "match"   => TokenKind::Match,
             "sample"  => TokenKind::Sample,
             "input"   => TokenKind::Input,

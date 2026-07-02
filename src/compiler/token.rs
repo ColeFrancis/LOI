@@ -9,7 +9,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/29/2026
+//! Last Updated: 07/01/2026
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
@@ -33,9 +33,9 @@ impl Token {
 #[allow(non_camel_case_types)]
 pub enum TokenKind {
     // Keywords
-    Ent_t,    // net
-    Rel_t,    // rel
-    Net,    // net
+    Ent_t,    // net_t
+    Rel_t,    // rel_t
+    Net_t,    // net_t
     Match,  // match
     Sample, // sample
 
@@ -85,6 +85,8 @@ pub enum TokenKind {
     Equals,   // =
     Arrow,    // ->
     FatArrow, // =>
+    Connect,  // :=
+    
 
     Unknown(char),
     InvalidNum(String),

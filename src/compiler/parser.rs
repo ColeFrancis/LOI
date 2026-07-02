@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/30/2026
+//! Last Updated: 07/01/2026
 
 use super::token::{Token, TokenKind};
 use super::ast::*;
@@ -28,6 +28,10 @@ impl Parser {
 
     fn peek (&self) -> &Token {
         &self.tokens[self.current]
+    }
+
+    fn peek_n (&self, offset: usize) -> &Token {
+        &self.tokens[self.current + offset]
     }
 
     fn next(&mut self) -> Token {
@@ -58,12 +62,14 @@ impl Parser {
     // fn parse_program(&mut self) -> Program {
     //     let mut items = Vec::new();
 
+    //     while self.peek().kind != TokenKind::Eof {
+    //     }
     //     loop {
     //         let item = match self.next().kind {
     //             TokenKind::Let   => Item::Let(self.parse_let_stmt()),
     //             TokenKind::Ent_t => Item::Ent(self.parse_ent_t()),
     //             TokenKind::Rel_t => Item::Rel(self.parse_rel_t()),
-    //             TokenKind::Net   => Item::Net(self.parse_net()),
+    //             TokenKind::Net_t => Item::Net(self.parse_net()),
     //             other => panic!("Unexpected prefix token: {:?}", other),
     //         }
 
@@ -226,9 +232,101 @@ impl Parser {
     }
 
     // Net token already consumed
-    // fn parse_net(&mut self) -> Item {
+    fn parse_net(&mut self) -> NetDecl {
+        let name = self.expect_ident();
 
-    // }
+        self.expect(TokenKind::LBrace);
+
+        let mut items = Vec::new();
+
+        while self.peek().kind != TokenKind::RBrace {
+            items.push(self.parse_net_item());
+        }
+
+        self.expect(TokenKind::RBrace);
+
+        self.expect(TokenKind::Semicolon);
+
+        NetType {
+            name,
+            items,
+        }
+    }
+
+    fn parse_net_item(&mut self) -> NetItem {
+        match self.peek().kind {
+            TokenKind::Input => {
+                self.next();
+                NetItem::Input(self.parse_param())
+            },
+            TokenKind::Output => {
+                self.next();
+                NetItem::Output(self.parse_param())
+            },
+            TokenKind::Init => {
+                self.next();
+                NetItem::Init(self.parse_net_init())
+            },
+            Ident => {
+                match self.peek_n(1) => {
+                    TokenKind::Connect => NetItem::RelInst(self.parse_rel_inst()),
+                    _ => NetItem::NetInst(self.parse_net_inst()),
+                }
+            }
+            other => panic!("Unexpected token in net: {:?}", other), 
+        }
+    }
+
+    fn parse_net_init(&mut self) -> NetInit {
+        let param = self.parse_param();
+
+        self.expect(TokenKind::Equals);
+
+        let val = self.parse_expr(0);
+
+        self.expect(TokenKind::Semicolon);
+
+        NetInit {
+            param,
+            val,
+        }
+    }
+
+    fn parse_rel_inst(&mut self) -> RelInst {
+        let asignee = self.expect_ident();
+
+        self.expect(TokenKind::Connect);
+
+        let rel = self.expect_ident();
+
+        self.expect(TokenKind::LParen);
+
+        let args = Vec::new()
+
+        while self.peek().kind != TokenKind::RParen {
+            args.push(self.expect_ident());
+
+            if self.peek().kind == TokenKind::Comma {
+                self.next();
+            } else {
+                break;
+            }
+        }
+
+        self.expect(TokenKind::RParen);
+
+        self.expect(TokenKind::Semicolon);
+
+        RelInst {
+            asignee,
+            rel,
+            args,
+        }
+    }
+
+    fn parse_net_inst(&mut self) -> NetInst {
+        
+    }
 
     // Pratt Parser for expressions
     //     If calling to parse expr, use min_bp = 0

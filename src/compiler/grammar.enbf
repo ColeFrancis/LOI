@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/30/2026
+//! Last Updated: 07/01/2026
 
 IDENT = letter (letter | digit | "_")* ;
 
@@ -31,9 +31,6 @@ type =
     | IDENT ;
 
 mod_type = "Mod" "(" int_literal ")" ;
-
-arg_list =
-    expr ("," expr)* ;
 
 expr = 
     binary_expr
@@ -139,7 +136,7 @@ let_stmt = "let" IDENT "=" expr ";" ;
 net_decl = 
     "net" IDENT "{"
         module_item*
-    "}" ;
+    "}" ";" ;
 
 module_item = 
       input_decl
@@ -157,6 +154,18 @@ init_decl =
     "init" IDENT ":" type "=" expr ";" ;
 
 rel_inst = 
-    IDENT "=" IDENT "(" arg_list? ")" ;
+    IDENT ":=" IDENT "(" arg_list? ")" ";" ;
+    
+arg_list =
+    IDENT ("," IDENT)* ;
+
+net_inst = 
+    IDENT "{" connect_list "}" ";" ;
+
+connect_list =
+    connection ("," connection)* ;
+
+connection = 
+    IDENT ":=" IDENT
 
 /////////////////////////////////////////////////

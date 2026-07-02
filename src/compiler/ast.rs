@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 06/29/2026
+//! Last Updated: 07/01/2026
 
 #[derive(PartialEq, Debug)]
 pub struct Program {
@@ -20,7 +20,7 @@ pub enum Item {
     Let(LetStatement),
     Ent(EntType),
     Rel(RelType),
-    Net(NetDecl),
+    Net(NetType),
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +193,7 @@ pub struct LetStatement {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[derive(PartialEq, Debug)]
-pub struct NetDecl {
+pub struct NetType {
     pub name: Ident,
     pub items: Vec<NetItem>,
 }
@@ -204,6 +204,7 @@ pub enum NetItem {
     Output(Param),
     Init(NetInit),
     RelInst(RelInst),
+    NetInst(NetInst),
 }
 
 #[derive(PartialEq, Debug)]
@@ -216,5 +217,17 @@ pub struct NetInit {
 pub struct RelInst {
     pub asignee: Ident,
     pub rel: Ident,
-    pub args: Vec<Expr>, 
+    pub args: Vec<Ident>, 
+}
+
+#[derive(PartialEq, Debug)]
+pub struct NetInst {
+    pub net: Ident,
+    pub connections: Vec<Connection>,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Connection {
+    pub port: Ident,
+    pub net: Ident,
 }
