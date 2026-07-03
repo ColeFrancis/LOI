@@ -1,6 +1,6 @@
 //! # core
 //!
-//! Handles the core of the parser 
+//! Handles the core of the parser
 //!
 //! ## Invariants
 //!
@@ -21,6 +21,24 @@ impl Parser {
             tokens,
             current: 0,
         }
+    }
+
+    pub fn parse(&mut self) -> Program {
+        let mut items = Vec::new();
+
+        while self.peek().kind != TokenKind::Eof {
+            let item = match self.next().kind {
+                TokenKind::Let   => Item::Let(self.parse_let_stmt()),
+                TokenKind::Ent_t => Item::Ent(self.parse_ent_t()),
+                TokenKind::Rel_t => Item::Rel(self.parse_rel_t()),
+                TokenKind::NetToken => Item::Net(self.parse_net()),
+                other => panic!("Unexpected prefix token: {:?}", other),
+            };
+
+            items.push(item);
+        }
+
+        Program { items }
     }
 
     pub(super) fn peek (&self) -> &Token {
@@ -50,24 +68,6 @@ impl Parser {
             TokenKind::Ident(name) => name,
             other => panic!("Expected identifier, found {:?}", other),
         }
-    }
-
-    pub fn parse(&mut self) -> Program {
-        let mut items = Vec::new();
-
-        while self.peek().kind != TokenKind::Eof {
-            let item = match self.next().kind {
-                TokenKind::Let   => Item::Let(self.parse_let_stmt()),
-                TokenKind::Ent_t => Item::Ent(self.parse_ent_t()),
-                TokenKind::Rel_t => Item::Rel(self.parse_rel_t()),
-                TokenKind::NetToken => Item::Net(self.parse_net()),
-                other => panic!("Unexpected prefix token: {:?}", other),
-            };
-
-            items.push(item);
-        }
-
-        Program { items }
     }
 
     // Let token already consumed
