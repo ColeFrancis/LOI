@@ -8,13 +8,13 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/03/2026
+//! Last Updated: 07/06/2026
 
 use super::Parser;
 use crate::compiler::token::TokenKind;
 use crate::compiler::ast::*;
 
-impl Parser {
+impl<'a> Parser<'a> {
     // Rel_t token already consumed
     pub(super) fn parse_rel_t(&mut self) -> RelType {
         let name = self.expect_ident();
@@ -85,6 +85,7 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::compiler::token::{Token, TokenKind::*, Span};
+    use crate::compiler::diagnostics::Diagnostics;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
@@ -105,7 +106,8 @@ mod tests {
             ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse_rel_t();
 
@@ -144,7 +146,8 @@ mod tests {
             RBrace, Semicolon, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse_rel_t();
 

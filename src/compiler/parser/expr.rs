@@ -8,13 +8,13 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/03/2026
+//! Last Updated: 07/06/2026
 
 use super::Parser;
 use crate::compiler::token::TokenKind;
 use crate::compiler::ast::*;
 
-impl Parser {
+impl<'a> Parser<'a> {
     // Pratt Parser for expressions
     //     If calling to parse expr, use min_bp = 0
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Expr {
@@ -251,6 +251,7 @@ impl Parser {
 mod tests {
     use super::*;
     use crate::compiler::token::{Token, TokenKind::*, Span};
+    use crate::compiler::diagnostics::Diagnostics;
 
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
@@ -438,7 +439,8 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![IntLiteral(3), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_prefix();
 
@@ -447,7 +449,8 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![Ident("hey".to_string()), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_prefix();
 
@@ -460,7 +463,8 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![Minus, Minus, Minus, IntLiteral(6), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
         
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_prefix();
         
@@ -477,7 +481,8 @@ mod tests {
             Ident("b".to_string()), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -490,7 +495,8 @@ mod tests {
         IntLiteral(10), RParen, Asterisk, IntLiteral(5), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -505,7 +511,8 @@ mod tests {
             RParen, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -522,7 +529,8 @@ mod tests {
             IntLiteral(3), RParen, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -536,7 +544,8 @@ mod tests {
             IntLiteral(3), RParen, RParen, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -557,7 +566,8 @@ mod tests {
             RBrace, Minus, IntLiteral(2), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -578,7 +588,8 @@ mod tests {
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -599,7 +610,8 @@ mod tests {
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 
@@ -629,7 +641,8 @@ mod tests {
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result: Expr = parser.parse_expr(0);
 

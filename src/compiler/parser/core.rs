@@ -8,18 +8,20 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/03/2026
+//! Last Updated: 07/06/2026
 
 use super::Parser;
 use crate::compiler::token::{Token, TokenKind};
 use crate::compiler::ast::*;
+use crate::compiler::diagnostics::Diagnostics;
 
 
-impl Parser {
-    pub fn new(tokens: Vec<Token>) -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(tokens: Vec<Token>, diagnostics: &'a mut Diagnostics) -> Self {
         Self {
             tokens,
             current: 0,
+            diagnostics
         }
     }
 
@@ -139,7 +141,8 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![Ident("n".to_string()), Equals, IntLiteral(1), Plus, IntLiteral(2), Semicolon, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse_let_stmt();
 
@@ -168,7 +171,8 @@ mod tests {
             NetToken, Ident("EMPTY".to_string()), LBrace, RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
-        let mut parser = Parser::new(tokens);
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse();
 
@@ -198,7 +202,8 @@ mod tests {
 
     // #[test]
     fn integrate_lexer_parser() {
-        let lexer = Lexer::new("
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new("
             ent_t COIN = Bool;
         
             let a = 1;
@@ -206,10 +211,10 @@ mod tests {
             rel_t ONE : () -> Real = 1;
 
             net EMPTY {}
-        ");
-        let tokens: Vec<Token> = lexer.collect();
+        ", &mut diagnostics);
+        let tokens: Vec<Token> = lexer.tokenize();
 
-        let mut parser = Parser::new(tokens);
+        let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse();
 
