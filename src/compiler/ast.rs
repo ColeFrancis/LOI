@@ -187,7 +187,7 @@ pub struct BlockExpr {
 
 #[derive(PartialEq, Debug)]
 pub enum Statement {
-    Let(LetStatement,
+    Let(LetStatement),
     Error,
 }
 
