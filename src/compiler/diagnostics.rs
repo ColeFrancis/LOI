@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/07/2026
+//! Last Updated: 07/08/2026
 
 use super::token::{Span, TokenKind};
 
@@ -29,6 +29,10 @@ impl Diagnostics {
 
     pub fn has_errors(&self) -> bool {
         !self.errors.is_empty()
+    }
+
+    pub fn num_errors(&self) -> usize {
+        self.errors.len()
     }
 
     pub fn errors(&self) -> &[CompilerError] {
