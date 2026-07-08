@@ -17,9 +17,9 @@ use crate::compiler::ast::*;
 impl<'a> Parser<'a> {
     // Net token already consumed
     pub(super) fn parse_net(&mut self) -> Net {
-        let name = self.expect_ident();
+        let name = self.expect_ident_old();
 
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
         let mut items = Vec::new();
 
@@ -27,7 +27,7 @@ impl<'a> Parser<'a> {
             items.push(self.parse_net_item());
         }
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
         Net {
             name,
@@ -39,14 +39,14 @@ impl<'a> Parser<'a> {
         match &self.peek().kind {
             TokenKind::Input => {
                 self.next();
-                let input = NetItem::Input(self.parse_param());
-                self.expect(TokenKind::Semicolon);
+                let input = NetItem::Input(self.parse_param_old());
+                self.expect_old(TokenKind::Semicolon);
                 input
             },
             TokenKind::Output => {
                 self.next();
-                let output = NetItem::Output(self.parse_param());
-                self.expect(TokenKind::Semicolon);
+                let output = NetItem::Output(self.parse_param_old());
+                self.expect_old(TokenKind::Semicolon);
                 output
             },
             TokenKind::Init => {
@@ -62,13 +62,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ent_init(&mut self) -> EntInit {
-        let param = self.parse_param();
+        let param = self.parse_param_old();
 
-        self.expect(TokenKind::Equals);
+        self.expect_old(TokenKind::Equals);
 
         let val = self.parse_expr(0);
 
-        self.expect(TokenKind::Semicolon);
+        self.expect_old(TokenKind::Semicolon);
 
         EntInit {
             param,
@@ -77,18 +77,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_rel_inst(&mut self) -> RelInst {
-        let asignee = self.expect_ident();
+        let asignee = self.expect_ident_old();
 
-        self.expect(TokenKind::Connect);
+        self.expect_old(TokenKind::Connect);
 
-        let rel = self.expect_ident();
+        let rel = self.expect_ident_old();
 
-        self.expect(TokenKind::LParen);
+        self.expect_old(TokenKind::LParen);
 
         let mut args = Vec::new();
 
         while self.peek().kind != TokenKind::RParen {
-            args.push(self.expect_ident());
+            args.push(self.expect_ident_old());
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -97,9 +97,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RParen);
+        self.expect_old(TokenKind::RParen);
 
-        self.expect(TokenKind::Semicolon);
+        self.expect_old(TokenKind::Semicolon);
 
         RelInst {
             asignee,
@@ -109,9 +109,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_net_inst(&mut self) -> NetInst {
-        let net = self.expect_ident();
+        let net = self.expect_ident_old();
 
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
         let mut connections = Vec::new();
 
@@ -125,9 +125,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
-        self.expect(TokenKind::Semicolon);
+        self.expect_old(TokenKind::Semicolon);
 
         NetInst {
             net,
@@ -136,11 +136,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_connection(&mut self) -> Connection {
-        let port = self.expect_ident();
+        let port = self.expect_ident_old();
 
-        self.expect(TokenKind::Connect);
+        self.expect_old(TokenKind::Connect);
 
-        let net = self.expect_ident();
+        let net = self.expect_ident_old();
 
         Connection {
             port,

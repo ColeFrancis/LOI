@@ -17,13 +17,13 @@ use crate::compiler::ast::*;
 impl<'a> Parser<'a> {
     // Ent_t token already consumed
     pub(super) fn parse_ent_t(&mut self) -> EntType {
-        let name = self.expect_ident();
+        let name = self.expect_ident_old();
 
-        self.expect(TokenKind::Equals);
+        self.expect_old(TokenKind::Equals);
 
         let expr = self.parse_ent_expr();
 
-        self.expect(TokenKind::Semicolon);
+        self.expect_old(TokenKind::Semicolon);
 
         EntType {
             name,
@@ -39,16 +39,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_set_ent(&mut self) -> EntExpr {
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
-        let mut members = vec![self.expect_ident()];
+        let mut members = vec![self.expect_ident_old()];
 
         while self.peek().kind == TokenKind::Comma {
             self.next();
-            members.push(self.expect_ident());
+            members.push(self.expect_ident_old());
         }
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
         EntExpr::SetEnt(members)
     }

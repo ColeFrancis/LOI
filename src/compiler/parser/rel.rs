@@ -17,16 +17,16 @@ use crate::compiler::ast::*;
 impl<'a> Parser<'a> {
     // Rel_t token already consumed
     pub(super) fn parse_rel_t(&mut self) -> RelType {
-        let name = self.expect_ident();
+        let name = self.expect_ident_old();
 
-        self.expect(TokenKind::Colon);
+        self.expect_old(TokenKind::Colon);
 
-        self.expect(TokenKind::LParen);
+        self.expect_old(TokenKind::LParen);
 
         let mut params = Vec::new();
 
         while self.peek().kind != TokenKind::RParen {
-            params.push(self.parse_param());
+            params.push(self.parse_param_old());
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -35,20 +35,20 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RParen);
+        self.expect_old(TokenKind::RParen);
 
-        self.expect(TokenKind::Arrow);
+        self.expect_old(TokenKind::Arrow);
 
         let return_type = self.parse_type();
 
-        self.expect(TokenKind::Equals);
+        self.expect_old(TokenKind::Equals);
 
         let body = match self.peek().kind {
             TokenKind::LBrace => RelBody::Block(self.parse_block_expr()),
             _ => RelBody::Expr(self.parse_expr(0)),
         };
 
-        self.expect(TokenKind::Semicolon);
+        self.expect_old(TokenKind::Semicolon);
 
         RelType {
             name,
@@ -60,19 +60,19 @@ impl<'a> Parser<'a> {
 
     // { not consumed
     fn parse_block_expr(&mut self) -> BlockExpr {
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
         let mut statements = Vec::new();
 
         while self.peek().kind == TokenKind::Let {
             self.next();
 
-            statements.push(self.parse_let_stmt());
+            statements.push(self.parse_let_stmt().unwrap()); // TODO Error handling
         }
 
         let expr = self.parse_expr(0);
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
         BlockExpr {
             statements,

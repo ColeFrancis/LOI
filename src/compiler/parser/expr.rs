@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
                             elements.push(self.parse_expr(0));
                         }
             
-                        self.expect(TokenKind::RParen);
+                        self.expect_old(TokenKind::RParen);
                         Expr::Tuple(elements)
                     }
             
@@ -113,7 +113,7 @@ impl<'a> Parser<'a> {
     fn parse_match(&mut self) -> Expr {
         let scrutinee = self.parse_expr(0);
 
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
         let mut arms = Vec::new();
 
@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
         Expr::Match(MatchExpr {
             scrutinee: Box::new(scrutinee),
@@ -138,7 +138,7 @@ impl<'a> Parser<'a> {
     fn parse_match_arm(&mut self) -> MatchArm {
         let pattern = self.parse_pattern();
 
-        self.expect(TokenKind::FatArrow);
+        self.expect_old(TokenKind::FatArrow);
 
         let expr = self.parse_expr(0);
 
@@ -183,7 +183,7 @@ impl<'a> Parser<'a> {
     fn parse_tuple_pattern(&mut self) -> SimplePattern {
         let mut items = vec![self.parse_simple_pattern()];
 
-        self.expect(TokenKind::Comma);
+        self.expect_old(TokenKind::Comma);
 
         items.push(self.parse_simple_pattern());
 
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
             items.push(self.parse_simple_pattern());
         }
 
-        self.expect(TokenKind::RParen);
+        self.expect_old(TokenKind::RParen);
 
         SimplePattern::Tuple(items)
     }
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
 
     // Sample token already consumed
     fn parse_sample(&mut self) -> Expr {
-        self.expect(TokenKind::LBrace);
+        self.expect_old(TokenKind::LBrace);
 
         let mut arms = Vec::new();
 
@@ -222,7 +222,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RBrace);
+        self.expect_old(TokenKind::RBrace);
 
         Expr::Sample(arms)
     }
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
             _ => Prob::Expr(self.parse_expr(0)),
         };
 
-        self.expect(TokenKind::FatArrow);
+        self.expect_old(TokenKind::FatArrow);
 
         let expr = self.parse_expr(0);
 

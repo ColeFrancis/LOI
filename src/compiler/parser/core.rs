@@ -32,7 +32,22 @@ impl<'a> Parser<'a> {
             let token = self.next();
 
             let item = match token.kind {
-                TokenKind::Let      => Item::Let(self.parse_let_stmt()),
+                TokenKind::Let => self
+                    .parse_let_stmt()
+                    .map_or(Item::Error, Item::Let),
+
+                // TokenKind::Ent_t => self
+                //     .parse_ent_t()
+                //     .map_or(Item::Error, Item::Ent),
+
+                // TokenKind::Rel_t => self
+                //     .parse_rel_t()
+                //     .map_or(Item::Error, Item::Rel),
+
+                // TokenKind::NetToken => self
+                //     .parse_ent_t()
+                //     .map_or(Item::Error, Item::Net),
+                
                 TokenKind::Ent_t    => Item::Ent(self.parse_ent_t()),
                 TokenKind::Rel_t    => Item::Rel(self.parse_rel_t()),
                 TokenKind::NetToken => Item::Net(self.parse_net()),
@@ -73,7 +88,22 @@ impl<'a> Parser<'a> {
         token
     }
 
-    pub(super) fn expect(&mut self, expected: TokenKind) {
+    pub(super) fn expect(&mut self, expected: TokenKind)-> Option<()> {
+        let token = self.next();
+
+        if token.kind == expected {
+            return Some(());
+        } else {
+            self.diagnostics.error(CompilerError::UnexpectedToken {
+                expected: vec![Expected::Token(TokenKind::Equals)],
+                found: token.kind,
+                span: token.span,
+            });
+            return None;
+        }
+    }
+
+    pub(super) fn expect_old(&mut self, expected: TokenKind) {
         let token = self.next();
 
         if token.kind != expected {
@@ -81,7 +111,24 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expect_ident(&mut self) -> String {
+    pub(super) fn expect_ident(&mut self) -> Option<String> {
+        let token = self.next();
+
+        match token.kind {
+            TokenKind::Ident(name) => Some(name),
+            other => {
+                self.diagnostics.error(CompilerError::UnexpectedToken {
+                    expected: vec![Expected::Ident],
+                    found: other,
+                    span: token.span,
+                });
+
+                None
+            }
+        }
+    }
+
+    pub(super) fn expect_ident_old(&mut self) -> String {
         match self.next().kind {
             TokenKind::Ident(name) => name,
             other => panic!("Expected identifier, found {:?}", other),
@@ -89,19 +136,19 @@ impl<'a> Parser<'a> {
     }
 
     // Let token already consumed
-    pub(super) fn parse_let_stmt(&mut self) -> LetStatement {
-        let name = self.expect_ident();
+    pub(super) fn parse_let_stmt(&mut self) -> Option<LetStatement> {
+        let name = self.expect_ident()?;
 
-        self.expect(TokenKind::Equals);
+        self.expect(TokenKind::Equals)?;
 
         let expr = self.parse_expr(0);
 
-        self.expect(TokenKind::Semicolon);
+        self.expect(TokenKind::Semicolon)?;
 
-        LetStatement {
+        Some(LetStatement {
             name,
             expr,
-        }
+        })
     }
 
     pub(super) fn parse_type(&mut self) -> Type {
@@ -124,8 +171,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_param(&mut self) -> Param {
-        let name = self.expect_ident();
+    pub(super) fn parse_param(&mut self) -> Option<Param> {
+        let name = self.expect_ident()?;
+
+        self.expect(TokenKind::Colon)?;
+
+        let param_type = self.parse_type();
+
+        Some(Param {
+            name,
+            param_type,
+        })
+    }
+
+    pub(super) fn parse_param_old(&mut self) -> Param {
+        let name = self.expect_ident_old();
 
         self.expect(TokenKind::Colon);
 
@@ -162,14 +222,14 @@ mod tests {
 
         let result = parser.parse_let_stmt();
 
-        assert_eq!(result, LetStatement {
+        assert_eq!(result, Some(LetStatement {
             name: "n".to_string(),
             expr: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Literal(Literal::Int(2))),
             })
-        });
+        }));
     }
 
     #[test]
