@@ -67,7 +67,7 @@ impl<'a> Parser<'a> {
         while self.peek().kind == TokenKind::Let {
             self.next();
 
-            statements.push(self.parse_let_stmt().unwrap()); // TODO Error handling
+            statements.push(Statement::Let(self.parse_let_stmt().unwrap())); // TODO Error handling
         }
 
         let expr = self.parse_expr(0);
@@ -156,10 +156,10 @@ mod tests {
             params: vec![],
             return_type: Type::Bool,
             body: RelBody::Block(BlockExpr {
-                statements: vec![LetStatement {
+                statements: vec![Statement::Let(LetStatement {
                     name: "p".to_string(),
                     expr: Expr::Literal(Literal::Real(0.5)),
-                }],
+                })],
                 expr: Expr::Sample( vec![
                     SampleArm {
                         prob: Prob::Expr(Expr::Ident("p".to_string())),
