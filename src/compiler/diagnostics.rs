@@ -48,7 +48,6 @@ pub enum CompilerError {
         lexeme: String,
         span: Span,
     },
-    // Unterminated block comment
 
     // Parser
     UnexpectedToken {
@@ -56,7 +55,6 @@ pub enum CompilerError {
         found: TokenKind,
         span: Span,
     },
-    // Missing expression/statement
 }
 
 #[derive(Debug)]
