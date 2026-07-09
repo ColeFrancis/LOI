@@ -446,4 +446,48 @@ mod tests {
         //     }
         // ");
     }
+
+    #[test]
+    fn multiple_errors() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new("
+            let n = 1;
+            n = 2;
+            let n = 3;
+            let 9n = 4;
+            let n = 5;
+            let n = 6
+            let n = 7;
+        ", &mut diagnostics);
+        let tokens: Vec<Token> = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse();
+
+        assert_eq!(result, Program {
+            items: vec![
+                Item::Let(LetStatement {
+                    name: "n".to_string(),
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+                Item::Error,
+                Item::Let(LetStatement {
+                    name: "n".to_string(),
+                    expr: Expr::Literal(Literal::Int(3)),
+                }),
+                Item::Error,
+                Item::Let(LetStatement {
+                    name: "n".to_string(),
+                    expr: Expr::Literal(Literal::Int(5)),
+                }),
+                Item::Error,
+                Item::Let(LetStatement {
+                    name: "n".to_string(),
+                    expr: Expr::Literal(Literal::Int(7)),
+                }),
+            ]
+        });
+        assert_eq!(diagnostics.num_errors(), 4);
+    }
 }
