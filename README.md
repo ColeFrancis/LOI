@@ -16,3 +16,7 @@ Language Of Interaction (LOI). Research platform for the purpose of understandin
 - State space analysis
       - Detect memory and state
 - Graph rewriting
+
+## License
+
+This project is licensed under the Apache License 2.0. See the LICENSE file for details.
