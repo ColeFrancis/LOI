@@ -10,7 +10,7 @@
 //!
 //! Last Updated: 07/08/2026
 
-use super::token::{Span, TokenKind};
+use super::token::TokenKind;
 
 pub struct Diagnostics {
     errors: Vec<CompilerError>,
@@ -69,4 +69,10 @@ pub enum Expected {
     BoolLiteral,
     IntLiteral,
     RealLiteral,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct Span {
+    pub line: usize,
+    pub col: usize,
 }

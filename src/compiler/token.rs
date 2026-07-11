@@ -11,6 +11,8 @@
 //!
 //! Last Updated: 07/03/2026
 
+use super::diagnostics::Span;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub kind: TokenKind,
@@ -90,10 +92,4 @@ pub enum TokenKind {
     ErrorToken,
 
     Eof,
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub struct Span {
-    pub line: usize,
-    pub col: usize,
 }

@@ -8,12 +8,15 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/08/2026
+//! Last Updated: 07/10/2026
 
 use super::Parser;
-use crate::compiler::token::TokenKind;
-use crate::compiler::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Expected};
+use super::sync::SyncRule;
+use crate::compiler::{
+    token::TokenKind,
+    ast::*,
+    diagnostics::{CompilerError, Expected},
+};
 
 impl<'a> Parser<'a> {
     // Net token already consumed
@@ -91,6 +94,8 @@ impl<'a> Parser<'a> {
                     found: other.clone(),
                     span: token.span.clone(),
                 });
+
+                self.sync(SyncRule::Inst);
 
                 NetItem::Error
             } 
@@ -191,8 +196,8 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{Token, TokenKind::*, Span};
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::token::{Token, TokenKind::*};
+    use crate::compiler::diagnostics::{Diagnostics, Span};
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens

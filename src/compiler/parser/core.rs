@@ -8,12 +8,15 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/08/2026
+//! Last Updated: 07/10/2026
 
 use super::Parser;
-use crate::compiler::token::{Token, TokenKind};
-use crate::compiler::ast::*;
-use crate::compiler::diagnostics::{Diagnostics, CompilerError, Expected};
+use super::sync::SyncRule;
+use crate::compiler::{
+    token::{Token, TokenKind},
+    ast::*,
+    diagnostics::{Diagnostics, CompilerError, Expected},
+};
 
 
 impl<'a> Parser<'a> {
@@ -64,6 +67,8 @@ impl<'a> Parser<'a> {
                         span: token.span,
                     });
 
+                    self.sync(SyncRule::Item);
+
                     Item::Error
                 },
             };
@@ -88,6 +93,7 @@ impl<'a> Parser<'a> {
         token
     }
 
+    // TODO: add sync
     pub(super) fn expect(&mut self, expected: TokenKind)-> Option<()> {
         let token = self.next();
 
@@ -103,14 +109,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expect_old(&mut self, expected: TokenKind) {
-        let token = self.next();
-
-        if token.kind != expected {
-            panic!("expected {:?}, got {:?}\nTODO: elegant error handling", expected , token.kind);
-        }
-    }
-
+    // TODO: add sync
     pub(super) fn expect_ident(&mut self) -> Option<String> {
         let token = self.next();
 
@@ -125,13 +124,6 @@ impl<'a> Parser<'a> {
 
                 None
             }
-        }
-    }
-
-    pub(super) fn expect_ident_old(&mut self) -> String {
-        match self.next().kind {
-            TokenKind::Ident(name) => name,
-            other => panic!("Expected identifier, found {:?}", other),
         }
     }
 
@@ -153,27 +145,8 @@ impl<'a> Parser<'a> {
             expr,
         })
     }
-
-    pub(super) fn parse_type_old(&mut self) -> Type {
-        match self.next().kind {
-            TokenKind::Bool        => Type::Bool,
-            TokenKind::Impulse     => Type::Impulse,
-            TokenKind::Int         => Type::Int,
-            TokenKind::Real        => Type::Real,
-            TokenKind::Mod         => {
-                self.expect(TokenKind::LParen);
-                let n = match self.next().kind {
-                    TokenKind::IntLiteral(n) => n,
-                    other => panic!("Expected integer literal in mod(...), got {:?}", other),
-                };
-                self.expect(TokenKind::RParen);
-                Type::Mod(n)
-            }
-            TokenKind::Ident(name) => Type::CustomType(name),
-            other => panic!("Unexpected prefix token: {:?}", other),
-        }
-    }
     
+    // TODO: add sync
     pub(super) fn parse_type(&mut self) -> Option<Type> {
         let token = self.next();
         
@@ -234,25 +207,13 @@ impl<'a> Parser<'a> {
             param_type,
         })
     }
-
-    pub(super) fn parse_param_old(&mut self) -> Param {
-        let name = self.expect_ident_old();
-
-        self.expect(TokenKind::Colon);
-
-        let param_type = self.parse_type_old();
-
-        Param {
-            name,
-            param_type,
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{TokenKind::*, Span};
+    use crate::compiler::token::TokenKind::*;
+    use crate::compiler::diagnostics::Span;
     use crate::compiler::lexer::Lexer;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
@@ -308,7 +269,7 @@ mod tests {
         let result = parser.parse_let_stmt();
 
         assert_eq!(result, None);
-        assert!(diagnostics.num_errors(), 2); // invalid num, unexpected token
+        assert_eq!(diagnostics.num_errors(), 2); // invalid num, unexpected token
     }
 
     #[test]

@@ -13,8 +13,8 @@
 //!
 //! Last Updated: 07/07/2026
 
-use super::token::{Token, TokenKind, Span};
-use super::diagnostics::{Diagnostics, CompilerError};
+use super::token::{Token, TokenKind};
+use super::diagnostics::{Diagnostics, CompilerError, Span};
 
 
 pub struct Lexer<'a> {

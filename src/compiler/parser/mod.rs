@@ -3,6 +3,7 @@ mod ent;
 mod rel;
 mod net;
 mod expr;
+mod sync;
 
 use crate::compiler::token::Token;
 use crate::compiler::diagnostics::Diagnostics;

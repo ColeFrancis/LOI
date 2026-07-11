@@ -8,12 +8,15 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/06/2026
+//! Last Updated: 07/10/2026
 
 use super::Parser;
-use crate::compiler::token::{Token, TokenKind};
-use crate::compiler::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Expected};
+use super::sync::SyncRule;
+use crate::compiler::{
+    token::{Token, TokenKind},
+    ast::*,
+    diagnostics::{CompilerError, Expected},
+};
 
 impl<'a> Parser<'a> {
     // Pratt Parser for expressions
@@ -108,6 +111,8 @@ impl<'a> Parser<'a> {
                             span: token.span,
                         });
 
+                        self.sync(SyncRule::Expr);
+
                         None
                     }
                 }
@@ -133,6 +138,8 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 });
 
+                self.sync(SyncRule::Expr);
+
                 None
             }
         }
@@ -149,15 +156,7 @@ impl<'a> Parser<'a> {
             TokenKind::Asterisk => Some((BinaryOp::Mul, 20, 21)),
             TokenKind::Slash    => Some((BinaryOp::Div, 20, 21)),
             TokenKind::Caret    => Some((BinaryOp::Pow, 31, 30)),
-            other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
-                    expected: vec![],
-                    found: other.clone(),
-                    span: token.span.clone(),
-                });
-
-                None
-            }
+            other => None,
         }
     }
 
@@ -251,6 +250,8 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 });
 
+                self.sync(SyncRule::Expr);
+
                 None
             }
         }
@@ -332,8 +333,8 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{Token, TokenKind::*, Span};
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::token::TokenKind::*;
+    use crate::compiler::diagnostics::{Diagnostics, Span};
 
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens

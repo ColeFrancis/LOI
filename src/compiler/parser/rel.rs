@@ -8,7 +8,7 @@
 //!
 //! Author: Cole Francis
 //!
-//! Last Updated: 07/08/2026
+//! Last Updated: 07/10/2026
 
 use super::Parser;
 use crate::compiler::token::TokenKind;
@@ -94,8 +94,8 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{Token, TokenKind::*, Span};
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::token::{Token, TokenKind::*};
+    use crate::compiler::diagnostics::{Diagnostics, Span};
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
