@@ -28,7 +28,9 @@ use crate::compiler::ast::*;
 
 pub enum SyncRule {
     Item, // top level
-    Inst, // inside net_t
+    NetItem {
+        depth: usize
+    }, // inside net_t
     Statement,
     Expr {
         depth: usize
@@ -43,7 +45,7 @@ impl<'a> Parser<'a> {
         match rule {
             &SyncRule::Item => self.sync_item(),
 
-            &SyncRule::Inst => self.sync_inst(),
+            &SyncRule::NetItem {depth} => self.sync_net_item(depth),
 
             &SyncRule::Statement => self.sync_statement(),
 
@@ -84,9 +86,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn sync_inst(&mut self) {
-        let mut depth = 0;
-
+    fn sync_net_item(&mut self, mut depth: usize) {
         loop {
             match self.peek().kind {
                 TokenKind::Eof => break,

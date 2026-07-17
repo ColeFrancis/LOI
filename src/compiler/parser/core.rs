@@ -325,7 +325,7 @@ mod tests {
     }
 
     #[test]
-    fn multiple_errors() {
+    fn multiple_errors_1() {
         let mut diagnostics = Diagnostics::new();
         let mut lexer = Lexer::new("
             let n = 1;
@@ -335,7 +335,7 @@ mod tests {
             let n = 5;
             let n = 6
             let n = 7;
-            let n = 8;
+            let n = @;
         ", &mut diagnostics);
         let tokens: Vec<Token> = lexer.tokenize();
 
@@ -366,10 +366,42 @@ mod tests {
                 }),
                 Item::Let(LetStatement {
                     name: "n".to_string(),
-                    expr: Expr::Literal(Literal::Int(8)),
+                    expr: Expr::Error,
                 }),
             ]
         });
-        assert_eq!(diagnostics.num_errors(), 4);
+        assert_eq!(diagnostics.num_errors(), 6);
+    }
+
+    #[test]
+    fn multiple_errors_2() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new("
+            rel_t A () -> Real = a;
+
+            net {
+            
+            }
+            net A {
+                input A: Bool
+            }
+        ", &mut diagnostics);
+        let tokens: Vec<Token> = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse();
+
+        assert_eq!(result, Program {
+            items: vec![
+                Item::Error,
+                Item::Error,
+                Item::Net(Net {
+                    name: "A".to_string(),
+                    items: vec![NetItem::Error],
+                }),
+            ]
+        });
+        assert_eq!(diagnostics.num_errors(), 3);
     }
 }

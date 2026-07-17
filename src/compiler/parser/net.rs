@@ -40,7 +40,10 @@ impl<'a> Parser<'a> {
         let mut items = Vec::new();
 
         while self.peek().kind != TokenKind::RBrace {
-            items.push(self.parse_net_item());
+            items.push(match self.parse_net_item() {
+                Some(item) => item,
+                None => NetItem::Error,
+            });
         }
 
         self.expect(TokenKind::RBrace, &SyncRule::Item)?;
@@ -51,48 +54,38 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_net_item(&mut self) -> NetItem {
+    fn parse_net_item(&mut self) -> Option<NetItem> {
         let token = &self.peek();
 
         match &token.kind {
             TokenKind::Input => {
                 self.next();
 
-                // If either parse_param or expect return None, then get NetItem::Error
-                match (self.parse_param(&SyncRule::Inst), self.expect(TokenKind::Semicolon, &SyncRule::Inst)) {
-                    (Some(param), Some(_)) => NetItem::Input(param),
-                    _ => NetItem::Error,
-                }
+                let item = NetItem::Input(self.parse_param(&SyncRule::NetItem {depth: 0})?);
+
+                self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
+
+                Some(item)
             },
 
             TokenKind::Output => {
                 self.next();
 
-                // If either parse_param or expect return None, then get NetItem::Error
-                match (self.parse_param(&SyncRule::Inst), self.expect(TokenKind::Semicolon, &SyncRule::Inst)) {
-                    (Some(param), Some(_)) => NetItem::Output(param),
-                    _ => NetItem::Error,
-                }
+                let item = NetItem::Output(self.parse_param(&SyncRule::NetItem {depth: 0})?);
+
+                self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
+
+                Some(item)
             },
 
             TokenKind::Init => {
                 self.next();
-                match self.parse_init_ent() {
-                    Some(init) => NetItem::Init(init),
-                    None => NetItem::Error,
-                }
+                Some(NetItem::Init(self.parse_init_ent()?))
             },
 
             TokenKind::Ident(_) => match self.peek_n(1).kind {
-                TokenKind::Connect => match self.parse_rel_inst() {
-                    Some(inst) => NetItem::RelInst(inst),
-                    None => NetItem::Error,
-                },
-
-                _ => match self.parse_net_inst() {
-                    Some(inst) => NetItem::NetInst(inst),
-                    None => NetItem::Error,
-                }
+                TokenKind::Connect => Some(NetItem::RelInst(self.parse_rel_inst()?)),
+                _ => Some(NetItem::NetInst(self.parse_net_inst()?)),
             },
 
             other => {
@@ -107,24 +100,24 @@ impl<'a> Parser<'a> {
                     span: token.span.clone(),
                 });
 
-                self.sync(&SyncRule::Inst);
+                self.sync(&SyncRule::NetItem {depth: 0});
 
-                NetItem::Error
+                None
             } 
         }
     }
 
     fn parse_init_ent(&mut self) -> Option<EntInit> {
-        let param = self.parse_param(&SyncRule::Inst)?;
+        let param = self.parse_param(&SyncRule::NetItem {depth: 0})?;
 
-        self.expect(TokenKind::Equals, &SyncRule::Inst)?;
+        self.expect(TokenKind::Equals, &SyncRule::NetItem {depth: 0})?;
 
         let val = match self.parse_expr(0) {
             Some(expr) => expr,
             None => Expr::Error,
         };
 
-        self.expect(TokenKind::Semicolon, &SyncRule::Inst)?;
+        self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
         Some(EntInit {
             param,
@@ -133,18 +126,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_rel_inst(&mut self) -> Option<RelInst> {
-        let asignee = self.expect_ident(&SyncRule::Inst)?;
+        let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
-        self.expect(TokenKind::Connect, &SyncRule::Inst)?;
+        self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
 
-        let rel = self.expect_ident(&SyncRule::Inst)?;
+        let rel = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
-        self.expect(TokenKind::LParen, &SyncRule::Inst)?;
+        self.expect(TokenKind::LParen, &SyncRule::NetItem {depth: 0})?;
 
         let mut args = Vec::new();
 
         while self.peek().kind != TokenKind::RParen {
-            args.push(self.expect_ident(&SyncRule::Inst)?);
+            args.push(self.expect_ident(&SyncRule::NetItem {depth: 0})?);
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -153,9 +146,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RParen, &SyncRule::Inst)?;
+        self.expect(TokenKind::RParen, &SyncRule::NetItem {depth: 0})?;
 
-        self.expect(TokenKind::Semicolon, &SyncRule::Inst)?;
+        self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
         Some(RelInst {
             asignee,
@@ -165,9 +158,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_net_inst(&mut self) -> Option<NetInst> {
-        let net = self.expect_ident(&SyncRule::Inst)?;
+        let net = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
-        self.expect(TokenKind::LBrace, &SyncRule::Inst)?;
+        self.expect(TokenKind::LBrace, &SyncRule::NetItem {depth: 0})?;
 
         let mut connections = Vec::new();
 
@@ -181,9 +174,9 @@ impl<'a> Parser<'a> {
             }
         }
 
-        self.expect(TokenKind::RBrace, &SyncRule::Inst);
+        self.expect(TokenKind::RBrace, &SyncRule::NetItem {depth: 0});
 
-        self.expect(TokenKind::Semicolon, &SyncRule::Inst)?;
+        self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
         Some(NetInst {
             net,
@@ -192,11 +185,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_connection(&mut self) -> Option<Connection> {
-        let port = self.expect_ident(&SyncRule::Inst)?;
+        let port = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
 
-        self.expect(TokenKind::Connect, &SyncRule::Inst)?;
+        self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 1})?;
 
-        let net = self.expect_ident(&SyncRule::Inst)?;
+        let net = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
 
         Some(Connection {
             port,
@@ -219,7 +212,7 @@ mod tests {
     }
 
     #[test]
-    fn test_net_t() {
+    fn net_add() {
         // net ADD {
         //     input a: Bool;
         //     input b: Bool;
@@ -359,5 +352,269 @@ mod tests {
                 })
             ],
         }));
+    }
+
+    #[test]
+    fn net_empty() {
+        // net EMPTY {}
+        let kinds: Vec<TokenKind> = vec![
+            Ident("EMPTY".to_string()), LBrace, RBrace, Eof];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "EMPTY".to_string(),
+            items: vec![],
+        }));
+    }
+
+    #[test]
+    fn net_bad_1() {
+        // net ADD {
+        //     input a: Bool;
+        //     input b Bool; // missing colon
+
+        //     output sum: Bool;
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("ADD".to_string()), LBrace,
+                Input, Ident("a".to_string()), Colon, Bool, Semicolon,
+                Input, Ident("b".to_string()), Bool, Semicolon,
+                Output, Ident("sum".to_string()), Colon, Bool, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "ADD".to_string(),
+            items: vec![
+                NetItem::Input(Param {
+                    name: "a".to_string(),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+                NetItem::Output(Param {
+                    name: "sum".to_string(),
+                    param_type: Type::Bool,
+                }),
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn net_bad_2() {
+        // net ADD {
+        //     input a: ; // missing bool
+        //     input b : Bool; 
+
+        //     sum: Bool; // missing output
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("ADD".to_string()), LBrace,
+                Input, Ident("a".to_string()), Colon, Semicolon,
+                Input, Ident("b".to_string()), Colon, Bool, Semicolon,
+                Ident("sum".to_string()), Colon, Bool, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "ADD".to_string(),
+            items: vec![
+                NetItem::Error,
+                NetItem::Input(Param {
+                    name: "b".to_string(),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn net_bad_3() {
+        // net ADD {
+        //     input a: Bool;
+        //     input b: Bool // missing semicolon
+
+        //     output sum: Bool;
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("ADD".to_string()), LBrace,
+                Input, Ident("a".to_string()), Colon, Bool, Semicolon,
+                Input, Ident("b".to_string()), Colon, Bool,
+                Output, Ident("sum".to_string()), Colon, Bool, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "ADD".to_string(),
+            items: vec![
+                NetItem::Input(Param {
+                    name: "a".to_string(),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+                NetItem::Output(Param {
+                    name: "sum".to_string(),
+                    param_type: Type::Bool,
+                }),
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn net_bad_4() {
+        // net A {
+        //     B {
+        //         c  d,   // missing connect
+        //         e := f,
+        //     };
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("A".to_string()), LBrace,
+                Ident("B".to_string()), LBrace,
+                    Ident("c".to_string()), Ident("d".to_string()), Comma,
+                    Ident("e".to_string()), Connect, Ident("f".to_string()), Comma,
+                RBrace, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "A".to_string(),
+            items: vec![
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn net_bad_5() {
+        // net A {
+        //     B {
+        //         c :=,   // missing ident
+        //         e := f,
+        //     };
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("A".to_string()), LBrace,
+                Ident("B".to_string()), LBrace,
+                    Ident("c".to_string()), Connect, Comma,
+                    Ident("e".to_string()), Connect, Ident("f".to_string()), Comma,
+                RBrace, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "A".to_string(),
+            items: vec![
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn net_bad_6() {
+        // net A {
+        //     B {
+        //         c := d,   
+        //         e := f,
+        //     } // Missing semicolon
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("A".to_string()), LBrace,
+                Ident("B".to_string()), LBrace,
+                    Ident("c".to_string()), Connect, Ident("d".to_string()), Comma,
+                    Ident("e".to_string()), Connect, Ident("f".to_string()), Comma,
+                RBrace,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "A".to_string(),
+            items: vec![
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn net_bad_7() {
+        // net ADD {
+        //     cout  OR(h1_carry, h2_carry); // missing connect
+        // }
+        let kinds: Vec<TokenKind> = vec![
+            Ident("ADD".to_string()), LBrace,
+                Ident("cout".to_string()), Ident("OR".to_string()), LParen,
+                    Ident("h1_carry".to_string()), Comma, Ident("h2_carry".to_string()),
+                RParen, Semicolon,
+            RBrace, Eof
+            ];
+
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_net();
+
+        assert_eq!(result, Some(Net {
+            name: "ADD".to_string(),
+            items: vec![
+                NetItem::Error
+            ],
+        }));
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }
