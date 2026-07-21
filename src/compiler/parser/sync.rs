@@ -23,7 +23,7 @@
 //! Author: Cole Francis
 
 use super::Parser;
-use crate::compiler::token::TokenKind;
+use crate::compiler::lexer::token::TokenKind;
 
 pub enum SyncRule {
     Item, // top level

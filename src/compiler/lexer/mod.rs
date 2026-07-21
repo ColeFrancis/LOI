@@ -1,5 +1,3 @@
-// Copyright 2026 Cole Francis
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -12,6 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod lexer;
-pub mod parser;
-pub mod diagnostics;
+pub mod token;
+mod core;
+
+use crate::compiler::diagnostics::Diagnostics;
+
+pub struct Lexer<'a> {
+    input: &'a [u8],
+    pos: usize,
+    curr_line: usize,
+    curr_col: usize,
+    done: bool,
+    diagnostics: &'a mut Diagnostics,
+}

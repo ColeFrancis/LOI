@@ -22,7 +22,7 @@
 //!
 //! Author: Cole Francis
 
-use super::token::TokenKind;
+use super::lexer::token::TokenKind;
 
 pub struct Diagnostics {
     errors: Vec<CompilerError>,

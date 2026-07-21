@@ -24,8 +24,8 @@
 
 use super::Parser;
 use super::sync::SyncRule;
-use crate::compiler::token::TokenKind;
-use crate::compiler::ast::*;
+use super::ast::*;
+use crate::compiler::lexer::token::TokenKind;
 
 impl<'a> Parser<'a> {
     // Rel_t token already consumed
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{Token, TokenKind::*};
+    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {

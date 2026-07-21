@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod ast;
 mod core;
 mod ent;
 mod rel;
@@ -20,7 +21,7 @@ mod expr;
 mod sync;
 mod statement;
 
-use crate::compiler::token::Token;
+use crate::compiler::lexer::token::Token;
 use crate::compiler::diagnostics::Diagnostics;
 
 pub struct Parser<'a> {

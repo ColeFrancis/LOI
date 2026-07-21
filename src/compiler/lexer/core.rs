@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # lexer
+//! # core
 //!
 //! Lexer takes a string slice (the entire code) and becomes an iterator over tokens 
 //!
@@ -25,18 +25,9 @@
 //!
 //! Author: Cole Francis
 
+use super::Lexer;
 use super::token::{Token, TokenKind};
-use super::diagnostics::{Diagnostics, CompilerError, Span};
-
-
-pub struct Lexer<'a> {
-    input: &'a [u8],
-    pos: usize,
-    curr_line: usize,
-    curr_col: usize,
-    done: bool,
-    diagnostics: &'a mut Diagnostics,
-}
+use crate::compiler::diagnostics::{Diagnostics, CompilerError, Span};
 
 impl<'a> Lexer<'a> {
     pub fn new(source: &'a str, diagnostics: &'a mut Diagnostics) -> Self {
@@ -334,8 +325,7 @@ impl<'a> Lexer<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use TokenKind::*;
-    use crate::compiler::token::TokenKind;
+    use crate::compiler::lexer::token::TokenKind::*;
 
     fn kinds(tokens: &[Token]) -> Vec<TokenKind> {
         tokens.iter().map(|t| t.kind.clone()).collect()

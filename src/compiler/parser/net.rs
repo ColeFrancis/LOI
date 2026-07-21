@@ -24,9 +24,9 @@
 
 use super::Parser;
 use super::sync::SyncRule;
+use super::ast::*;
 use crate::compiler::{
-    token::TokenKind,
-    ast::*,
+    lexer::token::TokenKind,
     diagnostics::{CompilerError, Expected},
 };
 
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::token::{Token, TokenKind::*};
+    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {

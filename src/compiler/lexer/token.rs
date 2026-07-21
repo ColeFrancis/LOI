@@ -23,7 +23,7 @@
 //!
 //! Author: Cole Francis
 
-use super::diagnostics::Span;
+use crate::compiler::diagnostics::Span;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Token {
