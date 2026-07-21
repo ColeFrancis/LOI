@@ -281,7 +281,7 @@ mod tests {
         assert!(!diagnostics.has_errors());
     }
 
-    // #[test]
+    #[test]
     fn integrate_lexer_parser() {
         let mut diagnostics = Diagnostics::new();
         let mut lexer = Lexer::new("

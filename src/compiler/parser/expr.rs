@@ -72,91 +72,6 @@ impl<'a> Parser<'a> {
         Some(lhs)
     }
 
-    // fn parse_prefix(&mut self) -> Option<Expr> {
-    //     let token = self.next();
-
-    //     match token.kind {
-    //         TokenKind::BoolLiteral(n) => Some(Expr::Literal(Literal::Bool(n))),
-    //         TokenKind::IntLiteral(n)  => Some(Expr::Literal(Literal::Int(n))),
-    //         TokenKind::RealLiteral(n) => Some(Expr::Literal(Literal::Real(n))),
-            
-    //         TokenKind::Ident(str) => Some(Expr::Ident(str)),
-
-    //         TokenKind::Minus => {
-    //             let rhs = self.parse_expr(25)?; // Unary binding power
-    //             Some(Expr::Unary(UnaryExpr {op: UnaryOp::Neg, expr: Box::new(rhs)}))
-    //         }
-    //         TokenKind::BitNot => {
-    //             let rhs = self.parse_expr(25)?; // Unary binding power
-    //             Some(Expr::Unary(UnaryExpr {op: UnaryOp::BitNot, expr: Box::new(rhs)}))
-    //         }
-
-    //         TokenKind::LParen => {
-    //             let first = self.parse_expr(0);
-            
-    //             let token = self.next();
-    //             match token.kind {
-    //                 TokenKind::RParen => {
-    //                     first
-    //                 }
-            
-    //                 TokenKind::Comma => {
-    //                     let mut elements = vec![first?];
-    //                     elements.push(self.parse_expr(0)?);
-                        
-    //                     while self.peek().kind == TokenKind::Comma {
-    //                         self.next();
-    //                         elements.push(self.parse_expr(0)?);
-    //                     }
-            
-    //                     self.expect(TokenKind::RParen, &SyncRule::Expr {depth: 0})?;
-    //                     Some(Expr::Tuple(elements))
-    //                 }
-                    
-                    
-    //                 other => {
-    //                     self.diagnostics.error(CompilerError::UnexpectedToken {
-    //                         expected: vec![
-    //                             Expected::Token(TokenKind::RParen),
-    //                             Expected::Token(TokenKind::Comma),
-    //                         ],
-    //                         found: other,
-    //                         span: token.span,
-    //                     });
-
-    //                     self.sync(&SyncRule::Expr {depth: 0});
-
-    //                     None
-    //                 }
-    //             }
-    //         }
-
-    //         TokenKind::Match  => self.parse_match(),
-    //         TokenKind::Sample => self.parse_sample(),
-
-    //         other => {
-    //             self.diagnostics.error(CompilerError::UnexpectedToken {
-    //                 expected: vec![
-    //                     Expected::BoolLiteral,
-    //                     Expected::IntLiteral,
-    //                     Expected::RealLiteral,
-    //                     Expected::Ident,
-    //                     Expected::Token(TokenKind::Minus),
-    //                     Expected::Token(TokenKind::BitNot),
-    //                     Expected::Token(TokenKind::LParen),
-    //                     Expected::Token(TokenKind::Match),
-    //                     Expected::Token(TokenKind::Sample),
-    //                 ],
-    //                 found: other,
-    //                 span: token.span,
-    //             });
-
-    //             self.sync(&SyncRule::Expr {depth: 0});
-
-    //             None
-    //         }
-    //     }
-    // }
     fn parse_prefix(&mut self) -> Option<Expr> {
         let token = self.peek().clone();
 
@@ -250,15 +165,7 @@ impl<'a> Parser<'a> {
             other => {
                 self.diagnostics.error(CompilerError::UnexpectedToken {
                     expected: vec![
-                        Expected::BoolLiteral,
-                        Expected::IntLiteral,
-                        Expected::RealLiteral,
-                        Expected::Ident,
-                        Expected::Token(TokenKind::Minus),
-                        Expected::Token(TokenKind::BitNot),
-                        Expected::Token(TokenKind::LParen),
-                        Expected::Token(TokenKind::Match),
-                        Expected::Token(TokenKind::Sample),
+                        Expected::Expr,
                     ],
                     found: other,
                     span: token.span,
@@ -361,16 +268,7 @@ impl<'a> Parser<'a> {
             other => {
                 self.diagnostics.error(CompilerError::UnexpectedToken {
                     expected: vec![
-                        Expected::Token(TokenKind::Underscore),
-                        Expected::BoolLiteral,
-                        Expected::IntLiteral,
-                        Expected::RealLiteral,
-                        Expected::Ident,
-                        Expected::Token(TokenKind::LParen),
-                        Expected::Token(TokenKind::Gt),
-                        Expected::Token(TokenKind::Lt),
-                        Expected::Token(TokenKind::Ge),
-                        Expected::Token(TokenKind::Le),
+                        Expected::Pattern,
                     ],
                     found: other,
                     span: token.span,

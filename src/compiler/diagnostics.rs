@@ -60,7 +60,7 @@ impl Diagnostics {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum CompilerError {
     // Lexer
     UnknownToken {
@@ -81,10 +81,11 @@ pub enum CompilerError {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Expected {
     Token(TokenKind),
     Expr,
+    Pattern,
     Ident,
     BoolLiteral,
     IntLiteral,
@@ -95,4 +96,180 @@ pub enum Expected {
 pub struct Span {
     pub line: usize,
     pub col: usize,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compiler::lexer::Lexer;
+    use crate::compiler::parser::Parser;
+
+    #[test]
+    fn no_errors() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new("
+            ent_t COIN = Bool;
+        
+            let a = 1;
+
+            rel_t ONE : () -> Real = 1;
+
+            net EMPTY {}
+        ", &mut diagnostics);
+        let tokens = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        parser.parse();
+
+        assert!(!diagnostics.has_errors());
+    }
+
+    #[test]
+    fn lexer_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new(
+        "@ 9a
+        ", &mut diagnostics);
+        lexer.tokenize();
+
+        assert_eq!(diagnostics.errors, vec![
+            CompilerError::UnknownToken{
+                lexeme: "@".to_string(),
+                span: Span {
+                    line: 1,
+                    col: 1
+                }
+            },
+            CompilerError::InvalidNum{
+                lexeme: "9a".to_string(),
+                span: Span {
+                    line: 1,
+                    col: 3
+                }
+            },
+        ]);
+    }
+
+    #[test]
+    fn rel() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new(
+        "rel_t A () -> Real a;
+        ", &mut diagnostics);
+        let tokens = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        parser.parse();
+
+        assert_eq!(diagnostics.errors, vec![
+            CompilerError::UnexpectedToken {
+                expected: vec![Expected::Token(TokenKind::Colon)],
+                found: TokenKind::LParen,
+                span: Span {
+                    line: 1,
+                    col: 9
+                }
+            }
+        ]);
+    }
+
+    #[test]
+    fn expr() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new(
+"let n = match a {
+    let => 1,
+};", &mut diagnostics);
+        let tokens = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        parser.parse();
+
+        assert_eq!(diagnostics.errors, vec![
+            CompilerError::UnexpectedToken {
+                expected: vec![Expected::Pattern],
+                found: TokenKind::Let,
+                span: Span {
+                    line: 2,
+                    col: 5,
+                }
+            }
+        ]);
+    }
+
+    #[test]
+    fn multiple_errors_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut lexer = Lexer::new(
+"let n = 1;
+n = 2;
+let n = 3;
+let 9n = 4;
+let n = 5;
+let n = 6
+let n = 7;
+let n = @;", &mut diagnostics);
+        let tokens = lexer.tokenize();
+
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        parser.parse();
+
+        assert_eq!(diagnostics.errors, vec![
+            CompilerError::InvalidNum {
+                lexeme: "9n".to_string(),
+                span: Span {
+                    line: 4,
+                    col: 5,
+                }
+            },
+            CompilerError::UnknownToken {
+                lexeme: "@".to_string(),
+                span: Span {
+                    line: 8,
+                    col: 9,
+                }
+            },
+            CompilerError::UnexpectedToken {
+                expected: vec![
+                    Expected::Token(TokenKind::Let),
+                    Expected::Token(TokenKind::Ent_t),
+                    Expected::Token(TokenKind::Rel_t),
+                    Expected::Token(TokenKind::NetToken),
+                ],
+                found: TokenKind::Ident("n".to_string()),
+                span: Span {
+                    line: 2,
+                    col: 1,
+                }
+            },
+            CompilerError::UnexpectedToken {
+                expected: vec![Expected::Ident],
+                found: TokenKind::ErrorToken,
+                span: Span {
+                    line: 4,
+                    col: 5,
+                }
+            },
+            CompilerError::UnexpectedToken {
+                expected: vec![Expected::Token(TokenKind::Semicolon)],
+                found: TokenKind::Let,
+                span: Span {
+                    line: 7,
+                    col: 1,
+                }
+            },
+            CompilerError::UnexpectedToken {
+                expected: vec![Expected::Expr],
+                found: TokenKind::ErrorToken,
+                span: Span {
+                    line: 8,
+                    col: 9,
+                }
+            },
+        ]);
+    }
 }
