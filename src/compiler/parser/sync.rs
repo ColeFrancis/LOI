@@ -23,8 +23,7 @@
 //! Author: Cole Francis
 
 use super::Parser;
-use crate::compiler::token::{Token, TokenKind};
-use crate::compiler::ast::*;
+use crate::compiler::token::TokenKind;
 
 pub enum SyncRule {
     Item, // top level
@@ -179,11 +178,4 @@ impl<'a> Parser<'a> {
             self.next();
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    
 }

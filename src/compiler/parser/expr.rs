@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
             TokenKind::Asterisk => Some((BinaryOp::Mul, 20, 21)),
             TokenKind::Slash    => Some((BinaryOp::Div, 20, 21)),
             TokenKind::Caret    => Some((BinaryOp::Pow, 31, 30)),
-            other => None,
+            _ => None,
         }
     }
 

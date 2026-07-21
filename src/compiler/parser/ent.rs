@@ -188,10 +188,11 @@ mod tests {
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
+    #[test]
     fn bad_real_ent() {
         // ent_t r = real;    real, not Real
         let kinds: Vec<TokenKind> = vec![Ident("r".to_string()), 
-            Equals, Ident("real".to_string())];
+            Equals, Ident("real".to_string()), Eof];
 
         let tokens: Vec<Token> = build_token_vec(kinds);
 
