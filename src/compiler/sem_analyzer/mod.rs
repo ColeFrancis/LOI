@@ -17,9 +17,9 @@ mod core;
 mod symbol;
 mod scope;
 
-use crate::compiler::sym_analyzer::symbol::{Symbol, SymbolKind};
-use crate::compiler::sym_analyzer::scope::{Scope, ScopeId};
-use crate::compiler::sym_analyzer::ann_ast;
+use crate::compiler::sem_analyzer::symbol::{Symbol, SymbolKind};
+use crate::compiler::sem_analyzer::scope::{Scope, ScopeId};
+use crate::compiler::sem_analyzer::ann_ast;
 use crate::compiler::parser::ast;
 use crate::compiler::diagnostics::Diagnostics;
 
