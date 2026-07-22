@@ -24,7 +24,7 @@
 
 use crate::compiler::diagnostics::Span;
 
-type SymbolId = usize;
+pub type SymbolId = usize;
 
 pub enum SymbolKind {
     Variable,
