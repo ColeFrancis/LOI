@@ -26,6 +26,7 @@ use crate::compiler::diagnostics::Span;
 
 pub type SymbolId = usize;
 
+#[allow(non_camel_case_types)]
 pub enum SymbolKind {
     Variable,
     Parameter,
@@ -34,12 +35,12 @@ pub enum SymbolKind {
     Net,
 }
 
-struct Symbol {
-    id: SymbolId,   // index in Vec<Symbol>
-    name: String,
-    kind: SymbolKind,
+pub struct Symbol {
+    pub id: SymbolId,   // index in Vec<Symbol>
+    pub name: String,
+    pub kind: SymbolKind,
 
-    span: Span,
+    pub span: Span,
 
     // filled in by later passes
     // ty: Option<TypeId>

@@ -27,9 +27,9 @@ use super::symbol::SymbolId;
 
 pub type ScopeId = usize;
 
-struct Scope {
-    parent: Option<ScopeId>,
-    symbols: HashMap<String, SymbolId>,
+pub struct Scope {
+    pub parent: Option<ScopeId>,
+    pub symbols: HashMap<String, SymbolId>,
 }
 
 // Vec<Scope>

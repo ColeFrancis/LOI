@@ -16,15 +16,15 @@ pub mod ann_ast;
 mod core;
 mod symbol;
 mod scope;
+mod resolve_names;
+mod check_types;
+mod fold_const;
 
-use crate::compiler::sem_analyzer::symbol::{Symbol, SymbolKind};
+use crate::compiler::sem_analyzer::symbol::Symbol;
 use crate::compiler::sem_analyzer::scope::{Scope, ScopeId};
-use crate::compiler::sem_analyzer::ann_ast;
-use crate::compiler::parser::ast;
 use crate::compiler::diagnostics::Diagnostics;
 
 pub struct SemAnalyzer<'a> {
-    ast: ast::Program,
     ann_ast: ann_ast::Program,
     symbols: Vec<Symbol>,
     scopes: Vec<Scope>,

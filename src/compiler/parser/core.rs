@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn parse(&mut self) -> Program {
+    pub fn parse(mut self) -> Program {
         let mut items = Vec::new();
 
         while self.peek().kind != TokenKind::Eof {
@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn integrate_lexer_parser() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("
+        let tokens = Lexer::new("
             ent_t COIN = Bool;
         
             let a = 1;
@@ -291,12 +291,9 @@ mod tests {
             rel_t ONE : () -> Real = 1;
 
             net EMPTY {}
-        ", &mut diagnostics);
-        let tokens: Vec<Token> = lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse();
+        let result = Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(result, Program { 
             items: vec![
@@ -326,7 +323,7 @@ mod tests {
     #[test]
     fn multiple_errors_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("
+        let tokens = Lexer::new("
             let n = 1;
             n = 2;
             let n = 3;
@@ -335,12 +332,9 @@ mod tests {
             let n = 6
             let n = 7;
             let n = @;
-        ", &mut diagnostics);
-        let tokens: Vec<Token> = lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse();
+        let result = Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(result, Program {
             items: vec![
@@ -375,7 +369,7 @@ mod tests {
     #[test]
     fn multiple_errors_2() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("
+        let tokens = Lexer::new("
             rel_t A () -> Real = a;
 
             net {
@@ -384,12 +378,9 @@ mod tests {
             net A {
                 input A: Bool
             }
-        ", &mut diagnostics);
-        let tokens: Vec<Token> = lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse();
+        let result = Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(result, Program {
             items: vec![

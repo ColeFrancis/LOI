@@ -107,7 +107,7 @@ mod tests {
     #[test]
     fn no_errors() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("
+        let tokens = Lexer::new("
             ent_t COIN = Bool;
         
             let a = 1;
@@ -115,12 +115,9 @@ mod tests {
             rel_t ONE : () -> Real = 1;
 
             net EMPTY {}
-        ", &mut diagnostics);
-        let tokens = lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        parser.parse();
+        Parser::new(tokens, &mut diagnostics).parse();
 
         assert!(!diagnostics.has_errors());
     }
@@ -128,10 +125,9 @@ mod tests {
     #[test]
     fn lexer_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new(
+        Lexer::new(
         "@ 9a
-        ", &mut diagnostics);
-        lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
         assert_eq!(diagnostics.errors, vec![
             CompilerError::UnknownToken{
@@ -154,14 +150,11 @@ mod tests {
     #[test]
     fn rel() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new(
+        let tokens = Lexer::new(
         "rel_t A () -> Real a;
-        ", &mut diagnostics);
-        let tokens = lexer.tokenize();
+        ", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        parser.parse();
+        Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
             CompilerError::UnexpectedToken {
@@ -178,15 +171,12 @@ mod tests {
     #[test]
     fn expr() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new(
+        let tokens = Lexer::new(
 "let n = match a {
     let => 1,
-};", &mut diagnostics);
-        let tokens = lexer.tokenize();
+};", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        parser.parse();
+        Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
             CompilerError::UnexpectedToken {
@@ -203,7 +193,7 @@ mod tests {
     #[test]
     fn multiple_errors_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new(
+        let tokens = Lexer::new(
 "let n = 1;
 n = 2;
 let n = 3;
@@ -211,12 +201,9 @@ let 9n = 4;
 let n = 5;
 let n = 6
 let n = 7;
-let n = @;", &mut diagnostics);
-        let tokens = lexer.tokenize();
+let n = @;", &mut diagnostics).tokenize();
 
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        parser.parse();
+        Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
             CompilerError::InvalidNum {

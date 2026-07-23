@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # core
+//! # fold_const
 //!
-//! Handles the core of the semantic analyzer
+//! Handles folding of compile-time constants in the annotated ast
 //!
 //! ## Invariants
 //!
@@ -24,26 +24,9 @@
 
 use super::SemAnalyzer;
 use crate::compiler::parser::ast;
-use crate::compiler::sem_analyzer::ann_ast;
-use crate::compiler::diagnostics::Diagnostics;
-use crate::compiler::sem_analyzer::symbol::Symbol;
 
 impl <'a> SemAnalyzer<'a> {
-    pub fn new(diagnostics: &'a mut Diagnostics) -> Self {
-        Self {
-            ann_ast: ann_ast::Program {items: Vec::new()},
-            symbols: Vec::new(),
-            scopes: Vec::new(),
-            current_scope: 0,
-            diagnostics,
-        }
-    }
-
-    pub fn analyze(mut self, ast: ast::Program) -> (ann_ast::Program, Vec<Symbol>) {
-        self.resolve_names(ast);
-        self.check_types();
-        self.fold_const();
-
-        (self.ann_ast, self.symbols)
+    pub(super) fn fold_const(&mut self) {
+        // TODO
     }
 }

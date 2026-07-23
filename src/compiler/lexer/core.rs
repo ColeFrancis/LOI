@@ -54,7 +54,7 @@ impl<'a> Lexer<'a> {
         self.input.get(self.pos).copied()
     }
 
-    pub fn tokenize(&mut self) -> Vec<Token> {
+    pub fn tokenize(mut self) -> Vec<Token> {
         let mut tokens = Vec::new();
 
         while let Some(token) = self.next_token() {
@@ -341,9 +341,7 @@ mod test {
         assert_eq!(kinds(&tokens), vec![Eof]);
 
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("   /* jalsdjf\nasjflds*/", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("   /* jalsdjf\nasjflds*/", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![Eof]);
     }
@@ -351,9 +349,7 @@ mod test {
     #[test]
     fn test_not_alphanumeric() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("( /*asdjf*/ ) =>\n;", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("( /*asdjf*/ ) =>\n;", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![LParen, RParen, FatArrow, Semicolon, Eof]);
     }
@@ -361,9 +357,7 @@ mod test {
     #[test]
     fn test_ent() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("ent_t COIN = {H,T}; // This is an entity\n", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("ent_t COIN = {H,T}; // This is an entity\n", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![Ent_t, Ident("COIN".to_string())
             , Equals, LBrace, Ident("H".to_string()), Comma
@@ -374,9 +368,7 @@ mod test {
     #[test]
     fn test_unknown() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("@", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("@", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![ErrorToken, Eof]);
         assert!(diagnostics.has_errors());
@@ -385,9 +377,7 @@ mod test {
     #[test]
     fn test_num() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![ErrorToken, ErrorToken
             , ErrorToken, IntLiteral(99)
@@ -398,9 +388,7 @@ mod test {
     #[test]
     fn test_identifiers() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("id ai_ _ai", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("id ai_ _ai", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![Ident("id".to_string())
             , Ident("ai_".to_string()), Ident("_ai".to_string()), Eof]);
@@ -409,9 +397,7 @@ mod test {
     #[test]
     fn test_rel() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new("rel_t A : (a:Real) -> Real = (a / 2);", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new("rel_t A : (a:Real) -> Real = (a / 2);", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![Rel_t, Ident("A".to_string()), Colon, LParen
         , Ident("a".to_string()), Colon, Real, RParen, Arrow, Real
@@ -422,9 +408,7 @@ mod test {
     #[test]
     fn test_line_col() {
         let mut diagnostics = Diagnostics::new();
-        let mut lexer = Lexer::new(" a\nbc\td_ 67\n  / /* */;", &mut diagnostics);
-
-        let tokens: Vec<Token> = lexer.tokenize();
+        let tokens = Lexer::new(" a\nbc\td_ 67\n  / /* */;", &mut diagnostics).tokenize();
 
         assert_eq!(tokens[0].span.line, 1);
         assert_eq!(tokens[0].span.col, 2);
