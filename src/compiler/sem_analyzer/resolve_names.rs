@@ -23,8 +23,7 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use crate::compiler::parser::ast;
-use super::ann_ast;
+use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::CompilerError;
 use super::symbol::{Symbol, SymbolKind, SymbolId};
 
@@ -32,43 +31,43 @@ use super::symbol::{Symbol, SymbolKind, SymbolId};
 use crate::compiler::diagnostics::Span;
 
 impl <'a> SemAnalyzer<'a> {
-    pub(super) fn resolve_names(&mut self, ast: ast::Program) {
-        for item in ast.items {
-            let ann_item = match self.resolve_item(item) {
-                Some(item) => item,
-                None => ann_ast::Item::Error,
-            };
+    pub(super) fn resolve_names(&mut self) {
+        // for item in self.ast.items {
+        //     let ann_item = match self.resolve_item(item) {
+        //         Some(item) => item,
+        //         None => ann_ast::Item::Error,
+        //     };
 
-            self.ann_ast.items.push(ann_item);
-        }
+        //     self.ann_ast.items.push(ann_item);
+        // }
     }
 
-    fn resolve_item(&mut self, item: ast::Item) -> Option<ann_ast::Item> {
-        match item {
-            // ast::Item::Let(stmt) => match self.resolve_let(stmt) {
-            //     Some(ann_stmt) => Some(ann_ast::Item::Let(ann_stmt)),
-            //     None => None,
-            // }
+    // fn resolve_item(&mut self, item: ast::Item) -> Option<ann_ast::Item> {
+    //     match item {
+    //         // ast::Item::Let(stmt) => match self.resolve_let(stmt) {
+    //         //     Some(ann_stmt) => Some(ann_ast::Item::Let(ann_stmt)),
+    //         //     None => None,
+    //         // }
 
-            // ast::Item::Ent(ent_t) => {
-            //     ann_ast::Item::Ent(self.resolve_ent(ent_t))
-            // }
+    //         // ast::Item::Ent(ent_t) => {
+    //         //     ann_ast::Item::Ent(self.resolve_ent(ent_t))
+    //         // }
 
-            // ast::Item::Rel(rel_t) => {
-            //     ann_ast::Item::Rel(self.resolve_rel(rel_t))
-            // }
+    //         // ast::Item::Rel(rel_t) => {
+    //         //     ann_ast::Item::Rel(self.resolve_rel(rel_t))
+    //         // }
 
-            // ast::Item::Net(net) => {
-            //     ann_ast::Item::Net(self.resolve_net(net))
-            // }
+    //         // ast::Item::Net(net) => {
+    //         //     ann_ast::Item::Net(self.resolve_net(net))
+    //         // }
 
-            // ast::Item::Error => {
-            //     ann_ast::Item::Error
-            // }
+    //         // ast::Item::Error => {
+    //         //     ann_ast::Item::Error
+    //         // }
 
-            _ => None,
-        }
-    }
+    //         _ => None,
+    //     }
+    // }
 
     // fn resolve_let(&mut self, stmt: ast::LetStatement) -> Option<ann_ast::LetStatement> {
     //     let expr = self.resolve_expr(stmt.expr)?;
@@ -139,7 +138,7 @@ mod tests {
     #[test]
     fn test_define_1() {
         let mut sem_analyzer = SemAnalyzer {
-            ann_ast: ann_ast::Program {items: Vec::new()},
+            ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
                     id: 0,
@@ -216,7 +215,7 @@ mod tests {
     #[test]
     fn test_define_2() {
         let mut sem_analyzer = SemAnalyzer {
-            ann_ast: ann_ast::Program {items: Vec::new()},
+            ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
                     id: 0,

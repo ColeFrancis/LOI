@@ -53,12 +53,20 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::{Lexer, token::{Token, TokenKind::*}};
     use crate::compiler::diagnostics::{Diagnostics, Span};
+    use crate::compiler::parser::ast;
 
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
             .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
             .collect()
+    }
+
+    fn build_ident_str(name: &str) -> ast::Ident {
+        ast::Ident::Str {
+            val: name.to_string(),
+            span: Span{line: 0, col: 0},
+        }
     }
 
     #[test]
@@ -73,7 +81,7 @@ mod tests {
         let result = parser.parse_let_stmt();
 
         assert_eq!(result, Some(LetStatement {
-            name: "n".to_string(),
+            name: build_ident_str("n"),
             expr: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,

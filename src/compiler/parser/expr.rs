@@ -93,7 +93,7 @@ impl<'a> Parser<'a> {
 
             TokenKind::Ident(str) => {
                 self.next();
-                Some(Expr::Ident(str))
+                Some(Expr::Ident(Ident::Str{ val: str, span: token.span }))
             }
 
             TokenKind::Minus => {
@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
             TokenKind::IntLiteral(n)  => Some(SimplePattern::Literal(Literal::Int(n))),
             TokenKind::RealLiteral(n) => Some(SimplePattern::Literal(Literal::Real(n))),
 
-            TokenKind::Ident(name) => Some(SimplePattern::Ident(name)),
+            TokenKind::Ident(name) => Some(SimplePattern::Ident(Ident::Str { val: name, span: token.span })),
 
             TokenKind::LParen => self.parse_tuple_pattern(),
 
@@ -358,6 +358,7 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::token::TokenKind::*;
     use crate::compiler::diagnostics::{Diagnostics, Span};
+    use crate::compiler::parser::ast;
 
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
@@ -366,13 +367,23 @@ mod tests {
             .collect()
     }
 
+    fn build_ident_str(name: &str) -> ast::Ident {
+        ast::Ident::Str {
+            val: name.to_string(),
+            span: Span{line: 0, col: 0},
+        }
+    }
+
     fn build_s_expr(expr: &Expr) -> String {
         match expr {
             Expr::Literal(Literal::Int(n)) => n.to_string(),
             Expr::Literal(Literal::Bool(b)) => b.to_string(),
             Expr::Literal(Literal::Real(x)) => x.to_string(),
 
-            Expr::Ident(name) => name.clone(),
+            Expr::Ident(ident) => match ident {
+                ast::Ident::Str {val, ..} => val.clone(),
+                ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
+            }
 
             Expr::Unary(unary) => {
                 format!(
@@ -459,7 +470,10 @@ mod tests {
             SimplePattern::Literal(Literal::Bool(b)) => b.to_string(),
             SimplePattern::Literal(Literal::Real(x)) => x.to_string(),
 
-            SimplePattern::Ident(ident) => ident.to_string(),
+            SimplePattern::Ident(ident) => match ident {
+                ast::Ident::Str {val, ..} => val.clone(),
+                ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
+            }
 
             SimplePattern::Tuple(elements) => {
                 let elems = elements
@@ -535,7 +549,7 @@ mod tests {
             right: Box::new(Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(2))),
                 op: BinaryOp::Mul,
-                right: Box::new(Expr::Ident("a".to_string())),
+                right: Box::new(Expr::Ident(build_ident_str("a"))),
             })),
         });
 
@@ -580,7 +594,7 @@ mod tests {
 
         let result = parser.parse_prefix().unwrap();
 
-        assert_eq!(result, Expr::Ident("hey".to_string()));
+        assert_eq!(result, Expr::Ident(build_ident_str("hey")));
     }
     
     #[test]
@@ -813,15 +827,15 @@ mod tests {
 
         assert_eq!(result, Some(Expr::Sample(vec![
             SampleArm {
-                prob: Prob::Expr(Expr::Ident("a".to_string())),
+                prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
                 expr: Expr::Sample(vec![SampleArm {
-                    prob: Prob::Expr(Expr::Ident("a".to_string())),
-                    expr: Expr::Ident("b".to_string()),
+                    prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
+                    expr: Expr::Ident(build_ident_str("b")),
                 }]),
             },
             SampleArm {
                 prob: Prob::Default,
-                expr: Expr::Ident("c".to_string()),
+                expr: Expr::Ident(build_ident_str("c")),
             },
         ])));
     }
@@ -949,10 +963,10 @@ mod tests {
         diagnostics.debug_print();
 
         assert_eq!(result, Some(Expr::Match(MatchExpr {
-            scrutinee: Box::new(Expr::Ident("a".to_string())),
+            scrutinee: Box::new(Expr::Ident(build_ident_str("a"))),
             arms: vec![
                 MatchArm {
-                    pattern: vec![SimplePattern::Ident("b".to_string())],
+                    pattern: vec![SimplePattern::Ident(build_ident_str("b"))],
                     expr: Expr::Error,
                 },
                 MatchArm {
@@ -1049,12 +1063,12 @@ mod tests {
 
         assert_eq!(result, Some(Expr::Sample(vec![
             SampleArm {
-                prob: Prob::Expr(Expr::Ident("a".to_string())),
+                prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
                 expr: Expr::Error,
             },
             SampleArm {
                 prob: Prob::Default,
-                expr: Expr::Ident("c".to_string()),
+                expr: Expr::Ident(build_ident_str("c")),
             },
         ])));
         assert_eq!(diagnostics.num_errors(), 1);

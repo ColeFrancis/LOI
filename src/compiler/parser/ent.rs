@@ -112,12 +112,20 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
+    use crate::compiler::parser::ast;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
             .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
             .collect()
+    }
+
+    fn build_ident_str(name: &str) -> ast::Ident {
+        ast::Ident::Str {
+            val: name.to_string(),
+            span: Span{line: 0, col: 0},
+        }
     }
 
     #[test]
@@ -135,8 +143,8 @@ mod tests {
         let result = parser.parse_ent_t();
 
         assert_eq!(result, Some(EntType {
-            name: "coin".to_string(),
-            expr: EntExpr::SetEnt(vec!["H".to_string(), "T".to_string()]),
+            name: build_ident_str("coin"),
+            expr: EntExpr::SetEnt(vec![build_ident_str("H"), build_ident_str("T")]),
         }));
     }
 
@@ -172,7 +180,7 @@ mod tests {
         let result = parser.parse_ent_t();
 
         assert_eq!(result, Some(EntType {
-            name: "z4".to_string(),
+            name: build_ident_str("z4"),
             expr: EntExpr::Mod(4),
         }));
     }

@@ -22,6 +22,7 @@
 //!
 //! Author: Cole Francis
 
+use crate::compiler::sem_analyzer::symbol::SymbolId;
 use crate::compiler::diagnostics::Span;
 
 #[derive(PartialEq, Debug)]
@@ -42,22 +43,14 @@ pub enum Item {
 /// Common AST elements
 ////////////////////////////////////////////////////////////////////////////////
 
-type Ident = String;
-
-// #[derive(PartialEq, Debug)]
-// pub struct Ident {
-//     name: String,
-//     span: Span,
-// }
-
-// #[derive(PartialEq, Debug)]
-// pub enum Ident {
-//     String {
-//         val: String,
-//         span: Span,
-//     },
-//     Symbol(SymbolId),
-// }
+#[derive(PartialEq, Debug)]
+pub enum Ident {
+    Str {
+        val: String,
+        span: Span,
+    },
+    Symbol(SymbolId),
+}
 
 #[derive(PartialEq, Debug)]
 pub enum Type {

@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod ann_ast;
 mod core;
-mod symbol;
+pub mod symbol;
 mod scope;
 mod resolve_names;
 mod check_types;
@@ -23,9 +22,10 @@ mod fold_const;
 use crate::compiler::sem_analyzer::symbol::Symbol;
 use crate::compiler::sem_analyzer::scope::{Scope, ScopeId};
 use crate::compiler::diagnostics::Diagnostics;
+use crate::compiler::parser::ast::Program;
 
 pub struct SemAnalyzer<'a> {
-    ann_ast: ann_ast::Program,
+    ast: Program,
     symbols: Vec<Symbol>,
     scopes: Vec<Scope>,
     current_scope: ScopeId,

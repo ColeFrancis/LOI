@@ -23,15 +23,14 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use crate::compiler::parser::ast;
-use crate::compiler::sem_analyzer::ann_ast;
+use crate::compiler::parser::ast::Program;
 use crate::compiler::diagnostics::Diagnostics;
 use crate::compiler::sem_analyzer::symbol::{Symbol, SymbolId};
 
 impl <'a> SemAnalyzer<'a> {
-    pub fn new(diagnostics: &'a mut Diagnostics) -> Self {
+    pub fn new(ast: Program, diagnostics: &'a mut Diagnostics) -> Self {
         Self {
-            ann_ast: ann_ast::Program {items: Vec::new()},
+            ast,
             symbols: Vec::new(),
             scopes: Vec::new(),
             current_scope: 0,
@@ -39,12 +38,12 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    pub fn analyze(mut self, ast: ast::Program) -> (ann_ast::Program, Vec<Symbol>) {
-        self.resolve_names(ast);
+    pub fn analyze(mut self) -> (Program, Vec<Symbol>) {
+        self.resolve_names();
         self.check_types();
         self.fold_const();
 
-        (self.ann_ast, self.symbols)
+        (self.ast, self.symbols)
     }
 
     pub fn lookup_symbol(&self, name: &str) -> Option<SymbolId> {
@@ -76,7 +75,7 @@ mod tests {
     #[test]
     fn test_lookup() {
         let sem_analyzer = SemAnalyzer {
-            ann_ast: ann_ast::Program {items: Vec::new()},
+            ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
                     id: 0,

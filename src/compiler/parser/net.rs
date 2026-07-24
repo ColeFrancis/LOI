@@ -203,12 +203,20 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
+    use crate::compiler::parser::ast;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
             .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
             .collect()
+    }
+
+    fn build_ident_str(name: &str) -> ast::Ident {
+        ast::Ident::Str {
+            val: name.to_string(),
+            span: Span{line: 0, col: 0},
+        }
     }
 
     #[test]
@@ -275,79 +283,79 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "ADD".to_string(),
+            name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Input(Param {
-                    name: "a".to_string(),
+                    name: build_ident_str("a"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Input(Param {
-                    name: "b".to_string(),
+                    name: build_ident_str("b"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Output(Param {
-                    name: "sum".to_string(),
+                    name: build_ident_str("sum"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Output(Param {
-                    name: "cout".to_string(),
+                    name: build_ident_str("cout"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
-                        name: "cin".to_string(),
+                        name: build_ident_str("cin"),
                         param_type: Type::Bool,
                     },
                     val: Expr::Literal(Literal::Bool(false)),
                 }),
                 NetItem::NetInst(NetInst {
-                    net: "HALF_ADD".to_string(),
+                    net: build_ident_str("HALF_ADD"),
                     connections: vec![
                         Connection {
-                            port: "a".to_string(),
-                            net: "a".to_string(),
+                            port: build_ident_str("a"),
+                            net: build_ident_str("a"),
                         },
                         Connection {
-                            port: "b".to_string(),
-                            net: "b".to_string(),
+                            port: build_ident_str("b"),
+                            net: build_ident_str("b"),
                         },
                         Connection {
-                            port: "sum".to_string(),
-                            net: "h1_sum".to_string(),
+                            port: build_ident_str("sum"),
+                            net: build_ident_str("h1_sum"),
                         },
                         Connection {
-                            port: "cout".to_string(),
-                            net: "h1_carry".to_string(),
+                            port: build_ident_str("cout"),
+                            net: build_ident_str("h1_carry"),
                         },
                     ],
                 }),
                 NetItem::NetInst(NetInst {
-                    net: "HALF_ADD".to_string(),
+                    net: build_ident_str("HALF_ADD"),
                     connections: vec![
                         Connection {
-                            port: "a".to_string(),
-                            net: "h1_sum".to_string(),
+                            port: build_ident_str("a"),
+                            net: build_ident_str("h1_sum"),
                         },
                         Connection {
-                            port: "b".to_string(),
-                            net: "cin".to_string(),
+                            port: build_ident_str("b"),
+                            net: build_ident_str("cin"),
                         },
                         Connection {
-                            port: "sum".to_string(),
-                            net: "sum".to_string(),
+                            port: build_ident_str("sum"),
+                            net: build_ident_str("sum"),
                         },
                         Connection {
-                            port: "cout".to_string(),
-                            net: "h2_carry".to_string(),
+                            port: build_ident_str("cout"),
+                            net: build_ident_str("h2_carry"),
                         },
                     ],
                 }),
                 NetItem::RelInst(RelInst {
-                    asignee: "cout".to_string(),
-                    rel: "OR".to_string(),
+                    asignee: build_ident_str("cout"),
+                    rel: build_ident_str("OR"),
                     args: vec![
-                        "h1_carry".to_string(),
-                        "h2_carry".to_string(),
+                        build_ident_str("h1_carry"),
+                        build_ident_str("h2_carry"),
                     ],
                 })
             ],
@@ -368,7 +376,7 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "EMPTY".to_string(),
+            name: build_ident_str("EMPTY"),
             items: vec![],
         }));
     }
@@ -397,15 +405,15 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "ADD".to_string(),
+            name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Input(Param {
-                    name: "a".to_string(),
+                    name: build_ident_str("a"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Error,
                 NetItem::Output(Param {
-                    name: "sum".to_string(),
+                    name: build_ident_str("sum"),
                     param_type: Type::Bool,
                 }),
             ],
@@ -437,11 +445,11 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "ADD".to_string(),
+            name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Error,
                 NetItem::Input(Param {
-                    name: "b".to_string(),
+                    name: build_ident_str("b"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Error,
@@ -474,15 +482,15 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "ADD".to_string(),
+            name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Input(Param {
-                    name: "a".to_string(),
+                    name: build_ident_str("a"),
                     param_type: Type::Bool,
                 }),
                 NetItem::Error,
                 NetItem::Output(Param {
-                    name: "sum".to_string(),
+                    name: build_ident_str("sum"),
                     param_type: Type::Bool,
                 }),
             ],
@@ -515,7 +523,7 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "A".to_string(),
+            name: build_ident_str("A"),
             items: vec![
                 NetItem::Error,
             ],
@@ -548,7 +556,7 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "A".to_string(),
+            name: build_ident_str("A"),
             items: vec![
                 NetItem::Error,
             ],
@@ -581,7 +589,7 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "A".to_string(),
+            name: build_ident_str("A"),
             items: vec![
                 NetItem::Error,
             ],
@@ -610,7 +618,7 @@ mod tests {
         let result = parser.parse_net();
 
         assert_eq!(result, Some(Net {
-            name: "ADD".to_string(),
+            name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Error
             ],

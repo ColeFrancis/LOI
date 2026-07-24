@@ -109,12 +109,20 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
+    use crate::compiler::parser::ast;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
             .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
             .collect()
+    }
+
+    fn build_ident_str(name: &str) -> ast::Ident {
+        ast::Ident::Str {
+            val: name.to_string(),
+            span: Span{line: 0, col: 0},
+        }
     }
 
     #[test]
@@ -135,19 +143,19 @@ mod tests {
         let result = parser.parse_rel_t();
 
         assert_eq!(result, Some(RelType {
-            name: "AND".to_string(),
+            name: build_ident_str("AND"),
             params: vec![Param {
-                name: "a".to_string(),
+                name: build_ident_str("a"),
                 param_type: Type::Bool,
             }, Param {
-                name: "b".to_string(),
+                name: build_ident_str("b"),
                 param_type: Type::Bool,
             }],
             return_type: Type::Bool,
             body: RelBody::Expr(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident("a".to_string())),
+                left: Box::new(Expr::Ident(build_ident_str("a"))),
                 op: BinaryOp::Mul,
-                right: Box::new(Expr::Ident("b".to_string()))
+                right: Box::new(Expr::Ident(build_ident_str("b")))
             })),
         }));
     }
@@ -175,17 +183,17 @@ mod tests {
         let result = parser.parse_rel_t();
 
         assert_eq!(result, Some(RelType {
-            name: "FLIP".to_string(),
+            name: build_ident_str("FLIP"),
             params: vec![],
             return_type: Type::Bool,
             body: RelBody::Block(BlockExpr {
                 statements: vec![Statement::Let(LetStatement {
-                    name: "p".to_string(),
+                    name: build_ident_str("p"),
                     expr: Expr::Literal(Literal::Real(0.5)),
                 })],
                 expr: Expr::Sample( vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Ident("p".to_string())),
+                        prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
                         expr: Expr::Literal(Literal::Bool(true)),
                     },
                     SampleArm {
@@ -244,21 +252,21 @@ mod tests {
         diagnostics.debug_print();
 
         assert_eq!(result, Some(RelType {
-            name: "NUM".to_string(),
+            name: build_ident_str("NUM"),
             params: vec![],
             return_type: Type::Real,
             body: RelBody::Block(BlockExpr {
                 statements: vec![
                     Statement::Error,
                     Statement::Let(LetStatement {
-                        name: "q".to_string(),
+                        name: build_ident_str("q"),
                         expr: Expr::Literal(Literal::Real(0.4)),
                     })
                 ],
                 expr: Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Ident("p".to_string())),
+                    left: Box::new(Expr::Ident(build_ident_str("p"))),
                     op: BinaryOp::Add,
-                    right: Box::new(Expr::Ident("q".to_string()))
+                    right: Box::new(Expr::Ident(build_ident_str("q")))
                 }),
             }),
         }));
@@ -285,17 +293,17 @@ mod tests {
         diagnostics.debug_print();
 
         assert_eq!(result, Some(RelType {
-            name: "NUM".to_string(),
+            name: build_ident_str("NUM"),
             params: vec![],
             return_type: Type::Real,
             body: RelBody::Block(BlockExpr {
                 statements: vec![
                     Statement::Let(LetStatement {
-                        name: "p".to_string(),
+                        name: build_ident_str("p"),
                         expr: Expr::Literal(Literal::Real(0.5)),
                     }),
                     Statement::Let(LetStatement {
-                        name: "q".to_string(),
+                        name: build_ident_str("q"),
                         expr: Expr::Literal(Literal::Real(0.4)),
                     }),
                 ],
