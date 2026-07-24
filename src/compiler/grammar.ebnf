@@ -27,7 +27,6 @@ type =
       "Bool"
     | "Int"
     | "Real" 
-    | mod_type
     | IDENT ;
 
 mod_type = "Mod" "(" int_literal ")" ;
@@ -106,7 +105,7 @@ ent_decl =
     "ent_t" IDENT "=" ent_expr ";" ;
 
 ent_expr = 
-      type
+      mod_type
     | set_ent ;
 
 set_ent = "{" IDENT ("," IDENT)* "}" ;

@@ -22,6 +22,8 @@
 //!
 //! Author: Cole Francis
 
+use crate::compiler::diagnostics::Span;
+
 #[derive(PartialEq, Debug)]
 pub struct Program {
     pub items: Vec<Item>,
@@ -44,8 +46,17 @@ type Ident = String;
 
 // #[derive(PartialEq, Debug)]
 // pub struct Ident {
-//     val: String,
+//     name: String,
 //     span: Span,
+// }
+
+// #[derive(PartialEq, Debug)]
+// pub enum Ident {
+//     String {
+//         val: String,
+//         span: Span,
+//     },
+//     Symbol(SymbolId),
 // }
 
 #[derive(PartialEq, Debug)]
@@ -54,7 +65,6 @@ pub enum Type {
     Impulse,
     Int,
     Real,
-    Mod(i64),
     CustomType(Ident),
 }
 
@@ -190,7 +200,7 @@ pub struct EntType {
 
 #[derive(PartialEq, Debug)]
 pub enum EntExpr {
-    Type(Type),
+    Mod(i64),
     SetEnt(Vec<Ident>),
 }
 

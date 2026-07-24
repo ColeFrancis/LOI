@@ -123,7 +123,7 @@ mod tests {
     fn no_errors() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("
-            ent_t COIN = Bool;
+            ent_t COIN = {H, T};
         
             let a = 1;
 

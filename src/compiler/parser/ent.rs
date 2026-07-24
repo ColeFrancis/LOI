@@ -26,6 +26,7 @@ use super::Parser;
 use super::sync::SyncRule;
 use super::ast::*;
 use crate::compiler::lexer::token::TokenKind;
+use crate::compiler::diagnostics::{CompilerError, Expected};
 
 impl<'a> Parser<'a> {
     // Ent_t token already consumed
@@ -45,9 +46,24 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ent_expr(&mut self) -> Option<EntExpr> {
-        match &self.peek().kind {
+        let token = &self.peek();
+
+        match &token.kind {
             TokenKind::LBrace => self.parse_set_ent(),
-            _ => self.parse_type(&SyncRule::Item).map(EntExpr::Type),
+            TokenKind::Mod => self.parse_mod_ent(),
+            other => {
+                self.diagnostics.error(CompilerError::UnexpectedToken {
+                    expected: vec![
+                        Expected::Token(TokenKind::LBrace),
+                        Expected::Token(TokenKind::Mod),
+                    ],
+                    found: other.clone(),
+                    span: token.span.clone(),
+                });
+                self.sync(&SyncRule::Item);
+
+                None
+            }
         }
     }
 
@@ -64,6 +80,30 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::RBrace, &SyncRule::Item)?;
 
         Some(EntExpr::SetEnt(members))
+    }
+
+    fn parse_mod_ent(&mut self) -> Option<EntExpr> {
+        self.expect(TokenKind::Mod, &SyncRule::Item)?;
+
+        self.expect(TokenKind::LParen, &SyncRule::Item)?;
+
+        let token = self.next();
+        let n = match token.kind {
+            TokenKind::IntLiteral(n) => n,
+            other => {
+                self.diagnostics.error(CompilerError::UnexpectedToken {
+                    expected: vec![Expected::IntLiteral],
+                    found: other,
+                    span: token.span,
+                });
+                self.sync(&SyncRule::Item);
+                
+                return None;
+            }
+        };
+        self.expect(TokenKind::RParen, &SyncRule::Item)?;
+        
+        Some(EntExpr::Mod(n))
     }
 }
 
@@ -133,7 +173,7 @@ mod tests {
 
         assert_eq!(result, Some(EntType {
             name: "z4".to_string(),
-            expr: EntExpr::Type(Type::Mod(4)),
+            expr: EntExpr::Mod(4),
         }));
     }
 

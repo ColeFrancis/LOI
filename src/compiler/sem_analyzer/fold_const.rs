@@ -23,7 +23,6 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use crate::compiler::parser::ast;
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn fold_const(&mut self) {

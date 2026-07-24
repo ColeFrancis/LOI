@@ -165,27 +165,6 @@ impl<'a> Parser<'a> {
             TokenKind::Impulse     => Some(Type::Impulse),
             TokenKind::Int         => Some(Type::Int),
             TokenKind::Real        => Some(Type::Real),
-            TokenKind::Mod         => {
-                self.expect(TokenKind::LParen, rule)?;
-
-                let token = self.next();
-                let n = match token.kind {
-                    TokenKind::IntLiteral(n) => n,
-                    other => {
-                        self.diagnostics.error(CompilerError::UnexpectedToken {
-                            expected: vec![Expected::IntLiteral],
-                            found: other,
-                            span: token.span,
-                        });
-                        self.sync(rule);
-                        
-                        return None;
-                    }
-                };
-                self.expect(TokenKind::RParen, rule)?;
-                
-                Some(Type::Mod(n))
-            }
             TokenKind::Ident(name) => Some(Type::CustomType(name)),
             
             other => {
@@ -195,7 +174,6 @@ impl<'a> Parser<'a> {
                         Expected::Token(TokenKind::Impulse), 
                         Expected::Token(TokenKind::Int), 
                         Expected::Token(TokenKind::Real),
-                        Expected::Token(TokenKind::Mod),
                         Expected::Ident,
                     ],
                     found: other,
@@ -237,14 +215,14 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        // ent_t COIN = Bool;
+        // ent_t COIN = {H, T};
         
         // let a = 1;
 
         // rel_t ONE : () -> Real = 1;
 
         // net EMPTY {}
-        let kinds: Vec<TokenKind> = vec![Ent_t, Ident("COIN".to_string()), Equals, Bool, Semicolon,
+        let kinds: Vec<TokenKind> = vec![Ent_t, Ident("COIN".to_string()), Equals, LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()), RBrace, Semicolon,
             Let, Ident("a".to_string()), Equals, IntLiteral(1), Semicolon,
             Rel_t, Ident("ONE".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, IntLiteral(1), Semicolon,
             NetToken, Ident("EMPTY".to_string()), LBrace, RBrace, Eof];
@@ -257,7 +235,7 @@ mod tests {
             items: vec![
                 Item::Ent(EntType {
                     name: "COIN".to_string(),
-                    expr: EntExpr::Type(Type::Bool),
+                    expr: EntExpr::SetEnt(vec!["H".to_string(), "T".to_string()]),
                 }),
                 Item::Let(LetStatement {
                     name: "a".to_string(),
@@ -282,7 +260,7 @@ mod tests {
     fn integrate_lexer_parser() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("
-            ent_t COIN = Bool;
+            ent_t COIN = {H, T};
         
             let a = 1;
 
@@ -297,7 +275,7 @@ mod tests {
             items: vec![
                 Item::Ent(EntType {
                     name: "COIN".to_string(),
-                    expr: EntExpr::Type(Type::Bool),
+                    expr: EntExpr::SetEnt(vec!["H".to_string(), "T".to_string()]),
                 }),
                 Item::Let(LetStatement {
                     name: "a".to_string(),

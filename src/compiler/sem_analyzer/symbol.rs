@@ -23,7 +23,6 @@
 //! Author: Cole Francis
 
 use crate::compiler::diagnostics::Span;
-use super::scope::ScopeId;
 
 pub type SymbolId = usize;
 
