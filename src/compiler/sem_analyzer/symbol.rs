@@ -36,6 +36,13 @@ pub enum SymbolKind {
     Net,
 }
 
+// pub enum SymbolType {
+//     Rel_t {
+//         inputs: [Int, Int],
+//         output: Int,
+//     }
+// }
+
 #[derive(PartialEq, Debug)]
 pub struct Symbol {
     pub id: SymbolId,   // index in Vec<Symbol>
