@@ -57,10 +57,7 @@ impl <'a> SemAnalyzer<'a> {
             span,
         )?;
 
-        let expr = match self.resolve_expr(stmt.expr) {
-            Some(expr) => expr,
-            None => Expr::Error,
-        };
+        let expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
         
         Some(LetStatement {
             name: Ident::Symbol(symbol_id),
@@ -98,10 +95,8 @@ impl <'a> SemAnalyzer<'a> {
             Expr::Unary(unary_expr) => {
                 let op = unary_expr.op;
 
-                let resolved_expr = match self.resolve_expr(*unary_expr.expr) {
-                    Some(expr) => expr,
-                    None => Expr::Error,
-                };
+                let resolved_expr = self.resolve_expr(*unary_expr.expr)
+                    .unwrap_or(Expr::Error);
 
                 Some(Expr::Unary(UnaryExpr {
                     op,
@@ -110,17 +105,13 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Binary(binary_expr) => {
-                let resolved_left = match self.resolve_expr(*binary_expr.left) {
-                    Some(expr) => expr,
-                    None => Expr::Error,
-                };
+                let resolved_left = self.resolve_expr(*binary_expr.left)
+                    .unwrap_or(Expr::Error);
 
                 let op = binary_expr.op;
 
-                let resolved_right = match self.resolve_expr(*binary_expr.right) {
-                    Some(expr) => expr,
-                    None => Expr::Error,
-                };
+                let resolved_right = self.resolve_expr(*binary_expr.right)
+                    .unwrap_or(Expr::Error);
 
                 Some(Expr::Binary(BinaryExpr {
                     left: Box::new(resolved_left),
@@ -133,10 +124,8 @@ impl <'a> SemAnalyzer<'a> {
                 let mut elements = Vec::new();
 
                 for expr in tuple_expr {
-                    elements.push(match self.resolve_expr(expr) {
-                        Some(expr) => expr,
-                        None => Expr::Error,
-                    });
+                    elements.push(self.resolve_expr(expr)
+                        .unwrap_or(Expr::Error));
                 }
 
                 Some(Expr::Tuple(elements))
@@ -161,10 +150,8 @@ impl <'a> SemAnalyzer<'a> {
                     }
                 }
 
-                let resolved_expr = match self.resolve_expr(*block_expr.expr) {
-                    Some(expr) => expr,
-                    None => Expr::Error,
-                };
+                let resolved_expr = self.resolve_expr(*block_expr.expr)
+                    .unwrap_or(Expr::Error);
 
                 self.exit_scope();
 
@@ -187,16 +174,11 @@ impl <'a> SemAnalyzer<'a> {
                 for arm in sample_expr {
                     let resolved_prob = match arm.prob {
                         Prob::Default => Prob::Default,
-                        Prob::Expr(expr) => Prob::Expr(match self.resolve_expr(expr) {
-                            Some(resolved_expr) => resolved_expr,
-                            None => Expr::Error,
-                        })
+                        Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr)
+                            .unwrap_or(Expr::Error)),
                     };
 
-                    let resolved_expr = match self.resolve_expr(arm.expr) {
-                        Some(expr) => expr,
-                        None => Expr::Error,
-                    };
+                    let resolved_expr = self.resolve_expr(arm.expr).unwrap_or(Expr::Error);
 
                     resolved_arms.push(SampleArm {
                         prob: resolved_prob,
@@ -212,10 +194,8 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn resolve_match_expr(&mut self, match_expr: MatchExpr) -> Option<MatchExpr> {
-        let resolved_scrutinee = match self.resolve_expr(*match_expr.scrutinee) {
-            Some(expr) => expr,
-            None => Expr::Error,
-        };
+        let resolved_scrutinee = self.resolve_expr(*match_expr.scrutinee)
+            .unwrap_or(Expr::Error);
 
         let mut resolved_arms: Vec<MatchArm> = Vec::new();
 
@@ -223,16 +203,12 @@ impl <'a> SemAnalyzer<'a> {
             let mut resolved_pattern: Vec<SimplePattern> = Vec::new();
 
             for simple_pattern in arm.pattern {
-                resolved_pattern.push(match self.resolve_simple_pattern(simple_pattern) {
-                    Some(pattern) => pattern,
-                    None => SimplePattern::Error,
-                });
+                resolved_pattern.push(self.resolve_simple_pattern(simple_pattern)
+                    .unwrap_or(SimplePattern::Error));
             }
 
-            let resolved_expr = match self.resolve_expr(arm.expr) {
-                Some(expr) => expr,
-                None => Expr::Error,
-            };
+            let resolved_expr = self.resolve_expr(arm.expr)
+                .unwrap_or(Expr::Error);
 
             resolved_arms.push(MatchArm {
                 pattern: resolved_pattern,
@@ -264,10 +240,8 @@ impl <'a> SemAnalyzer<'a> {
                 let mut elements: Vec<SimplePattern> = Vec::new();
 
                 for pattern in tuple_pattern {
-                    elements.push(match self.resolve_simple_pattern(pattern) {
-                        Some(pattern) => pattern,
-                        None => SimplePattern::Error,
-                    });
+                    elements.push(self.resolve_simple_pattern(pattern)
+                        .unwrap_or(SimplePattern::Error));
                 }
 
                 Some(SimplePattern::Tuple(elements))
@@ -276,7 +250,8 @@ impl <'a> SemAnalyzer<'a> {
             SimplePattern::Comparison(comparison_pattern) => {
                 let op = comparison_pattern.op;
 
-                let resolved_expr = self.resolve_expr(*comparison_pattern.expr)?;
+                let resolved_expr = self.resolve_expr(*comparison_pattern.expr)
+                    .unwrap_or(Expr::Error);
 
                 Some(SimplePattern::Comparison(ComparisonPattern {
                     op,
