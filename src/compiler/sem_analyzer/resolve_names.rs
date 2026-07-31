@@ -23,10 +23,11 @@
 //! Author: Cole Francis
 
 use std::collections::HashMap;
+
 use super::SemAnalyzer;
+use super::symbol::{Symbol, SymbolKind, SymbolId};
 use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::CompilerError;
-use super::symbol::{Symbol, SymbolKind, SymbolId};
 use crate::compiler::diagnostics::Span;
 use crate::compiler::sem_analyzer::scope::Scope;
 
@@ -91,6 +92,31 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Ident(Ident::Symbol(symbol)))
             },
 
+            Expr::Unary(unary_expr) => Some(Expr::Unary(unary_expr)),
+
+            Expr::Binary(binary_expr) => Some(Expr::Binary(binary_expr)),
+
+            Expr::Tuple(tuple_expr) => {
+                let mut elements = Vec::new();
+
+                for expr in tuple_expr {
+                    let resolved_expr = match self.resolve_expr(expr) {
+                        Some(expr) => expr,
+                        None => Expr::Error,
+                    };
+
+                    elements.push(resolved_expr);
+                }
+
+                Some(Expr::Tuple(elements))
+            }
+
+            // Expr::Block(block_expr) =>
+
+            // Expr::Match(match_expr) =>
+
+            // Expr::Sample(sample_expr) =>
+
             _ => None,
         }
     }
@@ -99,6 +125,29 @@ impl <'a> SemAnalyzer<'a> {
         match ident {
             Ident::Str {val, span} => Some((val, span)),
             Ident::Symbol(_) => None,
+        }
+    }
+
+    fn find_symbol(&mut self, name: &str, span: Span) -> Option<SymbolId> {
+        let mut scope = self.current_scope;
+
+        loop {
+            let s = &self.scopes[scope];
+
+            if let Some(id) = s.symbols.get(name) {
+                return Some(*id);
+            }
+
+            match s.parent {
+                Some(parent) => scope = parent,
+                None => {
+                    self.diagnostics.error(CompilerError::UndefinedIdent {
+                        name: name.to_string(),
+                        span,
+                    });
+                    return None;
+                }
+            }
         }
     }
 
@@ -149,6 +198,61 @@ mod tests {
     use super::*;
     use crate::compiler::diagnostics::Diagnostics;
     use crate::compiler::sem_analyzer::scope::Scope;
+
+    #[test]
+    fn test_find() {
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable,
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable,
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable,
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                    ])
+                },
+                Scope {
+                    parent: Some(0),
+                    symbols: HashMap::from([
+                        ("b".to_string(), 1),
+                    ])
+                },
+                Scope {
+                    parent: Some(1),
+                    symbols: HashMap::from([
+                        ("c".to_string(), 1),
+                    ])
+                },
+            ],
+            current_scope: 1,
+
+            diagnostics: &mut Diagnostics::new(),
+        };
+
+        assert_eq!(sem_analyzer.find_symbol("a", Span{line: 1,col: 0}), Some(0));
+        assert_eq!(sem_analyzer.find_symbol("b", Span{line: 2,col: 0}), Some(1));
+        assert_eq!(sem_analyzer.find_symbol("c", Span{line: 3,col: 0}), None);
+        assert_eq!(sem_analyzer.diagnostics.num_errors(), 1);
+    }
 
     #[test]
     fn test_define_1() {
@@ -401,6 +505,38 @@ mod tests {
         }));
 
         assert_eq!(result, Some(Expr::Ident(Ident::Symbol(1))));
+    }
+
+    #[test]
+    fn expr_tuple() {
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("a".to_string(), 1),
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut Diagnostics::new(),
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Tuple(vec![
+            Expr::Ident(Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 2, col: 0},
+            }),
+            Expr::Ident(Ident::Str {
+                val: "b".to_string(),
+                span: Span{line: 2, col: 1},
+            }),
+        ]));
+
+        assert_eq!(result, Some(Expr::Tuple(vec![Expr::Ident(Ident::Symbol(1)), Expr::Error])));
     }
 
     // #[test]

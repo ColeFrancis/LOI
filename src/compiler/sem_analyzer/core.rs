@@ -23,10 +23,11 @@
 //! Author: Cole Francis
 
 use std::collections::HashMap;
+
 use super::SemAnalyzer;
 use crate::compiler::parser::ast::Program;
-use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
-use crate::compiler::sem_analyzer::symbol::{Symbol, SymbolId};
+use crate::compiler::diagnostics::Diagnostics;
+use crate::compiler::sem_analyzer::symbol::Symbol;
 use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
@@ -52,90 +53,9 @@ impl <'a> SemAnalyzer<'a> {
 
         (self.ast, self.symbols)
     }
-
-    pub(super) fn find_symbol(&mut self, name: &str, span: Span) -> Option<SymbolId> {
-        let mut scope = self.current_scope;
-
-        loop {
-            let s = &self.scopes[scope];
-
-            if let Some(id) = s.symbols.get(name) {
-                return Some(*id);
-            }
-
-            match s.parent {
-                Some(parent) => scope = parent,
-                None => {
-                    self.diagnostics.error(CompilerError::UndefinedIdent {
-                        name: name.to_string(),
-                        span,
-                    });
-                    return None;
-                }
-            }
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
-    use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::SymbolKind;
-
-    #[test]
-    fn test_find() {
-        let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    id: 0,
-                    name: "a".to_string(),
-                    kind: SymbolKind::Variable,
-                    span: Span{line: 0, col: 0},
-                },
-                Symbol {
-                    id: 1,
-                    name: "b".to_string(),
-                    kind: SymbolKind::Variable,
-                    span: Span{line: 0, col: 0},
-                },
-                Symbol {
-                    id: 2,
-                    name: "c".to_string(),
-                    kind: SymbolKind::Variable,
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    parent: None,
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                    ])
-                },
-                Scope {
-                    parent: Some(0),
-                    symbols: HashMap::from([
-                        ("b".to_string(), 1),
-                    ])
-                },
-                Scope {
-                    parent: Some(1),
-                    symbols: HashMap::from([
-                        ("c".to_string(), 1),
-                    ])
-                },
-            ],
-            current_scope: 1,
-
-            diagnostics: &mut Diagnostics::new(),
-        };
-
-        assert_eq!(sem_analyzer.find_symbol("a", Span{line: 1,col: 0}), Some(0));
-        assert_eq!(sem_analyzer.find_symbol("b", Span{line: 2,col: 0}), Some(1));
-        assert_eq!(sem_analyzer.find_symbol("c", Span{line: 3,col: 0}), None);
-        assert_eq!(sem_analyzer.diagnostics.num_errors(), 1);
-    }
 }

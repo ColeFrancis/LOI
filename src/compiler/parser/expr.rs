@@ -37,11 +37,13 @@ impl<'a> Parser<'a> {
     // Error Handling:
     //  If any portion of an expression contians an error, the entire expression will be
     //  treated as Expr::Error. 
-    //      ex: (a+2, 1 + (2 + ), 1) is Expr::Error
-    //  One "exception" to this is if the return portion of a match or sample expression
-    //  contains an error, only the return portion of the match expression will be Expr::Error
-    //      ex: match a {1 => 2+, _ => 0} is match a {1 => Expr::Error, _ => 0} not Expr::Error
-    //      ex match a {1+ => 1, _ => 0} is Expr::Error
+    //      ex: (a+2, 1 + (2 + ), 1) is Expr::Error because nothing is added to 2
+    //  Two "exceptions" to this are:
+    //      if the return portion of a match or sample expression contains an error, 
+    //     only the return portion of the match expression will be Expr::Error
+    //          ex: match a {1 => 2+, _ => 0} is match a {1 => Expr::Error, _ => 0} not Expr::Error
+    //          ex match a {1+ => 1, _ => 0} is Expr::Error
+    //      if one part of a tuple expression is an error, only that portion is Expr::Error
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
         let mut lhs = self.parse_prefix()?;
 
@@ -123,12 +125,22 @@ impl<'a> Parser<'a> {
                     TokenKind::RParen => first,
 
                     TokenKind::Comma => {
-                        let mut elements = vec![first?];
-                        elements.push(self.parse_expr(0)?);
+                        let mut elements = vec![match first {
+                            Some(expr) => expr,
+                            None => Expr::Error,
+                        }];
+
+                        elements.push( match self.parse_expr(0) {
+                            Some(expr) => expr,
+                            None => Expr::Error,
+                        });
 
                         while self.peek().kind == TokenKind::Comma {
                             self.next();
-                            elements.push(self.parse_expr(0)?);
+                            elements.push( match self.parse_expr(0) {
+                                Some(expr) => expr,
+                                None => Expr::Error,
+                            });
                         }
 
                         self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
@@ -947,7 +959,13 @@ mod tests {
 
         let result = parser.parse_expr(0);
 
-        assert_eq!(result, None);
+        diagnostics.debug_print();
+
+        assert_eq!(result, Some(Expr::Tuple(vec![
+            Expr::Literal(Literal::Int(1)),
+            Expr::Error,
+            Expr::Literal(Literal::Int(3)),
+        ])));
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
