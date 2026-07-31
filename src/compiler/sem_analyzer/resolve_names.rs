@@ -48,21 +48,24 @@ impl <'a> SemAnalyzer<'a> {
     //     }
     // }
 
-    // fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
-    //     let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
-    //     let symbol_id = self.define_symbol(
-    //         name, 
-    //         SymbolKind::Variable, 
-    //         span,
-    //     )?;
+    fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
+        let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
+        let symbol_id = self.define_symbol(
+            name, 
+            SymbolKind::Variable, 
+            span,
+        )?;
 
-    //     let expr = self.resolve_expr(stmt.expr)?;
+        let expr = match self.resolve_expr(stmt.expr) {
+            Some(expr) => expr,
+            None => Expr::Error,
+        };
         
-    //     Some(LetStatement {
-    //         name: Ident::Symbol(symbol_id),
-    //         expr,
-    //     })
-    // }
+        Some(LetStatement {
+            name: Ident::Symbol(symbol_id),
+            expr,
+        })
+    }
 
     // fn resolve_ent(&mut self, ent_t) -> ann_ast::EntType {
 

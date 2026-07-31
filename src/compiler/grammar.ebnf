@@ -34,6 +34,7 @@ mod_type = "Mod" "(" int_literal ")" ;
 expr = 
     binary_expr
     | tuple_expr
+    | block_expr
     | match_expr
     | sample_expr ;
 
@@ -62,6 +63,14 @@ atom =
 
  tuple_expr =
      "(" expr "," expr ("," expr)* ")" ;
+
+block_expr = 
+    "{"
+        let_stmt*
+        expr
+    "}" ;
+
+let_stmt = "let" IDENT "=" expr ";" ;
 
 match_expr =
     "match" expr "{"
@@ -114,21 +123,13 @@ set_ent = "{" IDENT ("," IDENT)* "}" ;
 ////////////////////////////////////////////////////////////////////////////////
 
 rel_decl =
-    "rel_t" IDENT ":" "(" param_list? ")" "->" type "=" (expr | block_expr) ";" ;
+    "rel_t" IDENT ":" "(" param_list? ")" "->" type "=" expr ";" ;
 
 param_list =
     param ("," param)* ;
 
 param =
     IDENT ":" type ;
-
-block_expr = 
-    "{"
-        let_stmt*
-        expr
-    "}" ;
-
-let_stmt = "let" IDENT "=" expr ";" ;
 
 ////////////////////////////////////////////////////////////////////////////////
 

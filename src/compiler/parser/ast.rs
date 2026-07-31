@@ -68,6 +68,7 @@ pub enum Expr {
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
+    Block(BlockExpr),
     Match(MatchExpr),
     Sample(Vec<SampleArm>),
     Error,
@@ -118,6 +119,12 @@ pub enum CompOp {
     Gt,         // >
     Le,         // <=
     Ge,         // >=
+}
+
+#[derive(PartialEq, Debug)]
+pub struct BlockExpr {
+    pub statements: Vec<Statement>,
+    pub expr: Box<Expr>,
 }
 
 #[derive(PartialEq, Debug)]
@@ -206,19 +213,7 @@ pub struct RelType {
     pub name: Ident,
     pub params: Vec<Param>,
     pub return_type: Type,
-    pub body: RelBody,
-}
-
-#[derive(PartialEq, Debug)]
-pub enum RelBody {
-    Expr(Expr),
-    Block(BlockExpr),
-}
-
-#[derive(PartialEq, Debug)]
-pub struct BlockExpr {
-    pub statements: Vec<Statement>,
-    pub expr: Expr,
+    pub body: Expr,
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -56,14 +56,10 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Equals, &SyncRule::Item)?;
 
-        // parse_block_expr returns Option, parse_expr always returns Expr even if its an Expr:Error
-        let body = match self.peek().kind {
-            TokenKind::LBrace => self.parse_block_expr().map(RelBody::Block),
-            _ => Some(RelBody::Expr(match self.parse_expr(0) {
-                Some(expr) => expr,
-                None => Expr::Error,
-            })),
-        }?;
+        let body = match self.parse_expr(0) {
+            Some(expr) => expr,
+            None => Expr::Error,
+        };
 
         self.expect(TokenKind::Semicolon, &SyncRule::Item)?;
 
@@ -72,34 +68,6 @@ impl<'a> Parser<'a> {
             params,
             return_type,
             body,
-        })
-    }
-
-    // { not consumed
-    fn parse_block_expr(&mut self) -> Option<BlockExpr> {
-        self.expect(TokenKind::LBrace, &SyncRule::Item)?;
-
-        let mut statements = Vec::new();
-
-        while self.peek().kind == TokenKind::Let {
-            self.next();
-
-            statements.push(match self.parse_let_stmt() {
-                Some(stmt) => Statement::Let(stmt),
-                None => Statement::Error,
-            });
-        }
-
-        let expr = match self.parse_expr(0) {
-            Some(expr) => expr,
-            None => Expr::Error,
-        };
-
-        self.expect(TokenKind::RBrace, &SyncRule::Item)?;
-
-        Some(BlockExpr {
-            statements,
-            expr,
         })
     }
 }
@@ -152,11 +120,11 @@ mod tests {
                 param_type: Type::Bool,
             }],
             return_type: Type::Bool,
-            body: RelBody::Expr(Expr::Binary(BinaryExpr {
+            body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(build_ident_str("a"))),
                 op: BinaryOp::Mul,
                 right: Box::new(Expr::Ident(build_ident_str("b")))
-            })),
+            }),
         }));
     }
 
@@ -186,12 +154,12 @@ mod tests {
             name: build_ident_str("FLIP"),
             params: vec![],
             return_type: Type::Bool,
-            body: RelBody::Block(BlockExpr {
+            body: Expr::Block(BlockExpr {
                 statements: vec![Statement::Let(LetStatement {
                     name: build_ident_str("p"),
                     expr: Expr::Literal(Literal::Real(0.5)),
                 })],
-                expr: Expr::Sample( vec![
+                expr: Box::new(Expr::Sample( vec![
                     SampleArm {
                         prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
                         expr: Expr::Literal(Literal::Bool(true)),
@@ -200,7 +168,7 @@ mod tests {
                         prob: Prob::Default,
                         expr: Expr::Literal(Literal::Bool(false)),
                     },
-                ]),
+                ])),
             }),
         }));
     }
@@ -255,7 +223,7 @@ mod tests {
             name: build_ident_str("NUM"),
             params: vec![],
             return_type: Type::Real,
-            body: RelBody::Block(BlockExpr {
+            body: Expr::Block(BlockExpr {
                 statements: vec![
                     Statement::Error,
                     Statement::Let(LetStatement {
@@ -263,11 +231,11 @@ mod tests {
                         expr: Expr::Literal(Literal::Real(0.4)),
                     })
                 ],
-                expr: Expr::Binary(BinaryExpr {
+                expr: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Ident(build_ident_str("p"))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(build_ident_str("q")))
-                }),
+                })),
             }),
         }));
         assert_eq!(diagnostics.num_errors(), 1);
@@ -296,7 +264,7 @@ mod tests {
             name: build_ident_str("NUM"),
             params: vec![],
             return_type: Type::Real,
-            body: RelBody::Block(BlockExpr {
+            body: Expr::Block(BlockExpr {
                 statements: vec![
                     Statement::Let(LetStatement {
                         name: build_ident_str("p"),
@@ -307,7 +275,7 @@ mod tests {
                         expr: Expr::Literal(Literal::Real(0.4)),
                     }),
                 ],
-                expr: Expr::Error,
+                expr: Box::new(Expr::Error),
             }),
         }));
         assert_eq!(diagnostics.num_errors(), 1);
@@ -358,6 +326,6 @@ mod tests {
         let result = parser.parse_rel_t();
 
         assert_eq!(result, None);
-        assert_eq!(diagnostics.num_errors(), 1);
+        assert_eq!(diagnostics.num_errors(), 2);
     }
 }

@@ -152,6 +152,11 @@ impl<'a> Parser<'a> {
                 }
             }
 
+            TokenKind::LBrace => {
+                self.next();
+                self.parse_block_expr()
+            }
+
             TokenKind::Match => {
                 self.next();
                 self.parse_match()
@@ -191,6 +196,33 @@ impl<'a> Parser<'a> {
             TokenKind::Caret    => Some((BinaryOp::Pow, 31, 30)),
             _ => None,
         }
+    }
+
+
+    // { already consumed
+    fn parse_block_expr(&mut self) -> Option<Expr> {
+        let mut statements = Vec::new();
+
+        while self.peek().kind == TokenKind::Let {
+            self.next();
+
+            statements.push(match self.parse_let_stmt() {
+                Some(stmt) => Statement::Let(stmt),
+                None => Statement::Error,
+            });
+        }
+
+        let expr = match self.parse_expr(0) {
+            Some(expr) => expr,
+            None => Expr::Error,
+        };
+
+        self.expect(TokenKind::RBrace, &SyncRule::Item)?;
+
+        Some(Expr::Block(BlockExpr {
+            statements,
+            expr: Box::new(expr),
+        }))
     }
 
     // Match token already consumed
@@ -413,6 +445,18 @@ mod tests {
                 format!("(tuple {})", elems)
             }
 
+            // (block (let ident a) b)
+            Expr::Block(block) => {
+                let statements = block
+                    .statements
+                    .iter()
+                    .map(build_statement)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                format!("(block {} {})", statements, build_s_expr(&block.expr))
+            }
+
             // (match x (arm 0 1) (arm _ 2))
             Expr::Match(match_expr) => {
                 let arms = match_expr 
@@ -437,6 +481,22 @@ mod tests {
             }
 
             Expr::Error => {
+                format!("(error)")
+            }
+        }
+    }
+
+    fn build_statement(stmt: &Statement) -> String {
+        match stmt {
+            Statement::Let(let_stmt) => {
+                let name = match &let_stmt.name {
+                    ast::Ident::Str {val, ..} => val.clone(),
+                    ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
+                };
+
+                format!("(let {} {})", name, build_s_expr(&let_stmt.expr))
+            }
+            Statement::Error => {
                 format!("(error)")
             }
         }
@@ -698,6 +758,27 @@ mod tests {
     }
 
     #[test]
+    fn block_expr() {
+        // {
+        //     let n = 1;
+            
+        //     n + 1
+        // } + 2
+        let kinds: Vec<TokenKind> = vec![LBrace, 
+            Let, Ident("n".to_string()), Equals, IntLiteral(1), Semicolon,
+            Ident("n".to_string()), Plus, IntLiteral(1),
+            RBrace, Plus, IntLiteral(2), Eof];
+        let tokens = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let result = Parser::new(tokens, &mut diagnostics).parse_expr(0).unwrap();
+
+        let result_str = build_s_expr(&result);
+
+        assert_eq!(result_str, "(+ (block (let n 1) (+ n 1)) 2)".to_string());
+    }
+
+    #[test]
     fn match_expr() {
         // match a {
         //     1 => 1+a,
@@ -871,6 +952,98 @@ mod tests {
     }
 
     #[test]
+    fn bad_block_expr_1() {
+        // {
+        //     let m = 1;
+        //     let n = 1 // no semicolon
+        //     n + 1
+        // }
+        let kinds: Vec<TokenKind> = vec![LBrace, 
+            Let, Ident("m".to_string()), Equals, IntLiteral(1), Semicolon,
+            Let, Ident("n".to_string()), Equals, IntLiteral(1),
+            Ident("n".to_string()), Plus, IntLiteral(1),
+            RBrace, Eof];
+        let tokens = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let result = Parser::new(tokens, &mut diagnostics).parse_expr(0);
+
+        diagnostics.debug_print();
+
+        // Synchronization will eat the expression coming after, 
+        //  then the block expression parser will expect an expression and
+        //  emit another error
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: ast::Ident::Str{
+                        val: "m".to_string(),
+                        span: Span{line: 0, col: 0},
+                    },
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+                Statement::Error,
+            ],
+            expr: Box::new(Expr::Error),
+        })));
+        assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn bad_block_expr_2() {
+        // {
+        //     let n = 1;
+            
+        //     // no expr
+        // }
+        let kinds: Vec<TokenKind> = vec![LBrace, 
+            Let, Ident("n".to_string()), Equals, IntLiteral(1), Semicolon,
+            RBrace, Eof];
+        let tokens = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let result = Parser::new(tokens, &mut diagnostics).parse_expr(0);
+
+        diagnostics.debug_print();
+
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: ast::Ident::Str{
+                        val: "n".to_string(),
+                        span: Span{line: 0, col: 0},
+                    },
+                    expr: Expr::Literal(Literal::Int(1)),
+                })
+            ],
+            expr: Box::new(Expr::Error),
+        })));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn bad_block_expr_3() {
+        // {
+        //     let n = 1;
+            
+        //     n + 1
+        //  // no end brace
+        let kinds: Vec<TokenKind> = vec![LBrace, 
+            Let, Ident("n".to_string()), Equals, IntLiteral(1), Semicolon,
+            Ident("n".to_string()), Plus, IntLiteral(1),
+            Eof];
+        let tokens = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let result = Parser::new(tokens, &mut diagnostics).parse_expr(0);
+
+        diagnostics.debug_print();
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
     fn bad_match_1() {
         //     match { // missing expression after match
         //         a => 1,
@@ -887,8 +1060,6 @@ mod tests {
         let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse_expr(0);
-
-        diagnostics.debug_print();
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);

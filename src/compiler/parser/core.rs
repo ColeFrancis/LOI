@@ -259,7 +259,7 @@ mod tests {
                     name: build_ident_str("ONE"),
                     params: vec![],
                     return_type: Type::Real,
-                    body: RelBody::Expr(Expr::Literal(Literal::Int(1))),
+                    body: Expr::Literal(Literal::Int(1)),
                 }),
                 Item::Net(Net {
                     name: build_ident_str("EMPTY"),
@@ -316,7 +316,7 @@ net EMPTY {}", &mut diagnostics).tokenize();
                     },
                     params: vec![],
                     return_type: Type::Real,
-                    body: RelBody::Expr(Expr::Literal(Literal::Int(1))),
+                    body: Expr::Literal(Literal::Int(1)),
                 }),
                 Item::Net(Net {
                     name: ast::Ident::Str {
