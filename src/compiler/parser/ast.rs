@@ -146,6 +146,7 @@ pub enum SimplePattern {
     Ident(Ident),
     Tuple(Vec<SimplePattern>),
     Comparison(ComparisonPattern),
+    Error,
 }
 
 #[derive(PartialEq, Debug)]

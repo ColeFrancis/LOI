@@ -80,6 +80,9 @@ impl <'a> SemAnalyzer<'a> {
 
     // }
 
+    // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
+    //  then the whole expression does not become an error, only that portion. This allows for
+    //  more helpful diagnostics
     fn resolve_expr(&mut self, expr: Expr) -> Option<Expr> {
         match expr { 
             Expr::Literal(literal) => Some(Expr::Literal(literal)),
@@ -92,9 +95,39 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Ident(Ident::Symbol(symbol)))
             },
 
-            Expr::Unary(unary_expr) => Some(Expr::Unary(unary_expr)),
+            Expr::Unary(unary_expr) => {
+                let op = unary_expr.op;
 
-            Expr::Binary(binary_expr) => Some(Expr::Binary(binary_expr)),
+                let resolved_expr = match self.resolve_expr(*unary_expr.expr) {
+                    Some(expr) => expr,
+                    None => Expr::Error,
+                };
+
+                Some(Expr::Unary(UnaryExpr {
+                    op,
+                    expr: Box::new(resolved_expr),
+                }))
+            }
+
+            Expr::Binary(binary_expr) => {
+                let resolved_left = match self.resolve_expr(*binary_expr.left) {
+                    Some(expr) => expr,
+                    None => Expr::Error,
+                };
+
+                let op = binary_expr.op;
+
+                let resolved_right = match self.resolve_expr(*binary_expr.right) {
+                    Some(expr) => expr,
+                    None => Expr::Error,
+                };
+
+                Some(Expr::Binary(BinaryExpr {
+                    left: Box::new(resolved_left),
+                    op,
+                    right: Box::new(resolved_right),
+                }))
+            }
 
             Expr::Tuple(tuple_expr) => {
                 let mut elements = Vec::new();
@@ -141,14 +174,120 @@ impl <'a> SemAnalyzer<'a> {
                 }))
             }
 
-            // Expr::Match(match_expr) =>
+            Expr::Match(match_expr) => {
+                match self.resolve_match_expr(match_expr) {
+                    Some(expr) => Some(Expr::Match(expr)),
+                    None => Some(Expr::Error),
+                }
+            }
 
-            // Expr::Sample(sample_expr) =>
+            Expr::Sample(sample_expr) => {
+                let mut resolved_arms: Vec<SampleArm> = Vec::new();
 
-            _ => None, // Temporary untill all other match arms are completed
+                for arm in sample_expr {
+                    let resolved_prob = match arm.prob {
+                        Prob::Default => Prob::Default,
+                        Prob::Expr(expr) => Prob::Expr(match self.resolve_expr(expr) {
+                            Some(resolved_expr) => resolved_expr,
+                            None => Expr::Error,
+                        })
+                    };
+
+                    let resolved_expr = match self.resolve_expr(arm.expr) {
+                        Some(expr) => expr,
+                        None => Expr::Error,
+                    };
+
+                    resolved_arms.push(SampleArm {
+                        prob: resolved_prob,
+                        expr: resolved_expr,
+                    });
+                }
+
+                Some(Expr::Sample(resolved_arms))
+            }
+
+            Expr::Error => Some(Expr::Error),
         }
     }
 
+    fn resolve_match_expr(&mut self, match_expr: MatchExpr) -> Option<MatchExpr> {
+        let resolved_scrutinee = match self.resolve_expr(*match_expr.scrutinee) {
+            Some(expr) => expr,
+            None => Expr::Error,
+        };
+
+        let mut resolved_arms: Vec<MatchArm> = Vec::new();
+
+        for arm in match_expr.arms {
+            let mut resolved_pattern: Vec<SimplePattern> = Vec::new();
+
+            for simple_pattern in arm.pattern {
+                resolved_pattern.push(match self.resolve_simple_pattern(simple_pattern) {
+                    Some(pattern) => pattern,
+                    None => SimplePattern::Error,
+                });
+            }
+
+            let resolved_expr = match self.resolve_expr(arm.expr) {
+                Some(expr) => expr,
+                None => Expr::Error,
+            };
+
+            resolved_arms.push(MatchArm {
+                pattern: resolved_pattern,
+                expr: resolved_expr,
+            });
+        }
+
+        Some(MatchExpr {
+            scrutinee: Box::new(resolved_scrutinee),
+            arms: resolved_arms,
+        })
+    }
+
+    fn resolve_simple_pattern(&mut self, simple_pattern: SimplePattern) -> Option<SimplePattern> {
+        match simple_pattern {
+            SimplePattern::Default => Some(SimplePattern::Default),
+
+            SimplePattern::Literal(literal) => Some(SimplePattern::Literal(literal)),
+
+            SimplePattern::Ident(ident) => {
+                let (name, span) = self.extract_ident_str(ident)?;
+
+                let symbol = self.find_symbol(&name, span)?;
+
+                Some(SimplePattern::Ident(Ident::Symbol(symbol)))
+            }
+
+            SimplePattern::Tuple(tuple_pattern) => {
+                let mut elements: Vec<SimplePattern> = Vec::new();
+
+                for pattern in tuple_pattern {
+                    elements.push(match self.resolve_simple_pattern(pattern) {
+                        Some(pattern) => pattern,
+                        None => SimplePattern::Error,
+                    });
+                }
+
+                Some(SimplePattern::Tuple(elements))
+            }
+
+            SimplePattern::Comparison(comparison_pattern) => {
+                let op = comparison_pattern.op;
+
+                let resolved_expr = self.resolve_expr(*comparison_pattern.expr)?;
+
+                Some(SimplePattern::Comparison(ComparisonPattern {
+                    op,
+                    expr: Box::new(resolved_expr),
+                }))
+            }
+
+            SimplePattern::Error => Some(SimplePattern::Error),
+        }
+    }
+ 
     fn extract_ident_str(&self, ident: Ident) -> Option<(String, Span)> {
         match ident {
             Ident::Str {val, span} => Some((val, span)),
@@ -536,6 +675,42 @@ mod tests {
     }
 
     #[test]
+    fn expr_binary() {
+        // a + 1  // a undefined
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 0, col: 0},
+            })),
+            op: BinaryOp::Add,
+            right: Box::new(Expr::Literal(Literal::Int(1))),
+        }));
+
+        assert_eq!(result, Some(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Error),
+            op: BinaryOp::Add,
+            right: Box::new(Expr::Literal(Literal::Int(1))),
+        })));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
     fn expr_tuple() {
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -665,6 +840,188 @@ mod tests {
             expr: Box::new(Expr::Error),
         })));
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn expr_match_1() {
+        // match a {
+        //     >= 0.5 => b, // b undefined
+        //     _ => 0
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("a".to_string(), 1),
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Match(MatchExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 1, col: 0}
+            })),
+            arms: vec![
+                MatchArm {
+                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                        op: CompOp::Ge,
+                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                    })],
+                    expr: Expr::Ident(Ident::Str {
+                        val: "b".to_string(),
+                        span: Span{line: 2, col: 0},
+                    }),
+                },
+                MatchArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Int(0)),
+                }
+            ]
+        }));
+
+        assert_eq!(result, Some(Expr::Match(MatchExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(1))),
+            arms: vec![
+                MatchArm {
+                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                        op: CompOp::Ge,
+                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                    })],
+                    expr: Expr::Error,
+                },
+                MatchArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Int(0)),
+                }
+            ]
+        })));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn expr_match_2() {
+        // match a {  // a undefined
+        //     >= 0.5 => b,
+        //     _ => 0
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("b".to_string(), 10),
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Match(MatchExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 1, col: 0}
+            })),
+            arms: vec![
+                MatchArm {
+                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                        op: CompOp::Ge,
+                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                    })],
+                    expr: Expr::Ident(Ident::Str {
+                        val: "b".to_string(),
+                        span: Span{line: 2, col: 0},
+                    }),
+                },
+                MatchArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Int(0)),
+                }
+            ]
+        }));
+
+        assert_eq!(result, Some(Expr::Match(MatchExpr {
+            scrutinee: Box::new(Expr::Error),
+            arms: vec![
+                MatchArm {
+                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                        op: CompOp::Ge,
+                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                    })],
+                    expr: Expr::Ident(Ident::Symbol(10)),
+                },
+                MatchArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Int(0)),
+                }
+            ]
+        })));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn expr_sample() {
+        // sample {
+        //     a => b, // b undefined
+        //     _ => false
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Sample(vec![
+            SampleArm {
+                prob: Prob::Expr(Expr::Ident(Ident::Str{
+                    val: "a".to_string(),
+                    span: Span{line: 0, col: 0}
+                })),
+                expr: Expr::Ident(Ident::Str{
+                    val: "b".to_string(),
+                    span: Span{line: 1, col: 0},
+                })
+            },
+            SampleArm {
+                prob: Prob::Default,
+                expr: Expr::Literal(Literal::Bool(false)),
+            }
+        ]));
+
+        assert_eq!(result, Some(Expr::Sample(vec![
+            SampleArm {
+                prob: Prob::Expr(Expr::Error),
+                expr: Expr::Error,
+            },
+            SampleArm {
+                prob: Prob::Default,
+                expr: Expr::Literal(Literal::Bool(false)),
+            }
+        ])));
+        assert_eq!(diagnostics.num_errors(), 2);
     }
 
     #[test]

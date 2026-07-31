@@ -565,6 +565,10 @@ mod tests {
                     build_s_expr(&comp.expr),
                 )
             }
+
+            SimplePattern::Error => {
+                format!("(error)")
+            }
         }
     }
 

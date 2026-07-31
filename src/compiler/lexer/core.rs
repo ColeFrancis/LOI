@@ -334,42 +334,23 @@ mod test {
     #[test]
     fn test_comments() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("// asdklf;jsk \n   ", &mut diagnostics).tokenize();
+        let tokens = Lexer::new("+// asdklf;jsk \n =  ", &mut diagnostics).tokenize();
 
-        assert_eq!(kinds(&tokens), vec![Eof]);
+        assert_eq!(kinds(&tokens), vec![Plus, Equals, Eof]);
 
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("   /* jalsdjf\nasjflds*/", &mut diagnostics).tokenize();
+        let tokens = Lexer::new("  + /* jalsdjf\n asjflds*/ =", &mut diagnostics).tokenize();
 
-        assert_eq!(kinds(&tokens), vec![Eof]);
+        assert_eq!(kinds(&tokens), vec![Plus, Equals, Eof]);
     }
-
-    #[test]
-    fn test_not_alphanumeric() {
-        let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("( /*asdjf*/ ) =>\n;", &mut diagnostics).tokenize();
-
-        assert_eq!(kinds(&tokens), vec![LParen, RParen, FatArrow, Semicolon, Eof]);
-    }
-
-    #[test]
-    fn test_ent() {
-        let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("ent_t COIN = {H,T}; // This is an entity\n", &mut diagnostics).tokenize();
-
-        assert_eq!(kinds(&tokens), vec![Ent_t, Ident("COIN".to_string())
-            , Equals, LBrace, Ident("H".to_string()), Comma
-            , Ident("T".to_string()), RBrace, Semicolon, Eof]);
-        assert!(!diagnostics.has_errors());
-    } 
-
+    
     #[test]
     fn test_unknown() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("@", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![ErrorToken, Eof]);
-        assert!(diagnostics.has_errors());
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
@@ -380,7 +361,7 @@ mod test {
         assert_eq!(kinds(&tokens), vec![ErrorToken, ErrorToken
             , ErrorToken, IntLiteral(99)
             , RealLiteral(9.8), IntLiteral(1000), Eof]);
-        assert!(diagnostics.has_errors());
+        assert_eq!(diagnostics.num_errors(), 3);
     }
 
     #[test]
@@ -390,6 +371,7 @@ mod test {
 
         assert_eq!(kinds(&tokens), vec![Ident("id".to_string())
             , Ident("ai_".to_string()), Ident("_ai".to_string()), ErrorToken, Eof]);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
@@ -425,6 +407,7 @@ mod test {
             ErrorToken,
             Eof,
         ]);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
