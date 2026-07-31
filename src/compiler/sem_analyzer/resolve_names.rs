@@ -22,65 +22,44 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
 use super::SemAnalyzer;
 use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::CompilerError;
 use super::symbol::{Symbol, SymbolKind, SymbolId};
-
-// TEMPORARY
 use crate::compiler::diagnostics::Span;
+use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {
-        // for item in self.ast.items {
-        //     let ann_item = match self.resolve_item(item) {
+        // for mut item in self.ast.items {
+        //     item = match self.resolve_item(item) {
         //         Some(item) => item,
-        //         None => ann_ast::Item::Error,
-        //     };
-
-        //     self.ann_ast.items.push(ann_item);
+        //         None => Item::Error,
+        //     }
         // }
     }
 
-    // fn resolve_item(&mut self, item: ast::Item) -> Option<ann_ast::Item> {
+    // fn resolve_item(&mut self, item: Item) -> Option<Item> {
     //     match item {
-    //         // ast::Item::Let(stmt) => match self.resolve_let(stmt) {
-    //         //     Some(ann_stmt) => Some(ann_ast::Item::Let(ann_stmt)),
-    //         //     None => None,
-    //         // }
-
-    //         // ast::Item::Ent(ent_t) => {
-    //         //     ann_ast::Item::Ent(self.resolve_ent(ent_t))
-    //         // }
-
-    //         // ast::Item::Rel(rel_t) => {
-    //         //     ann_ast::Item::Rel(self.resolve_rel(rel_t))
-    //         // }
-
-    //         // ast::Item::Net(net) => {
-    //         //     ann_ast::Item::Net(self.resolve_net(net))
-    //         // }
-
-    //         // ast::Item::Error => {
-    //         //     ann_ast::Item::Error
-    //         // }
+    //         Item::Let(stmt) => self.resolve_let(stmt)
 
     //         _ => None,
     //     }
     // }
 
-    // fn resolve_let(&mut self, stmt: ast::LetStatement) -> Option<ann_ast::LetStatement> {
-    //     let expr = self.resolve_expr(stmt.expr)?;
-
-    //     // TODO: add span to ast
-    //     let symbol = self.define_symbol(
-    //         stmt.name, 
+    // fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
+    //     let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
+    //     let symbol_id = self.define_symbol(
+    //         name, 
     //         SymbolKind::Variable, 
-    //         Span{line: 0, col: 0},
+    //         span,
     //     )?;
+
+    //     let expr = self.resolve_expr(stmt.expr)?;
         
-    //     Some(ann_ast::LetStatement {
-    //         symbol,
+    //     Some(LetStatement {
+    //         name: Ident::Symbol(symbol_id),
     //         expr,
     //     })
     // }
@@ -97,12 +76,30 @@ impl <'a> SemAnalyzer<'a> {
 
     // }
 
-    // fn resolve_expr(&mut self, expr: ast::Expr) -> Option<ann_ast::Expr> {
-    //     // TODO
-    //     Some(ann_ast::Expr::Error)
-    // }
+    fn resolve_expr(&mut self, expr: Expr) -> Option<Expr> {
+        match expr { 
+            Expr::Literal(literal) => Some(Expr::Literal(literal)),
 
-    pub fn define_symbol(&mut self, name: String, kind: SymbolKind, span: Span) -> Option<SymbolId> {
+            Expr::Ident(ident) => {
+                let (name, span) = self.extract_ident_str(ident)?;
+
+                let symbol = self.find_symbol(&name, span)?;
+
+                Some(Expr::Ident(Ident::Symbol(symbol)))
+            },
+
+            _ => None,
+        }
+    }
+
+    fn extract_ident_str(&self, ident: Ident) -> Option<(String, Span)> {
+        match ident {
+            Ident::Str {val, span} => Some((val, span)),
+            Ident::Symbol(_) => None,
+        }
+    }
+
+    fn define_symbol(&mut self, name: String, kind: SymbolKind, span: Span) -> Option<SymbolId> {
         // No duplicate definitions
         if self.scopes[self.current_scope].symbols.contains_key(&name) {
             self.diagnostics.error(CompilerError::DuplicateDefinition {
@@ -126,12 +123,27 @@ impl <'a> SemAnalyzer<'a> {
 
         Some(id)
     }
+
+    fn create_scope(&mut self) {
+        let new_scope = self.scopes.len();
+
+        self.scopes.push(Scope {
+            parent: Some(self.current_scope),
+            symbols: HashMap::new(),
+        });
+
+        self.current_scope = new_scope;
+    }
+
+    fn exit_scope(&mut self) -> Option<()> {
+        self.current_scope = self.scopes[self.current_scope].parent?;
+        Some(())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use crate::compiler::diagnostics::Diagnostics;
     use crate::compiler::sem_analyzer::scope::Scope;
 
@@ -282,4 +294,85 @@ mod tests {
             }
         ]);
     }
+
+    #[test]
+    fn enter_exit_scope() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics,
+        );
+
+        sem_analyzer.create_scope();
+
+        assert_eq!(sem_analyzer.current_scope, 1);
+        assert_eq!(sem_analyzer.scopes, vec![
+            Scope {
+                parent: None,
+                symbols: HashMap::from([
+                ])
+            },
+            Scope {
+                parent: Some(0),
+                symbols: HashMap::from([
+                ])
+            }
+        ]);
+
+        let result = sem_analyzer.exit_scope();
+
+        assert_eq!(result, Some(()));
+        assert_eq!(sem_analyzer.current_scope, 0);
+
+        let result = sem_analyzer.exit_scope();
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn expr_ident_1() {
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut Diagnostics::new(),
+        };
+    }
+
+    // #[test]
+    // fn resolve_let() {
+    //     let mut diagnostics = Diagnostics::new()
+    //     let mut sem_analyzer = SemAnalyzer::new(
+    //         Program{items: vec![]},
+    //         &mut diagnostics,
+    //     );
+
+    //     let result = sem_analyzer.resolve_let(LetStatement {
+    //         name: Ident::Str {
+    //             val: "a".to_string(),
+    //             span: Span{line: 1, col: 2},
+    //         },
+    //         expr: Expr::Literal(Literal::Bool(false)),
+    //     });
+
+    //     assert_eq!(result, Some(LetStatement {
+    //         name: Ident::Symbol(0),
+    //         expr: Expr::Literal(Literal::Bool(false)),
+    //     }));
+    //     assert_eq!(sem_analyzer.symbols, vec![
+    //         Symbol {
+    //             id: 0,
+    //             name: "a".to_string(),
+    //             kind: SymbolKind::Variable,
+    //             span: Span{line: 1, col: 2},
+    //         },
+    //     ]);
+    // }
 }

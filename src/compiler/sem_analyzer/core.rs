@@ -22,17 +22,24 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
 use super::SemAnalyzer;
 use crate::compiler::parser::ast::Program;
-use crate::compiler::diagnostics::Diagnostics;
+use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 use crate::compiler::sem_analyzer::symbol::{Symbol, SymbolId};
+use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
     pub fn new(ast: Program, diagnostics: &'a mut Diagnostics) -> Self {
         Self {
             ast,
             symbols: Vec::new(),
-            scopes: Vec::new(),
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::new(),
+                }
+            ],
             current_scope: 0,
             diagnostics,
         }
@@ -46,7 +53,7 @@ impl <'a> SemAnalyzer<'a> {
         (self.ast, self.symbols)
     }
 
-    pub(super) fn lookup_symbol(&self, name: &str) -> Option<SymbolId> {
+    pub(super) fn find_symbol(&mut self, name: &str, span: Span) -> Option<SymbolId> {
         let mut scope = self.current_scope;
 
         loop {
@@ -58,7 +65,13 @@ impl <'a> SemAnalyzer<'a> {
 
             match s.parent {
                 Some(parent) => scope = parent,
-                None => return None,
+                None => {
+                    self.diagnostics.error(CompilerError::UndefinedIdent {
+                        name: name.to_string(),
+                        span,
+                    });
+                    return None;
+                }
             }
         }
     }
@@ -70,11 +83,10 @@ mod tests {
     use std::collections::HashMap;
     use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::sem_analyzer::symbol::SymbolKind;
-    use crate::compiler::diagnostics::Span;
 
     #[test]
-    fn test_lookup() {
-        let sem_analyzer = SemAnalyzer {
+    fn test_find() {
+        let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
@@ -121,8 +133,9 @@ mod tests {
             diagnostics: &mut Diagnostics::new(),
         };
 
-        assert_eq!(sem_analyzer.lookup_symbol("a"), Some(0));
-        assert_eq!(sem_analyzer.lookup_symbol("b"), Some(1));
-        assert_eq!(sem_analyzer.lookup_symbol("c"), None);
+        assert_eq!(sem_analyzer.find_symbol("a", Span{line: 1,col: 0}), Some(0));
+        assert_eq!(sem_analyzer.find_symbol("b", Span{line: 2,col: 0}), Some(1));
+        assert_eq!(sem_analyzer.find_symbol("c", Span{line: 3,col: 0}), None);
+        assert_eq!(sem_analyzer.diagnostics.num_errors(), 1);
     }
 }

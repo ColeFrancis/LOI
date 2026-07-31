@@ -93,7 +93,12 @@ pub enum CompilerError {
     DuplicateDefinition {
         name: String,
         span: Span,
-    }
+    },
+
+    UndefinedIdent {
+        name: String,
+        span: Span,
+    },
 }
 
 #[derive(Debug, PartialEq)]
