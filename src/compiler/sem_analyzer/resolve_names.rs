@@ -100,18 +100,46 @@ impl <'a> SemAnalyzer<'a> {
                 let mut elements = Vec::new();
 
                 for expr in tuple_expr {
-                    let resolved_expr = match self.resolve_expr(expr) {
+                    elements.push(match self.resolve_expr(expr) {
                         Some(expr) => expr,
                         None => Expr::Error,
-                    };
-
-                    elements.push(resolved_expr);
+                    });
                 }
 
                 Some(Expr::Tuple(elements))
             }
 
-            // Expr::Block(block_expr) =>
+            Expr::Block(block_expr) => {
+                self.create_scope();
+
+                let mut resolved_statements: Vec<Statement> = Vec::new();
+
+                for stmt in block_expr.statements {
+                    match stmt {
+                        Statement::Let(let_stmt) => {
+                            resolved_statements.push(match self.resolve_let(let_stmt) {
+                                Some(resolved_let) => Statement::Let(resolved_let),
+                                None => Statement::Error,
+                            })
+                        },
+                        Statement::Error =>  {
+                            resolved_statements.push(Statement::Error)
+                        }
+                    }
+                }
+
+                let resolved_expr = match self.resolve_expr(*block_expr.expr) {
+                    Some(expr) => expr,
+                    None => Expr::Error,
+                };
+
+                self.exit_scope();
+
+                Some(Expr::Block(BlockExpr {
+                    statements: resolved_statements,
+                    expr: Box::new(resolved_expr),
+                }))
+            }
 
             // Expr::Match(match_expr) =>
 
@@ -539,33 +567,133 @@ mod tests {
         assert_eq!(result, Some(Expr::Tuple(vec![Expr::Ident(Ident::Symbol(1)), Expr::Error])));
     }
 
-    // #[test]
-    // fn resolve_let() {
-    //     let mut diagnostics = Diagnostics::new()
-    //     let mut sem_analyzer = SemAnalyzer::new(
-    //         Program{items: vec![]},
-    //         &mut diagnostics,
-    //     );
+    #[test]
+    fn expr_block() {
+        // {
+        //     let n = 1;
+        //     n
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
 
-    //     let result = sem_analyzer.resolve_let(LetStatement {
-    //         name: Ident::Str {
-    //             val: "a".to_string(),
-    //             span: Span{line: 1, col: 2},
-    //         },
-    //         expr: Expr::Literal(Literal::Bool(false)),
-    //     });
+        let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Str {
+                        val: "n".to_string(),
+                        span: Span{line: 2, col: 0},
+                    },
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Str {
+                val: "n".to_string(),
+                span: Span{line: 3, col: 0},
+            }))
+        }));
 
-    //     assert_eq!(result, Some(LetStatement {
-    //         name: Ident::Symbol(0),
-    //         expr: Expr::Literal(Literal::Bool(false)),
-    //     }));
-    //     assert_eq!(sem_analyzer.symbols, vec![
-    //         Symbol {
-    //             id: 0,
-    //             name: "a".to_string(),
-    //             kind: SymbolKind::Variable,
-    //             span: Span{line: 1, col: 2},
-    //         },
-    //     ]);
-    // }
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(1)),
+                })
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+        })));
+        assert_eq!(sem_analyzer.scopes, vec![
+            Scope {
+                parent: None,
+                symbols: HashMap::new(),
+            },
+            Scope {
+                parent: Some(0),
+                symbols: HashMap::from([
+                    ("n".to_string(), 0),
+                ])
+            }
+        ]);
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "n".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span{line: 2, col: 0},
+            }
+        ]);
+        assert_eq!(sem_analyzer.current_scope, 0);
+    }
+
+    #[test]
+    fn bad_expr_block() {
+        // {
+        //     let n = 1;
+        //     m   // undefined
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Str {
+                        val: "n".to_string(),
+                        span: Span{line: 2, col: 0},
+                    },
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Str {
+                val: "m".to_string(),
+                span: Span{line: 3, col: 0},
+            }))
+        }));
+
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(1)),
+                })
+            ],
+            expr: Box::new(Expr::Error),
+        })));
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn resolve_let() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.resolve_let(LetStatement {
+            name: Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 1, col: 2},
+            },
+            expr: Expr::Literal(Literal::Bool(false)),
+        });
+
+        assert_eq!(result, Some(LetStatement {
+            name: Ident::Symbol(0),
+            expr: Expr::Literal(Literal::Bool(false)),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "a".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span{line: 1, col: 2},
+            },
+        ]);
+    }
 }

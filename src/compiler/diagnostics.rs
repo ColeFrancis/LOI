@@ -279,4 +279,9 @@ let n = @;", &mut diagnostics).tokenize();
             },
         ]);
     }
+
+    // #[test]
+    // fn tuple_semantic() {
+
+    // }
 }
