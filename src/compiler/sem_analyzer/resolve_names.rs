@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! - Must use the same ast as in parsing, just change Idents from Ident::Str to Ident::Symbol
 //!
 //! Author: Cole Francis
 
@@ -145,7 +145,7 @@ impl <'a> SemAnalyzer<'a> {
 
             // Expr::Sample(sample_expr) =>
 
-            _ => None,
+            _ => None, // Temporary untill all other match arms are completed
         }
     }
 

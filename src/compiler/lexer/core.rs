@@ -132,7 +132,7 @@ impl<'a> Lexer<'a> {
                         self.next();
                         return Some(Token::new(TokenKind::Le, line, col));
                     } else {
-                        return Some(Token::new(TokenKind::Gt, line, col));
+                        return Some(Token::new(TokenKind::Lt, line, col));
                     }
                 }
                 b'-' => {
@@ -386,21 +386,45 @@ mod test {
     #[test]
     fn test_identifiers() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("id ai_ _ai", &mut diagnostics).tokenize();
+        let tokens = Lexer::new("id ai_ _ai 9ai", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![Ident("id".to_string())
-            , Ident("ai_".to_string()), Ident("_ai".to_string()), Eof]);
+            , Ident("ai_".to_string()), Ident("_ai".to_string()), ErrorToken, Eof]);
     }
 
     #[test]
-    fn test_rel() {
+    fn test_every_token() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("rel_t A : (a:Real) -> Real = (a / 2);", &mut diagnostics).tokenize();
+        let tokens = Lexer::new("
+            ent_t rel_t net match sample 
+            input output init let
+            Bool Impulse Int Real Mod
+            apple true 10 1.0
+            : ; , .
+            ( ) { }
+            > < >= <=
+            + - * / ^
+            ~
+            | _
+            = -> => :=
+            @
+            ", &mut diagnostics).tokenize();
 
-        assert_eq!(kinds(&tokens), vec![Rel_t, Ident("A".to_string()), Colon, LParen
-        , Ident("a".to_string()), Colon, Real, RParen, Arrow, Real
-        , Equals, LParen, Ident("a".to_string()), Slash, IntLiteral(2)
-        , RParen, Semicolon, Eof]);
+        assert_eq!(kinds(&tokens), vec![
+            Ent_t, Rel_t, NetToken, Match, Sample,
+            Input, Output, Init, Let,
+            Bool, Impulse, Int, Real, Mod,
+            Ident("apple".to_string()), BoolLiteral(true), IntLiteral(10), RealLiteral(1.0),
+            Colon, Semicolon, Comma, Period,
+            LParen, RParen, LBrace, RBrace,
+            Gt, Lt, Ge, Le,
+            Plus, Minus, Asterisk, Slash, Caret,
+            BitNot,
+            Pipe, Underscore,
+            Equals, Arrow, FatArrow, Connect,
+            ErrorToken,
+            Eof,
+        ]);
     }
 
     #[test]

@@ -107,9 +107,9 @@ pub enum Expected {
     Expr,
     Pattern,
     Ident,
-    BoolLiteral,
+    // BoolLiteral,
     IntLiteral,
-    RealLiteral,
+    // RealLiteral,
 }
 
 #[derive(PartialEq, Debug, Clone)]
