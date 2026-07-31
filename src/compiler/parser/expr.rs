@@ -38,12 +38,13 @@ impl<'a> Parser<'a> {
     //  If any portion of an expression contians an error, the entire expression will be
     //  treated as Expr::Error. 
     //      ex: (a+2, 1 + (2 + ), 1) is Expr::Error because nothing is added to 2
-    //  Two "exceptions" to this are:
+    //  Three "exceptions" to this are:
+    //      if one of the expressions in a block expression is an error, only that expression is Expr::Error not the entire block.
+    //      if one part of a tuple expression is an error, only that portion is Expr::Error and not the whole tuple expression.
     //      if the return portion of a match or sample expression contains an error, 
-    //     only the return portion of the match expression will be Expr::Error
+    //     only the return portion of the match expression will be Expr::Error and no the entire match expression.
     //          ex: match a {1 => 2+, _ => 0} is match a {1 => Expr::Error, _ => 0} not Expr::Error
     //          ex match a {1+ => 1, _ => 0} is Expr::Error
-    //      if one part of a tuple expression is an error, only that portion is Expr::Error
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
         let mut lhs = self.parse_prefix()?;
 
