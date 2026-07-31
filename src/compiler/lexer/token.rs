@@ -47,7 +47,7 @@ impl Token {
 #[allow(non_camel_case_types)]
 pub enum TokenKind {
     // Keywords
-    Ent_t,    // net_t
+    Ent_t,    // ent_t
     Rel_t,    // rel_t
     NetToken,    // net
     Match,  // match
