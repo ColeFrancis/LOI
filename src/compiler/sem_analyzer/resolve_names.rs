@@ -330,20 +330,74 @@ mod tests {
     }
 
     #[test]
-    fn expr_ident_1() {
+    fn expr_literal() {
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
             symbols: vec![],
             scopes: vec![
                 Scope {
                     parent: None,
-                    symbols: HashMap::from([]),
+                    symbols: HashMap::new(),
                 },
             ],
             current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
+
+        let result = sem_analyzer.resolve_expr(Expr::Literal(Literal::Bool(false)));
+
+        assert_eq!(result, Some(Expr::Literal(Literal::Bool(false))));
+    }
+    
+    #[test]
+    fn expr_ident_fail() {
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::new(),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut Diagnostics::new(),
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Ident(Ident::Str {
+            val: "a".to_string(),
+            span: Span{line: 1, col: 0},
+        }));
+
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn expr_ident() {
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("a".to_string(), 1),
+                    ]),
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut Diagnostics::new(),
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Ident(Ident::Str {
+            val: "a".to_string(),
+            span: Span{line: 2, col: 0},
+        }));
+
+        assert_eq!(result, Some(Expr::Ident(Ident::Symbol(1))));
     }
 
     // #[test]
