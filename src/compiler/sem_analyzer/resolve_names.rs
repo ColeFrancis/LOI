@@ -143,6 +143,10 @@ impl <'a> SemAnalyzer<'a> {
         })
     }
 
+    // fn resolve_net(&mut self, net: Net) -> Option<Net> {
+
+    // }
+
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
     //  then the whole expression does not become an error, only that portion. This allows for
     //  more helpful diagnostics
