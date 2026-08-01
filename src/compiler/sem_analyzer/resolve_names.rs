@@ -866,21 +866,20 @@ mod tests {
         assert_eq!(sem_analyzer.current_scope, 0);
     }
 
-    // Do another block expr to stress test scopes
     #[test]
     fn expr_block_2() {
         // {
-        //     let a = {
-        //         let b = {
-        //             let c = {
-        //                 let d = 1;
-        //                 d
+        //     let n = {
+        //         let n = {
+        //             let n = {
+        //                 let n = 1;
+        //                 n
         //             };
-        //             c
+        //             n
         //         };
-        //         b
+        //         n
         //     };
-        //     a
+        //     n
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer::new(
@@ -892,60 +891,93 @@ mod tests {
             statements: vec![
                 Statement::Let(LetStatement {
                     name: Ident::Str {
-                        val: "a".to_string(),
+                        val: "n".to_string(),
                         span: Span{line: 0, col: 0},
                     },
                     expr: Expr::Block(BlockExpr {
                         statements: vec![
                             Statement::Let(LetStatement {
                                 name: Ident::Str {
-                                    val: "b".to_string(),
+                                    val: "n".to_string(),
                                     span: Span{line: 0, col: 0},
                                 },
                                 expr: Expr::Block(BlockExpr {
                                     statements: vec![
                                         Statement::Let(LetStatement {
                                             name: Ident::Str {
-                                                val: "c".to_string(),
+                                                val: "n".to_string(),
                                                 span: Span{line: 0, col: 0},
                                             },
                                             expr: Expr::Block(BlockExpr {
                                                 statements: vec![
                                                     Statement::Let(LetStatement {
                                                         name: Ident::Str {
-                                                            val: "d".to_string(),
+                                                            val: "n".to_string(),
                                                             span: Span{line: 0, col: 0},
                                                         },
                                                         expr: Expr::Literal(Literal::Int(1)),
                                                     }),
                                                 ],
                                                 expr: Box::new(Expr::Ident(Ident::Str {
-                                                    val: "d".to_string(),
+                                                    val: "n".to_string(),
                                                     span: Span{line: 0, col: 0},
                                                 }))
                                             }),
                                         }),
                                     ],
                                     expr: Box::new(Expr::Ident(Ident::Str {
-                                        val: "c".to_string(),
+                                        val: "n".to_string(),
                                         span: Span{line: 0, col: 0},
                                     }))
                                 }),
                             }),
                         ],
                         expr: Box::new(Expr::Ident(Ident::Str {
-                            val: "b".to_string(),
+                            val: "n".to_string(),
                             span: Span{line: 0, col: 0},
                         }))
                     }),
                 }),
             ],
             expr: Box::new(Expr::Ident(Ident::Str {
-                val: "a".to_string(),
+                val: "n".to_string(),
                 span: Span{line: 0, col: 0},
             }))
         }));
 
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Let(LetStatement {
+                                name: Ident::Symbol(1),
+                                expr: Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Let(LetStatement {
+                                            name: Ident::Symbol(2),
+                                            expr: Expr::Block(BlockExpr {
+                                                statements: vec![
+                                                    Statement::Let(LetStatement {
+                                                        name: Ident::Symbol(3),
+                                                        expr: Expr::Literal(Literal::Int(1)),
+                                                    }),
+                                                ],
+                                                expr: Box::new(Expr::Ident(Ident::Symbol(3)))
+                                            }),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Ident(Ident::Symbol(2)))
+                                }),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Ident(Ident::Symbol(1)))
+                    }),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0)))
+        })));
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
                 parent: None,
@@ -954,25 +986,25 @@ mod tests {
             Scope {
                 parent: Some(0),
                 symbols: HashMap::from([
-                    ("a".to_string(), 0),
+                    ("n".to_string(), 0),
                 ])
             },
             Scope {
                 parent: Some(1),
                 symbols: HashMap::from([
-                    ("b".to_string(), 1),
+                    ("n".to_string(), 1),
                 ])
             },
             Scope {
                 parent: Some(2),
                 symbols: HashMap::from([
-                    ("c".to_string(), 2),
+                    ("n".to_string(), 2),
                 ])
             },
             Scope {
                 parent: Some(3),
                 symbols: HashMap::from([
-                    ("d".to_string(), 3),
+                    ("n".to_string(), 3),
                 ])
             },
         ]);
