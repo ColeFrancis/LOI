@@ -59,6 +59,7 @@ pub enum Type {
     Int,
     Real,
     CustomType(Ident),
+    Error,
 }
 
 #[derive(PartialEq, Debug)]

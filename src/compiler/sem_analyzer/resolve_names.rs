@@ -34,16 +34,15 @@ use crate::compiler::sem_analyzer::scope::Scope;
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {
         // for mut item in self.ast.items {
-        //     item = match self.resolve_item(item) {
-        //         Some(item) => item,
-        //         None => Item::Error,
-        //     }
+        //     item = match self.resolve_item(item).unwrap_or(Item::Error);
         // }
     }
 
     // fn resolve_item(&mut self, item: Item) -> Option<Item> {
     //     match item {
-    //         Item::Let(stmt) => self.resolve_let(stmt)
+    //         Item::Let(stmt) => match self.resolve_let(stmt) {
+    
+    //         }
 
     //         _ => None,
     //     }
@@ -65,17 +64,84 @@ impl <'a> SemAnalyzer<'a> {
         })
     }
 
-    // fn resolve_ent(&mut self, ent_t) -> ann_ast::EntType {
+    fn resolve_ent(&mut self, ent_t: EntType) -> Option<EntType> {
+        let (name, span) = self.extract_ident_str(ent_t.name)?;
+        let symbol_id = self.define_symbol(
+            name,
+            SymbolKind::Ent_t,
+            span,
+        )?;
 
-    // }
+        let expr = match ent_t.expr {
+            EntExpr::Mod(val) => EntExpr::Mod(val),
+            EntExpr::SetEnt(idents) => {
+                let mut resolved_idents: Vec<Ident> = Vec::new();
 
-    // fn resolve_rel(&mut self, rel_t) -> ann_ast::RelType {
+                for ident in idents {
+                    let (name, span) = self.extract_ident_str(ident)?;
+                    let symbol_id = self.define_symbol(
+                        name,
+                        SymbolKind::Ent_member,
+                        span,
+                    )?;
 
-    // }
+                    resolved_idents.push(Ident::Symbol(symbol_id));
+                }
 
-    // fn resolve_rel(&mut self, net) -> ann_ast::Net {
+                EntExpr::SetEnt(resolved_idents)
+            }
+        };
 
-    // }
+        Some(EntType {
+            name: Ident::Symbol(symbol_id),
+            expr,
+        })
+    }
+
+    fn resolve_rel(&mut self, rel_t: RelType) -> Option<RelType> {
+        let (name, span) = self.extract_ident_str(rel_t.name)?;
+        let symbol_id = self.define_symbol(
+            name,
+            SymbolKind::Rel_t,
+            span,
+        )?;
+
+        self.create_scope();
+
+        let mut resolved_params: Vec<Param> = Vec::new();
+
+        for param in rel_t.params {
+            let (name, span) = self.extract_ident_str(param.name)?;
+            let symbol_id = self.define_symbol(
+                name,
+                SymbolKind::Variable,
+                span,
+            )?;
+
+            let resolved_param_type = self.resolve_type(param.param_type)
+                .unwrap_or(Type::Error);
+
+            resolved_params.push(Param {
+                name: Ident::Symbol(symbol_id),
+                param_type: resolved_param_type,
+            });
+        }
+
+        let resolved_return_type = self.resolve_type(rel_t.return_type)
+            .unwrap_or(Type::Error);
+
+        let resolved_body = self.resolve_expr(rel_t.body)
+            .unwrap_or(Expr::Error);
+
+        self.exit_scope();
+
+        Some(RelType {
+            name: Ident::Symbol(symbol_id),
+            params: resolved_params,
+            return_type: resolved_return_type,
+            body: resolved_body,
+        })
+    }
 
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
     //  then the whole expression does not become an error, only that portion. This allows for
@@ -87,9 +153,9 @@ impl <'a> SemAnalyzer<'a> {
             Expr::Ident(ident) => {
                 let (name, span) = self.extract_ident_str(ident)?;
 
-                let symbol = self.find_symbol(&name, span)?;
+                let symbol_id = self.find_symbol(&name, span)?;
 
-                Some(Expr::Ident(Ident::Symbol(symbol)))
+                Some(Expr::Ident(Ident::Symbol(symbol_id)))
             },
 
             Expr::Unary(unary_expr) => {
@@ -260,6 +326,25 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             SimplePattern::Error => Some(SimplePattern::Error),
+        }
+    }
+
+    fn resolve_type(&mut self, ty: Type) -> Option<Type> {
+        match ty {
+            Type::Bool    => Some(Type::Bool),
+            Type::Impulse => Some(Type::Impulse),
+            Type::Int     => Some(Type::Int),
+            Type::Real    => Some(Type::Real),
+
+            Type::CustomType(ident) => {
+                let (name, span) = self.extract_ident_str(ident)?;
+
+                let symbol_id = self.find_symbol(&name, span)?;
+
+                Some(Type::CustomType(Ident::Symbol(symbol_id)))
+            }
+
+            Type::Error => Some(Type::Error),
         }
     }
  
@@ -718,7 +803,7 @@ mod tests {
     }
 
     #[test]
-    fn expr_block() {
+    fn expr_block_1() {
         // {
         //     let n = 1;
         //     n
@@ -775,6 +860,118 @@ mod tests {
             }
         ]);
         assert_eq!(sem_analyzer.current_scope, 0);
+    }
+
+    // Do another block expr to stress test scopes
+    #[test]
+    fn expr_block_2() {
+        // {
+        //     let a = {
+        //         let b = {
+        //             let c = {
+        //                 let d = 1;
+        //                 d
+        //             };
+        //             c
+        //         };
+        //         b
+        //     };
+        //     a
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Str {
+                        val: "a".to_string(),
+                        span: Span{line: 0, col: 0},
+                    },
+                    expr: Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Let(LetStatement {
+                                name: Ident::Str {
+                                    val: "b".to_string(),
+                                    span: Span{line: 0, col: 0},
+                                },
+                                expr: Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Let(LetStatement {
+                                            name: Ident::Str {
+                                                val: "c".to_string(),
+                                                span: Span{line: 0, col: 0},
+                                            },
+                                            expr: Expr::Block(BlockExpr {
+                                                statements: vec![
+                                                    Statement::Let(LetStatement {
+                                                        name: Ident::Str {
+                                                            val: "d".to_string(),
+                                                            span: Span{line: 0, col: 0},
+                                                        },
+                                                        expr: Expr::Literal(Literal::Int(1)),
+                                                    }),
+                                                ],
+                                                expr: Box::new(Expr::Ident(Ident::Str {
+                                                    val: "d".to_string(),
+                                                    span: Span{line: 0, col: 0},
+                                                }))
+                                            }),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Ident(Ident::Str {
+                                        val: "c".to_string(),
+                                        span: Span{line: 0, col: 0},
+                                    }))
+                                }),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Ident(Ident::Str {
+                            val: "b".to_string(),
+                            span: Span{line: 0, col: 0},
+                        }))
+                    }),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 0, col: 0},
+            }))
+        }));
+
+        assert_eq!(sem_analyzer.scopes, vec![
+            Scope {
+                parent: None,
+                symbols: HashMap::new(),
+            },
+            Scope {
+                parent: Some(0),
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                ])
+            },
+            Scope {
+                parent: Some(1),
+                symbols: HashMap::from([
+                    ("b".to_string(), 1),
+                ])
+            },
+            Scope {
+                parent: Some(2),
+                symbols: HashMap::from([
+                    ("c".to_string(), 2),
+                ])
+            },
+            Scope {
+                parent: Some(3),
+                symbols: HashMap::from([
+                    ("d".to_string(), 3),
+                ])
+            },
+        ]);
     }
 
     #[test]
@@ -1027,5 +1224,249 @@ mod tests {
                 span: Span{line: 1, col: 2},
             },
         ]);
+    }
+
+    #[test]
+    fn resolve_ent_1() {
+        // ent_t z3 = Mod(3);
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.resolve_ent(EntType {
+            name: Ident::Str {
+                val: "z3".to_string(),
+                span: Span{line: 0, col: 0}
+            },
+            expr: EntExpr::Mod(3),
+        });
+
+        assert_eq!(result, Some(EntType {
+            name: Ident::Symbol(0),
+            expr: EntExpr::Mod(3),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "z3".to_string(),
+                kind: SymbolKind::Ent_t,
+                span: Span{line: 0, col: 0},
+            },
+        ]);
+    }
+
+    #[test]
+    fn resolve_ent_2() {
+        // ent_t COIN = {H, T};
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program{items: vec![]},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.resolve_ent(EntType {
+            name: Ident::Str {
+                val: "COIN".to_string(),
+                span: Span{line: 0, col: 0}
+            },
+            expr: EntExpr::SetEnt(vec![
+                Ident::Str {
+                    val: "H".to_string(),
+                    span: Span{line: 0, col: 1}
+                },
+                Ident::Str {
+                    val: "T".to_string(),
+                    span: Span{line: 0, col: 2}
+                },
+            ]),
+        });
+
+        assert_eq!(result, Some(EntType {
+            name: Ident::Symbol(0),
+            expr: EntExpr::SetEnt(vec![
+                Ident::Symbol(1),
+                Ident::Symbol(2),
+            ]),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "COIN".to_string(),
+                kind: SymbolKind::Ent_t,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "H".to_string(),
+                kind: SymbolKind::Ent_member,
+                span: Span{line: 0, col: 1},
+            },
+            Symbol {
+                id: 2,
+                name: "T".to_string(),
+                kind: SymbolKind::Ent_member,
+                span: Span{line: 0, col: 2},
+            },
+        ]);
+    }
+
+    #[test]
+    fn rel_1() {
+        // rel_t is_heads (c: COIN) -> Bool = match c {
+        //     H => true,
+        //     _ => false,
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::Ent_t,
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "H".to_string(),
+                    kind: SymbolKind::Ent_member,
+                    span: Span{line: 0, col: 1},
+                },
+                Symbol {
+                    id: 2,
+                    name: "T".to_string(),
+                    kind: SymbolKind::Ent_member,
+                    span: Span{line: 0, col: 2},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    parent: None,
+                    symbols: HashMap::from([
+                        ("COIN".to_string(), 0),
+                        ("H".to_string(), 1),
+                        ("T".to_string(), 2),
+                    ])
+                },
+            ],
+            current_scope: 0,
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_rel(RelType {
+            name: Ident::Str {
+                val: "is_heads".to_string(),
+                span: Span{line: 0, col: 3}
+            },
+            params: vec![
+                Param {
+                    name: Ident::Str {
+                        val: "c".to_string(),
+                        span: Span{line: 0, col: 4}
+                    },
+                    param_type: Type::CustomType(Ident::Str {
+                        val: "COIN".to_string(),
+                        span: Span{line: 0, col: 2}
+                    })
+                }
+            ],
+            return_type: Type::Bool,
+            body: Expr::Match(MatchExpr {
+                scrutinee: Box::new(Expr::Ident(Ident::Str {
+                    val: "c".to_string(),
+                    span: Span{line: 1, col: 4}
+                })),
+                arms: vec![
+                    MatchArm {
+                        pattern: vec![SimplePattern::Ident(Ident::Str {
+                            val: "H".to_string(),
+                            span: Span{line: 1, col: 0},
+                        })],
+                        expr: Expr::Literal(Literal::Bool(true)),
+                    },
+                    MatchArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Bool(false)),
+                    }
+                ],
+            }),
+        });
+
+        assert_eq!(result, Some(RelType {
+            name: Ident::Symbol(3),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(4),
+                    param_type: Type::CustomType(Ident::Symbol(0)),
+                }
+            ],
+            return_type: Type::Bool,
+            body: Expr::Match(MatchExpr {
+                scrutinee: Box::new(Expr::Ident(Ident::Symbol(4))),
+                arms: vec![
+                    MatchArm {
+                        pattern: vec![SimplePattern::Ident(Ident::Symbol(1))],
+                        expr: Expr::Literal(Literal::Bool(true)),
+                    },
+                    MatchArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Bool(false)),
+                    }
+                ],
+            }),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "COIN".to_string(),
+                kind: SymbolKind::Ent_t,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "H".to_string(),
+                kind: SymbolKind::Ent_member,
+                span: Span{line: 0, col: 1},
+            },
+            Symbol {
+                id: 2,
+                name: "T".to_string(),
+                kind: SymbolKind::Ent_member,
+                span: Span{line: 0, col: 2},
+            },
+            Symbol {
+                id: 3,
+                name: "is_heads".to_string(),
+                kind: SymbolKind::Rel_t,
+                span: Span{line: 0, col: 3},
+            },
+            Symbol {
+                id: 4,
+                name: "c".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span{line: 0, col: 4},
+            },
+        ]);
+        assert_eq!(sem_analyzer.scopes, vec![
+            Scope {
+                parent: None,
+                symbols: HashMap::from([
+                    ("COIN".to_string(), 0),
+                    ("H".to_string(), 1),
+                    ("T".to_string(), 2),
+                    ("is_heads".to_string(), 3),
+                ])
+            },
+            Scope {
+                parent: Some(0),
+                symbols: HashMap::from([
+                    ("c".to_string(), 4),
+                ])
+            },
+        ]);
+        assert_eq!(sem_analyzer.current_scope, 0);
     }
 }

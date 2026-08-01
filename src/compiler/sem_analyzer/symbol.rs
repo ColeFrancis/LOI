@@ -32,6 +32,7 @@ pub enum SymbolKind {
     Variable,
     Parameter,
     Ent_t,
+    Ent_member,
     Rel_t,
     Net,
 }
