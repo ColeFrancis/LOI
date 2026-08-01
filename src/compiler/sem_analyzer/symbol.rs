@@ -22,6 +22,8 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
+
 use crate::compiler::diagnostics::Span;
 
 pub type SymbolId = usize;
@@ -34,7 +36,10 @@ pub enum SymbolKind {
     Ent_t,
     Ent_member,
     Rel_t,
-    Net,
+    Net {
+        ports: HashMap<String, SymbolId>
+    },
+    Ent,
 }
 
 // pub enum SymbolType {

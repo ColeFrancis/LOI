@@ -16,6 +16,7 @@ mod core;
 pub mod symbol;
 mod scope;
 mod resolve_names;
+mod resolve_expr;
 mod check_types;
 mod fold_const;
 
