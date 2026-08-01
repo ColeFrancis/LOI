@@ -299,7 +299,7 @@ impl <'a> SemAnalyzer<'a> {
 
     fn find_net_port(&self, net_id: SymbolId, name: &str) -> Option<SymbolId> {
         match &self.symbols[net_id].kind {
-            SymbolKind::Net { ports } => ports.get(name).copied(),
+            SymbolKind::Net { ports } => ports.get(name).copied(), // TODO: if returning None, emit an error for unknown port or soemthing like that
             _ => {
                 // TODO: Report type error
                 None
