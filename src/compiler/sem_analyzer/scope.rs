@@ -29,6 +29,5 @@ pub type ScopeId = usize;
 
 #[derive(PartialEq, Debug)]
 pub struct Scope {
-    pub parent: Option<ScopeId>,
     pub symbols: HashMap<String, SymbolId>,
 }

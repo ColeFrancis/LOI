@@ -37,11 +37,9 @@ impl <'a> SemAnalyzer<'a> {
             symbols: Vec::new(),
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::new(),
                 }
             ],
-            current_scope: 0,
             diagnostics,
         }
     }

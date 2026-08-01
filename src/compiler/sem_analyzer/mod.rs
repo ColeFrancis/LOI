@@ -28,7 +28,6 @@ pub struct SemAnalyzer<'a> {
     ast: Program,
     symbols: Vec<Symbol>,
     scopes: Vec<Scope>,
-    current_scope: ScopeId,
 
     diagnostics: &'a mut Diagnostics,
 }

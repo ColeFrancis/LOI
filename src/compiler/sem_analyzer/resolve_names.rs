@@ -360,31 +360,23 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn find_symbol(&mut self, name: &str, span: Span) -> Option<SymbolId> {
-        let mut scope = self.current_scope;
-
-        loop {
-            let s = &self.scopes[scope];
-
-            if let Some(id) = s.symbols.get(name) {
+        for scope in self.scopes.iter().rev() {
+            if let Some(id) = scope.symbols.get(name) {
                 return Some(*id);
             }
-
-            match s.parent {
-                Some(parent) => scope = parent,
-                None => {
-                    self.diagnostics.error(CompilerError::UndefinedIdent {
-                        name: name.to_string(),
-                        span,
-                    });
-                    return None;
-                }
-            }
         }
+        self.diagnostics.error(CompilerError::UndefinedIdent {
+            name: name.to_string(),
+            span,
+        });
+
+        None
     }
 
     fn define_symbol(&mut self, name: String, kind: SymbolKind, span: Span) -> Option<SymbolId> {
-        // No duplicate definitions
-        if self.scopes[self.current_scope].symbols.contains_key(&name) {
+        let current = self.scopes.last_mut().unwrap();
+
+        if current.symbols.contains_key(&name) {
             self.diagnostics.error(CompilerError::DuplicateDefinition {
                 name,
                 span,
@@ -392,7 +384,7 @@ impl <'a> SemAnalyzer<'a> {
 
             return None;
         }
-        
+
         let id = self.symbols.len();
 
         self.symbols.push(Symbol {
@@ -402,25 +394,24 @@ impl <'a> SemAnalyzer<'a> {
             span,
         });
 
-        self.scopes[self.current_scope].symbols.insert(name, id);
+        current.symbols.insert(name, id);
 
         Some(id)
     }
 
-    fn create_scope(&mut self) {
-        let new_scope = self.scopes.len();
+    // fn find_or_define_ent(&mut self, name: &str, span: Span) -> SymbolId {
 
+    // }
+
+    fn create_scope(&mut self) {
         self.scopes.push(Scope {
-            parent: Some(self.current_scope),
             symbols: HashMap::new(),
         });
-
-        self.current_scope = new_scope;
     }
 
-    fn exit_scope(&mut self) -> Option<()> {
-        self.current_scope = self.scopes[self.current_scope].parent?;
-        Some(())
+    fn exit_scope(&mut self) {
+        assert!(self.scopes.len() > 1);
+        self.scopes.pop();
     }
 }
 
@@ -456,25 +447,16 @@ mod tests {
             ],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 0),
                     ])
                 },
                 Scope {
-                    parent: Some(0),
                     symbols: HashMap::from([
                         ("b".to_string(), 1),
                     ])
                 },
-                Scope {
-                    parent: Some(1),
-                    symbols: HashMap::from([
-                        ("c".to_string(), 1),
-                    ])
-                },
             ],
-            current_scope: 1,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -505,19 +487,16 @@ mod tests {
             ],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 0),
                     ])
                 },
                 Scope {
-                    parent: Some(0),
                     symbols: HashMap::from([
                         ("b".to_string(), 1),
                     ])
                 }
             ],
-            current_scope: 1,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -547,13 +526,11 @@ mod tests {
         ]);
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::from([
                     ("a".to_string(), 0),
                 ])
             },
             Scope {
-                parent: Some(0),
                 symbols: HashMap::from([
                     ("b".to_string(), 1),
                     ("a".to_string(), 2),
@@ -582,19 +559,11 @@ mod tests {
             ],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 0),
                     ])
                 },
-                Scope {
-                    parent: Some(0),
-                    symbols: HashMap::from([
-                        ("b".to_string(), 1),
-                    ])
-                }
             ],
-            current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -619,17 +588,10 @@ mod tests {
         ]);
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::from([
                     ("a".to_string(), 0),
                 ])
             },
-            Scope {
-                parent: Some(0),
-                symbols: HashMap::from([
-                    ("b".to_string(), 1),
-                ])
-            }
         ]);
     }
 
@@ -643,28 +605,25 @@ mod tests {
 
         sem_analyzer.create_scope();
 
-        assert_eq!(sem_analyzer.current_scope, 1);
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::from([
                 ])
             },
             Scope {
-                parent: Some(0),
                 symbols: HashMap::from([
                 ])
             }
         ]);
 
-        let result = sem_analyzer.exit_scope();
+        sem_analyzer.exit_scope();
 
-        assert_eq!(result, Some(()));
-        assert_eq!(sem_analyzer.current_scope, 0);
-
-        let result = sem_analyzer.exit_scope();
-
-        assert_eq!(result, None);
+        assert_eq!(sem_analyzer.scopes, vec![
+            Scope {
+                symbols: HashMap::from([
+                ])
+            },
+        ]);
     }
 
     #[test]
@@ -674,11 +633,9 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::new(),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -695,11 +652,9 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::new(),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -719,13 +674,11 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 1),
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -747,12 +700,10 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut diagnostics,
         };
@@ -781,13 +732,11 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 1),
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -845,15 +794,8 @@ mod tests {
         })));
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::new(),
             },
-            Scope {
-                parent: Some(0),
-                symbols: HashMap::from([
-                    ("n".to_string(), 0),
-                ])
-            }
         ]);
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
@@ -863,7 +805,6 @@ mod tests {
                 span: Span{line: 2, col: 0},
             }
         ]);
-        assert_eq!(sem_analyzer.current_scope, 0);
     }
 
     #[test]
@@ -980,32 +921,7 @@ mod tests {
         })));
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::new(),
-            },
-            Scope {
-                parent: Some(0),
-                symbols: HashMap::from([
-                    ("n".to_string(), 0),
-                ])
-            },
-            Scope {
-                parent: Some(1),
-                symbols: HashMap::from([
-                    ("n".to_string(), 1),
-                ])
-            },
-            Scope {
-                parent: Some(2),
-                symbols: HashMap::from([
-                    ("n".to_string(), 2),
-                ])
-            },
-            Scope {
-                parent: Some(3),
-                symbols: HashMap::from([
-                    ("n".to_string(), 3),
-                ])
             },
         ]);
     }
@@ -1062,13 +978,11 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("a".to_string(), 1),
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut diagnostics,
         };
@@ -1127,13 +1041,11 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("b".to_string(), 10),
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut diagnostics,
         };
@@ -1192,12 +1104,10 @@ mod tests {
             symbols: vec![],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                     ]),
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut diagnostics,
         };
@@ -1379,7 +1289,6 @@ mod tests {
             ],
             scopes: vec![
                 Scope {
-                    parent: None,
                     symbols: HashMap::from([
                         ("COIN".to_string(), 0),
                         ("H".to_string(), 1),
@@ -1387,7 +1296,6 @@ mod tests {
                     ])
                 },
             ],
-            current_scope: 0,
 
             diagnostics: &mut diagnostics,
         };
@@ -1488,7 +1396,6 @@ mod tests {
         ]);
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
-                parent: None,
                 symbols: HashMap::from([
                     ("COIN".to_string(), 0),
                     ("H".to_string(), 1),
@@ -1496,13 +1403,6 @@ mod tests {
                     ("is_heads".to_string(), 3),
                 ])
             },
-            Scope {
-                parent: Some(0),
-                symbols: HashMap::from([
-                    ("c".to_string(), 4),
-                ])
-            },
         ]);
-        assert_eq!(sem_analyzer.current_scope, 0);
     }
 }
