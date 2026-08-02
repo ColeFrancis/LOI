@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
             TokenKind::Impulse     => Some(Type::Impulse),
             TokenKind::Int         => Some(Type::Int),
             TokenKind::Real        => Some(Type::Real),
-            TokenKind::Ident(name) => Some(Type::CustomType(Ident::Str{ val: name, span: token.span })),
+            TokenKind::Ident(name) => Some(Type::Custom(Ident::Str{ val: name, span: token.span })),
             
             other => {
                 self.diagnostics.error(CompilerError::UnexpectedToken {
