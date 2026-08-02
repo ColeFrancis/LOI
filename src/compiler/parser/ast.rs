@@ -58,7 +58,7 @@ pub enum Type {
     Impulse,
     Int,
     Real,
-    CustomType(Ident),
+    Custom(Ident),
     Error,
 }
 
