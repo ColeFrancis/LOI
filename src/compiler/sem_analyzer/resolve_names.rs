@@ -327,12 +327,12 @@ impl <'a> SemAnalyzer<'a> {
             Type::Int     => Some(Type::Int),
             Type::Real    => Some(Type::Real),
 
-            Type::CustomType(ident) => {
+            Type::Custom(ident) => {
                 let (name, span) = self.extract_ident_str(ident)?;
 
                 let symbol_id = self.find_symbol(&name, span)?;
 
-                Some(Type::CustomType(Ident::Symbol(symbol_id)))
+                Some(Type::Custom(Ident::Symbol(symbol_id)))
             }
 
             Type::Error => Some(Type::Error),
