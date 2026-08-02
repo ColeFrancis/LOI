@@ -95,24 +95,12 @@ rel COND_PROB : (x: COIN) -> COIN =
         }
     };
 
-// Produces an and gate with a 10% chance of being wrong
-rel RAND_AND : (a: Bool, b: Bool) -> Bool = 
-    match (a, b) {
-        (0, 0) => Bernoulli(0.1), 
-        (0, 1) => Bernoulli(0.1),
-        (1, 0) => Bernoulli(0.1),
-        (1, 1) => Bernoulli(0.9),
-    };
-
-// Returns the input with a random amount of noise added through a normal RV
-rel NOISE : (x:R) -> R =
-    x + Norm(0,1);   // Gaussian noise with normal dist
 
 // Returns a 1 if x is over some threshold
 rel THRESH : (x:R) -> Bool = 
-    match (x) {
-        (>= 1) => true,
-        (_) => false
+    match x {
+        >= 1 => true,
+        _ => false
     };
 
 rel CUSTOM_BINOM : (p : Real) -> Bool = 
@@ -122,7 +110,7 @@ rel CUSTOM_BINOM : (p : Real) -> Bool =
     };
 
 // Simulates the rule in the cellular atomata "conway's game of life"
-rel LIFE : (u:Mod(2), ur:Mod(2), r:Mod(2), rd:Mod(2), d:Mod(2), dl:Mod(2), l:Mod(2), ul:Mod(2), c:Mod(2)) -> Mod(2) = {
+rel LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
     let n = u+ur+r+rd+d+dl+l+ul;
     
     match (c) {
