@@ -801,7 +801,7 @@ mod tests {
                         val: "c".to_string(),
                         span: Span{line: 0, col: 4}
                     },
-                    param_type: Type::CustomType(Ident::Str {
+                    param_type: Type::Custom(Ident::Str {
                         val: "COIN".to_string(),
                         span: Span{line: 0, col: 2}
                     })
@@ -834,7 +834,7 @@ mod tests {
             params: vec![
                 Param {
                     name: Ident::Symbol(4),
-                    param_type: Type::CustomType(Ident::Symbol(0)),
+                    param_type: Type::Custom(Ident::Symbol(0)),
                 }
             ],
             return_type: Type::Bool,
