@@ -1316,8 +1316,8 @@ net FIRST {
 }
 
 net SECOND {
-    input a: Int;
-    output c: Int;
+    input a: SINGLE;
+    output c: SINGLE;
 
     FIRST {
         a := a,
@@ -1479,11 +1479,11 @@ net SECOND {
                 items: vec![
                     NetItem::Input(Param {
                         name: Ident::Symbol(10),
-                        param_type: Type::Int,
+                        param_type: Type::Custom(Ident::Symbol(2)),
                     }),
                     NetItem::Output(Param {
                         name: Ident::Symbol(11),
-                        param_type: Type::Int,
+                        param_type: Type::Custom(Ident::Symbol(2)),
                     }),
                     NetItem::NetInst(NetInst {
                         net: Ident::Symbol(6),
