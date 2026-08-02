@@ -99,6 +99,11 @@ pub enum CompilerError {
         name: String,
         span: Span,
     },
+
+    UndefinedPort {
+        name: String,
+        span: Span,
+    }
 }
 
 #[derive(Debug, PartialEq)]
