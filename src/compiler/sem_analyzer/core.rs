@@ -48,6 +48,7 @@ impl <'a> SemAnalyzer<'a> {
         self.resolve_names();
         self.check_types();
         self.fold_const();
+        // self.check_constraints();
 
         (self.ast, self.symbols)
     }

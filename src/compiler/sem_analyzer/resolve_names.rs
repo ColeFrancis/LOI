@@ -33,20 +33,23 @@ use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {
-        // for mut item in self.ast.items {
-        //     item = match self.resolve_item(item).unwrap_or(Item::Error);
-        // }
+        let items = std::mem::take(&mut self.ast.items);
+
+        for item in items {
+            let resolved_item = self.resolve_item(item).unwrap_or(Item::Error);
+            self.ast.items.push(resolved_item);
+        }
     }
 
-    // fn resolve_item(&mut self, item: Item) -> Option<Item> {
-    //     match item {
-    //         Item::Let(stmt) => match self.resolve_let(stmt) {
-    
-    //         }
-
-    //         _ => None,
-    //     }
-    // }
+    fn resolve_item(&mut self, item: Item) -> Option<Item> {
+        match item {
+            Item::Let(stmt)     => self.resolve_let(stmt).map(Item::Let),
+            Item::Ent(ent_type) => self.resolve_ent(ent_type).map(Item::Ent),
+            Item::Rel(rel_type) => self.resolve_rel(rel_type).map(Item::Rel),
+            Item::Net(net)      => self.resolve_net(net).map(Item::Net),
+            Item::Error         => Some(Item::Error),
+        }
+    }
 
     pub(super) fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
         let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
@@ -421,6 +424,8 @@ mod tests {
     use super::*;
     use crate::compiler::diagnostics::Diagnostics;
     use crate::compiler::sem_analyzer::scope::Scope;
+    use crate::compiler::lexer::Lexer;
+    use crate::compiler::parser::Parser;
 
     #[test]
     fn test_find() {
@@ -1155,7 +1160,7 @@ mod tests {
         // net TEST {
         //     input a: Bool;
         //     output b: Real;
-        //     init c Int = 3; // Error net member
+        //     init c Int = 3; // Error net member (already reported)
 
         //     d = REL(a, c); // REL is not defined
 
@@ -1287,5 +1292,214 @@ mod tests {
 
         diagnostics.debug_print();
         assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn program() {
+        let mut diagnostics = Diagnostics::new();
+
+        let tokens = Lexer::new("
+let n = {
+    let a = 1;
+    a+1
+};
+
+ent_t SINGLE = {A};
+
+rel_t ADD : (b: Int) -> Int = n + b;
+
+net FIRST {
+    input a: Int;
+    output q: Int;
+
+    q := ADD(a);
+}
+
+net SECOND {
+    input a: Int;
+    output c: Int;
+
+    FIRST {
+        a := a,
+        q := c,
+    };
+}
+        ", &mut diagnostics).tokenize();
+
+        let program = Parser::new(tokens, &mut diagnostics).parse();
+
+        let mut sem_analyzer = SemAnalyzer::new(program, &mut diagnostics);
+
+        sem_analyzer.resolve_names();
+
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "n".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span {line: 2, col: 5},
+            },
+            Symbol {
+                id: 1,
+                name: "a".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span {line: 3, col: 9},
+            },
+            Symbol {
+                id: 2,
+                name: "SINGLE".to_string(),
+                kind: SymbolKind::Ent_t,
+                span: Span {line: 7, col: 7},
+            },
+            Symbol {
+                id: 3,
+                name: "A".to_string(),
+                kind: SymbolKind::Ent_member,
+                span: Span {line: 7, col: 17},
+            },
+            Symbol {
+                id: 4,
+                name: "ADD".to_string(),
+                kind: SymbolKind::Rel_t,
+                span: Span {line: 9, col: 7},
+            },
+            Symbol {
+                id: 5,
+                name: "b".to_string(),
+                kind: SymbolKind::Variable,
+                span: Span {line: 9, col: 14},
+            },
+            Symbol {
+                id: 6,
+                name: "FIRST".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("a".to_string(), 7),
+                        ("q".to_string(), 8),
+                    ])
+                },
+                span: Span {line: 11, col: 5},
+            },
+            Symbol {
+                id: 7,
+                name: "a".to_string(),
+                kind: SymbolKind::Ent,
+                span: Span {line: 12, col: 11},
+            },
+            Symbol {
+                id: 8,
+                name: "q".to_string(),
+                kind: SymbolKind::Ent,
+                span: Span {line: 13, col: 12},
+            },
+            Symbol {
+                id: 9,
+                name: "SECOND".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("a".to_string(), 10),
+                        ("c".to_string(), 11),
+                    ])
+                },
+                span: Span {line: 18, col: 5},
+            },
+            Symbol {
+                id: 10,
+                name: "a".to_string(),
+                kind: SymbolKind::Ent,
+                span: Span {line: 19, col: 11},
+            },
+            Symbol {
+                id: 11,
+                name: "c".to_string(),
+                kind: SymbolKind::Ent,
+                span: Span {line: 20, col: 12},
+            },
+        ]);
+        assert_eq!(sem_analyzer.ast, Program {items: vec![
+            Item::Let(LetStatement {
+                name: Ident::Symbol(0),
+                expr: Expr::Block(BlockExpr {
+                    statements: vec![
+                        Statement::Let(LetStatement {
+                            name: Ident::Symbol(1),
+                            expr: Expr::Literal(Literal::Int(1)),
+                        })
+                    ],
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                        op: BinaryOp::Add,
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                    })),
+                }),
+            }),
+            Item::Ent(EntType {
+                name: Ident::Symbol(2),
+                expr: EntExpr::SetEnt(vec![
+                    Ident::Symbol(3),
+                ]),
+            }),
+            Item::Rel(RelType {
+                name: Ident::Symbol(4),
+                params: vec![
+                    Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Int,
+                    },
+                ],
+                return_type: Type::Int,
+                body: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Ident(Ident::Symbol(5))),
+                }),
+            }),
+            Item::Net(Net {
+                name: Ident::Symbol(6),
+                items: vec![
+                    NetItem::Input(Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::Output(Param {
+                        name: Ident::Symbol(8),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::RelInst(RelInst {
+                        asignee: Ident::Symbol(8),
+                        rel: Ident::Symbol(4),
+                        args: vec![
+                            Ident::Symbol(7),
+                        ],
+                    }),
+                ],
+            }),
+            Item::Net(Net {
+                name: Ident::Symbol(9),
+                items: vec![
+                    NetItem::Input(Param {
+                        name: Ident::Symbol(10),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::Output(Param {
+                        name: Ident::Symbol(11),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::NetInst(NetInst {
+                        net: Ident::Symbol(6),
+                        connections: vec![
+                            Connection {
+                                port: Ident::Symbol(7),
+                                net: Ident::Symbol(10),
+                            },
+                            Connection {
+                                port: Ident::Symbol(8),
+                                net: Ident::Symbol(11),
+                            },
+                        ],
+                    }),
+                ],
+            })
+        ]});
     }
 }
