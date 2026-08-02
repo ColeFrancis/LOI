@@ -38,7 +38,7 @@ in a variety of systems.
 
 # Later:
 
-support for probabilisticalky generatinv network entuties/relations
+support for probabilistically generating network entuties/relations
 support for dynamic networks (networks themselves change over time)
 support for arrays of entities in networks and generate block-type constructions
 user can specify the delay of relations (keep the same way of handling delays in a wheel though to allow future multithreading)
