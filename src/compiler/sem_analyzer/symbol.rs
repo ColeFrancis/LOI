@@ -42,11 +42,19 @@ pub enum SymbolKind {
     Ent,
 }
 
-// pub enum SymbolType {
+// pub enum SymbolKind {
+//     Variable(Type),
+//     Parameter,
+//     Ent_t,
+//     Ent_member,
 //     Rel_t {
-//         inputs: [Int, Int],
-//         output: Int,
-//     }
+//         input_types: Vec<Type>,
+//         return_type: Type
+//     },
+//     Net {
+//        ports: HashMap<String, SymbolId>
+//     },
+//     Ent,
 // }
 
 #[derive(PartialEq, Debug)]
