@@ -17,6 +17,10 @@ Language Of Interaction (LOI). Research platform for the purpose of understandin
       - Detect memory and state
 - Graph rewriting
 
+## AI Development
+
+This project was developed by me. AI tools were used as an advisory resource in debugging and discussing implementation details. All source code was written by me.
+
 ## License
 
 This project is licensed under the Apache License 2.0. See the LICENSE file for details.
