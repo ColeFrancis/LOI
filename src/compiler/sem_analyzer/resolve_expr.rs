@@ -400,7 +400,7 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "n".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 2, col: 0},
             }
         ]);

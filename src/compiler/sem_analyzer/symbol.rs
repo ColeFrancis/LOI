@@ -25,37 +25,24 @@
 use std::collections::HashMap;
 
 use crate::compiler::diagnostics::Span;
+use crate::compiler::parser::ast::{Type, Param};
 
 pub type SymbolId = usize;
 
 #[derive(PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum SymbolKind {
-    Variable,
-    Parameter,
+    Variable(Type),
     Ent_t,
     Ent_member,
-    Rel_t,
-    Net {
-        ports: HashMap<String, SymbolId>
+    Rel_t {
+        input_types: Vec<Type>,
+        return_type: Type
     },
-    Ent,
+    Net {
+       ports: HashMap<String, Param>
+    },
 }
-
-// pub enum SymbolKind {
-//     Variable(Type),
-//     Parameter,
-//     Ent_t,
-//     Ent_member,
-//     Rel_t {
-//         input_types: Vec<Type>,
-//         return_type: Type
-//     },
-//     Net {
-//        ports: HashMap<String, SymbolId>
-//     },
-//     Ent,
-// }
 
 #[derive(PartialEq, Debug)]
 pub struct Symbol {

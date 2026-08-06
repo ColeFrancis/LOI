@@ -55,7 +55,7 @@ impl <'a> SemAnalyzer<'a> {
         let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
         let symbol_id = self.define_symbol(
             name, 
-            SymbolKind::Variable, 
+            SymbolKind::Variable(Type::Unknown), 
             span,
         )?;
 
@@ -102,10 +102,16 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn resolve_rel(&mut self, rel_t: RelType) -> Option<RelType> {
+        let resolved_return_type = self.resolve_type(rel_t.return_type)
+            .unwrap_or(Type::Error);
+        
         let (name, span) = self.extract_ident_str(rel_t.name)?;
-        let symbol_id = self.define_symbol(
+        let rel_symbol_id = self.define_symbol(
             name,
-            SymbolKind::Rel_t,
+            SymbolKind::Rel_t {
+                input_types: Vec::new(),
+                return_type: resolved_return_type.clone(),
+            },
             span,
         )?;
 
@@ -114,24 +120,26 @@ impl <'a> SemAnalyzer<'a> {
         let mut resolved_params: Vec<Param> = Vec::new();
 
         for param in rel_t.params {
-            let (name, span) = self.extract_ident_str(param.name)?;
-            let symbol_id = self.define_symbol(
-                name,
-                SymbolKind::Variable,
-                span,
-            )?;
-
             let resolved_param_type = self.resolve_type(param.param_type)
                 .unwrap_or(Type::Error);
 
+            let (name, span) = self.extract_ident_str(param.name)?;
+            let param_symbol_id = self.define_symbol(
+                name,
+                SymbolKind::Variable(resolved_param_type.clone()),
+                span,
+            )?;
+
+
+            if let SymbolKind::Rel_t {input_types, .. } = &mut self.symbols[rel_symbol_id].kind {
+                input_types.push(resolved_param_type.clone());
+            }
+
             resolved_params.push(Param {
-                name: Ident::Symbol(symbol_id),
+                name: Ident::Symbol(param_symbol_id),
                 param_type: resolved_param_type,
             });
         }
-
-        let resolved_return_type = self.resolve_type(rel_t.return_type)
-            .unwrap_or(Type::Error);
 
         let resolved_body = self.resolve_expr(rel_t.body)
             .unwrap_or(Expr::Error);
@@ -139,7 +147,7 @@ impl <'a> SemAnalyzer<'a> {
         self.exit_scope();
 
         Some(RelType {
-            name: Ident::Symbol(symbol_id),
+            name: Ident::Symbol(rel_symbol_id),
             params: resolved_params,
             return_type: resolved_return_type,
             body: resolved_body,
@@ -174,17 +182,22 @@ impl <'a> SemAnalyzer<'a> {
     fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
             NetItem::Input(param) => {
+                let resolved_param_type = self.resolve_type(param.param_type)
+                    .unwrap_or(Type::Error);
+
                 let (name, span) = self.extract_ident_str(param.name)?;
 
-                let symbol_id = self.find_or_define_symbol(&name, SymbolKind::Ent, span);
+                let symbol_id = self.find_or_define_symbol(&name, SymbolKind::Ent_t, span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
-                    ports.insert(name, symbol_id);
+                    ports.insert(name, Param {
+                        name: Ident::Symbol(symbol_id),
+                        param_type: resolved_param_type.clone(),
+                    });
                 }
 
-                let resolved_param_type = self.resolve_type(param.param_type)
-                    .unwrap_or(Type::Error);
+                
 
                 Some(NetItem::Input(Param {
                     name: Ident::Symbol(symbol_id),
@@ -193,20 +206,23 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             NetItem::Output(param) => {
+                let resolved_param_type = self.resolve_type(param.param_type)
+                    .unwrap_or(Type::Error);
+
                 let (name, span) = self.extract_ident_str(param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent,
+                    SymbolKind::Ent_t,
                     span,
                 );
 
                 // Ports need to be accessable outside for instantiaing in other nets
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
-                    ports.insert(name, symbol_id);
+                    ports.insert(name, Param {
+                        name: Ident::Symbol(symbol_id),
+                        param_type: resolved_param_type.clone(),
+                    });
                 }
-
-                let resolved_param_type = self.resolve_type(param.param_type)
-                    .unwrap_or(Type::Error);
 
                 Some(NetItem::Output(Param {
                     name: Ident::Symbol(symbol_id),
@@ -218,7 +234,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(ent_init.param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent,
+                    SymbolKind::Ent_t,
                     span,
                 );
 
@@ -241,7 +257,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
                 let asignee_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent,
+                    SymbolKind::Ent_t,
                     span,
                 );
 
@@ -254,7 +270,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(arg)?;
                     let symbol_id = self.find_or_define_symbol(
                         &name,
-                        SymbolKind::Ent,
+                        SymbolKind::Ent_t,
                         span,
                     );
 
@@ -280,7 +296,7 @@ impl <'a> SemAnalyzer<'a> {
                     let port_id = self.find_net_port(inst_net_id, &name, span)?;
 
                     let (name, span) = self.extract_ident_str(connection.net)?;
-                    let connection_net_id = self.find_or_define_symbol(&name, SymbolKind::Ent, span);
+                    let connection_net_id = self.find_or_define_symbol(&name, SymbolKind::Ent_t, span);
 
                     resolved_connections.push(Connection {
                         port: Ident::Symbol(port_id),
@@ -303,7 +319,14 @@ impl <'a> SemAnalyzer<'a> {
     fn find_net_port(&mut self, net_id: SymbolId, name: &str, span: Span) -> Option<SymbolId> {
         match &self.symbols[net_id].kind {
             SymbolKind::Net { ports } =>  match ports.get(name) {
-                Some(id) => Some(*id),
+                //Some(id) => Some(*id),
+                Some(param) => match param.name {
+                    Ident::Symbol(id) => Some(id),
+                    _ => {
+                        // This should never happen after name resolution.
+                        unreachable!("net port was not resolved to a SymbolId");
+                    }
+                },
                 None => {
                     self.diagnostics.error(CompilerError::UndefinedPort {
                         name: name.to_string(),
@@ -336,6 +359,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Type::Error => Some(Type::Error),
+            Type::Unknown => Some(Type::Unknown), // Should not reach
         }
     }
  
@@ -435,19 +459,19 @@ mod tests {
                 Symbol {
                     id: 0,
                     name: "a".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     id: 1,
                     name: "b".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     id: 2,
                     name: "c".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
             ],
@@ -481,13 +505,13 @@ mod tests {
                 Symbol {
                     id: 0,
                     name: "a".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     id: 1,
                     name: "b".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 }
             ],
@@ -507,26 +531,26 @@ mod tests {
             diagnostics: &mut Diagnostics::new(),
         };
 
-        let result = sem_analyzer.define_symbol("a".to_string(), SymbolKind::Variable, Span{line:0,col:0});
+        let result = sem_analyzer.define_symbol("a".to_string(), SymbolKind::Variable(Type::Unknown), Span{line:0,col:0});
 
         assert_eq!(result, Some(2));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
                 id: 0,
                 name: "a".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
                 id: 1,
                 name: "b".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
                 id: 2,
                 name: "a".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             }
         ]);
@@ -553,13 +577,13 @@ mod tests {
                 Symbol {
                     id: 0,
                     name: "a".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     id: 1,
                     name: "b".to_string(),
-                    kind: SymbolKind::Variable,
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 }
             ],
@@ -574,7 +598,7 @@ mod tests {
             diagnostics: &mut Diagnostics::new(),
         };
 
-        let result = sem_analyzer.define_symbol("a".to_string(), SymbolKind::Variable, Span{line:0,col:0});
+        let result = sem_analyzer.define_symbol("a".to_string(), SymbolKind::Variable(Type::Unknown), Span{line:0,col:0});
 
         assert_eq!(result, None);
         assert_eq!(sem_analyzer.diagnostics.num_errors(), 1);
@@ -582,13 +606,13 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "a".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
                 id: 1,
                 name: "b".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
         ]);
@@ -656,7 +680,7 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "a".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 1, col: 2},
             },
         ]);
@@ -874,13 +898,16 @@ mod tests {
             Symbol {
                 id: 3,
                 name: "is_heads".to_string(),
-                kind: SymbolKind::Rel_t,
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Custom(Ident::Symbol(0))],
+                    return_type: Type::Bool,
+                },
                 span: Span{line: 0, col: 3},
             },
             Symbol {
                 id: 4,
                 name: "c".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
                 span: Span{line: 0, col: 4},
             },
         ]);
@@ -917,7 +944,10 @@ mod tests {
                 Symbol {
                     id: 0,
                     name: "REL".to_string(),
-                    kind: SymbolKind::Rel_t,
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool, Type::Int],
+                        return_type: Type::Bool,
+                    },
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
@@ -925,8 +955,14 @@ mod tests {
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), 2),
-                            ("B".to_string(), 3),
+                            ("A".to_string(), Param {
+                                name: Ident::Symbol(2),
+                                param_type: Type::Unknown,
+                            }),
+                            ("B".to_string(), Param {
+                                name: Ident::Symbol(3),
+                                param_type: Type::Unknown,
+                            }),
                         ])
                     },
                     span: Span{line: 0, col: 0},
@@ -934,13 +970,13 @@ mod tests {
                 Symbol {
                     id: 2,
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent,
+                    kind: SymbolKind::Ent_t,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
                     id: 3,
                     name: "B".to_string(),
-                    kind: SymbolKind::Ent,
+                    kind: SymbolKind::Ent_t,
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1082,7 +1118,10 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "REL".to_string(),
-                kind: SymbolKind::Rel_t,
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Bool, Type::Int],
+                    return_type: Type::Bool,
+                },
                 span: Span{line: 0, col: 0},
             },
             Symbol {
@@ -1090,8 +1129,14 @@ mod tests {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), 2),
-                        ("B".to_string(), 3),
+                        ("A".to_string(), Param {
+                            name: Ident::Symbol(2),
+                            param_type: Type::Unknown,
+                        }),
+                        ("B".to_string(), Param {
+                            name: Ident::Symbol(3),
+                            param_type: Type::Unknown,
+                        }),
                     ])
                 },
                 span: Span{line: 0, col: 0},
@@ -1099,13 +1144,13 @@ mod tests {
             Symbol {
                 id: 2,
                 name: "A".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0},
             },
             Symbol {
                 id: 3,
                 name: "B".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0},
             },
             Symbol {
@@ -1113,8 +1158,14 @@ mod tests {
                 name: "TEST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), 5),
-                        ("b".to_string(), 6),
+                        ("a".to_string(), Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Bool,
+                        }),
+                        ("b".to_string(), Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Real,
+                        }),
                     ])
                 },
                 span: Span {line: 0, col: 0},
@@ -1122,25 +1173,25 @@ mod tests {
             Symbol {
                 id: 5,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 6,
                 name: "b".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 7,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 8,
                 name: "d".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 0, col: 0}
             },
         ]);
@@ -1178,7 +1229,10 @@ mod tests {
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), 1),
+                            ("A".to_string(), Param {
+                                name: Ident::Symbol(1),
+                                param_type: Type::Unknown,
+                            }),
                         ])
                     },
                     span: Span{line: 0, col: 0},
@@ -1186,7 +1240,7 @@ mod tests {
                 Symbol {
                     id: 1,
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent,
+                    kind: SymbolKind::Ent_t,
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1336,13 +1390,13 @@ net SECOND {
             Symbol {
                 id: 0,
                 name: "n".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 2, col: 5},
             },
             Symbol {
                 id: 1,
                 name: "a".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 3, col: 9},
             },
             Symbol {
@@ -1360,13 +1414,16 @@ net SECOND {
             Symbol {
                 id: 4,
                 name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t,
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int],
+                    return_type: Type::Int,
+                },
                 span: Span {line: 9, col: 7},
             },
             Symbol {
                 id: 5,
                 name: "b".to_string(),
-                kind: SymbolKind::Variable,
+                kind: SymbolKind::Variable(Type::Int),
                 span: Span {line: 9, col: 14},
             },
             Symbol {
@@ -1374,8 +1431,14 @@ net SECOND {
                 name: "FIRST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), 7),
-                        ("q".to_string(), 8),
+                        ("a".to_string(), Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Int,
+                        }),
+                        ("q".to_string(), Param {
+                            name: Ident::Symbol(8),
+                            param_type: Type::Int,
+                        }),
                     ])
                 },
                 span: Span {line: 11, col: 5},
@@ -1383,13 +1446,13 @@ net SECOND {
             Symbol {
                 id: 7,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 12, col: 11},
             },
             Symbol {
                 id: 8,
                 name: "q".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 13, col: 12},
             },
             Symbol {
@@ -1397,8 +1460,14 @@ net SECOND {
                 name: "SECOND".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), 10),
-                        ("c".to_string(), 11),
+                        ("a".to_string(), Param {
+                            name: Ident::Symbol(10),
+                            param_type: Type::Custom(Ident::Symbol(2)),
+                        }),
+                        ("c".to_string(), Param {
+                            name: Ident::Symbol(11),
+                            param_type: Type::Custom(Ident::Symbol(2)),
+                        }),
                     ])
                 },
                 span: Span {line: 18, col: 5},
@@ -1406,13 +1475,13 @@ net SECOND {
             Symbol {
                 id: 10,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 19, col: 11},
             },
             Symbol {
                 id: 11,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent,
+                kind: SymbolKind::Ent_t,
                 span: Span {line: 20, col: 12},
             },
         ]);

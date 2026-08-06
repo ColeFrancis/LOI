@@ -43,7 +43,7 @@ pub enum Item {
 /// Common AST elements
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Ident {
     Str {
         val: String,
@@ -52,8 +52,9 @@ pub enum Ident {
     Symbol(SymbolId),
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Type {
+    Unknown,
     Bool,
     Impulse,
     Int,
