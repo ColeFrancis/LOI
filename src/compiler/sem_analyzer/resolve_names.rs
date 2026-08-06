@@ -33,6 +33,13 @@ use crate::compiler::diagnostics::CompilerError;
 use crate::compiler::diagnostics::Span;
 
 impl <'a> SemAnalyzer<'a> {
+    // Types are annotated whenever it is explicitely stated, but left as unknown otherwise. for example:
+    //      input a: Bool;  <- a annotated with type bool
+    //      rel_t ADD: (b: Int) -> Int = ..; <- ADD and b annotated with type Int
+    //      ent_t A = {C}; <- A annotated with type Custom
+    //
+    //      let n = a+1; <- n type left unknown
+    //      d := REL(b); <- if this is their first use, d and b types left unknown
     pub(super) fn resolve_names(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
 
@@ -70,7 +77,7 @@ impl <'a> SemAnalyzer<'a> {
 
     fn resolve_ent(&mut self, ent_t: EntType) -> Option<EntType> {
         let (name, span) = self.extract_ident_str(ent_t.name)?;
-        let symbol_id = self.define_symbol(
+        let ent_t_symbol_id = self.define_symbol(
             name,
             SymbolKind::EntType,
             span,
@@ -83,13 +90,13 @@ impl <'a> SemAnalyzer<'a> {
 
                 for ident in idents {
                     let (name, span) = self.extract_ident_str(ident)?;
-                    let symbol_id = self.define_symbol(
+                    let member_symbol_id = self.define_symbol(
                         name,
-                        SymbolKind::EntMember,
+                        SymbolKind::EntMember{parent: ent_t_symbol_id},
                         span,
                     )?;
 
-                    resolved_idents.push(Ident::Symbol(symbol_id));
+                    resolved_idents.push(Ident::Symbol(member_symbol_id));
                 }
 
                 EntExpr::SetEnt(resolved_idents)
@@ -97,7 +104,7 @@ impl <'a> SemAnalyzer<'a> {
         };
 
         Some(EntType {
-            name: Ident::Symbol(symbol_id),
+            name: Ident::Symbol(ent_t_symbol_id),
             expr,
         })
     }
@@ -188,7 +195,11 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (name, span) = self.extract_ident_str(param.name)?;
 
-                let symbol_id = self.find_or_define_symbol(&name, SymbolKind::EntType, span);
+                let symbol_id = self.find_or_define_symbol(
+                    &name, 
+                    SymbolKind::Ent(resolved_param_type.clone()), 
+                    span,
+                );
 
                 // Ports need to be accessable outside for instantiaing in other nets
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
@@ -197,8 +208,6 @@ impl <'a> SemAnalyzer<'a> {
                         ty: resolved_param_type.clone(),
                     });
                 }
-
-                
 
                 Some(NetItem::Input(Param {
                     name: Ident::Symbol(symbol_id),
@@ -212,8 +221,8 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (name, span) = self.extract_ident_str(param.name)?;
                 let symbol_id = self.find_or_define_symbol(
-                    &name,
-                    SymbolKind::EntType,
+                    &name, 
+                    SymbolKind::Ent(resolved_param_type.clone()), 
                     span,
                 );
 
@@ -232,15 +241,15 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             NetItem::Init(ent_init) => {
-                let (name, span) = self.extract_ident_str(ent_init.param.name)?;
-                let symbol_id = self.find_or_define_symbol(
-                    &name,
-                    SymbolKind::EntType,
-                    span,
-                );
-
                 let resolved_param_type = self.resolve_type(ent_init.param.param_type)
                     .unwrap_or(Type::Error);
+
+                let (name, span) = self.extract_ident_str(ent_init.param.name)?;
+                let symbol_id = self.find_or_define_symbol(
+                    &name, 
+                    SymbolKind::Ent(resolved_param_type.clone()), 
+                    span,
+                );
 
                 let resolved_val = self.resolve_expr(ent_init.val)
                     .unwrap_or(Expr::Error);
@@ -258,7 +267,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
                 let asignee_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::EntType,
+                    SymbolKind::Ent(Type::Unknown), // Find during type checking pass
                     span,
                 );
 
@@ -271,7 +280,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(arg)?;
                     let symbol_id = self.find_or_define_symbol(
                         &name,
-                        SymbolKind::EntType,
+                        SymbolKind::Ent(Type::Unknown), // Find during type checking pass
                         span,
                     );
 
@@ -297,7 +306,11 @@ impl <'a> SemAnalyzer<'a> {
                     let port_id = self.find_net_port(inst_net_id, &name, span)?;
 
                     let (name, span) = self.extract_ident_str(connection.net)?;
-                    let connection_net_id = self.find_or_define_symbol(&name, SymbolKind::EntType, span);
+                    let connection_net_id = self.find_or_define_symbol(
+                        &name, 
+                        SymbolKind::Ent(Type::Unknown), 
+                        span,
+                    );
 
                     resolved_connections.push(Connection {
                         port: Ident::Symbol(port_id),
@@ -758,13 +771,13 @@ mod tests {
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember,
+                kind: SymbolKind::EntMember{ parent: 0 },
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember,
+                kind: SymbolKind::EntMember{ parent: 0 },
                 span: Span{line: 0, col: 2},
             },
         ]);
@@ -789,13 +802,13 @@ mod tests {
                 Symbol {
                     id: 1,
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember,
+                    kind: SymbolKind::EntMember{ parent: 0 },
                     span: Span{line: 0, col: 1},
                 },
                 Symbol {
                     id: 2,
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember,
+                    kind: SymbolKind::EntMember{ parent: 0 },
                     span: Span{line: 0, col: 2},
                 },
             ],
@@ -884,13 +897,13 @@ mod tests {
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember,
+                kind: SymbolKind::EntMember{ parent: 0 },
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember,
+                kind: SymbolKind::EntMember{ parent: 0 },
                 span: Span{line: 0, col: 2},
             },
             Symbol {
@@ -968,13 +981,13 @@ mod tests {
                 Symbol {
                     id: 2,
                     name: "A".to_string(),
-                    kind: SymbolKind::EntType,
+                    kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
                     id: 3,
                     name: "B".to_string(),
-                    kind: SymbolKind::EntType,
+                    kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1142,13 +1155,13 @@ mod tests {
             Symbol {
                 id: 2,
                 name: "A".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0},
             },
             Symbol {
                 id: 3,
                 name: "B".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0},
             },
             Symbol {
@@ -1171,25 +1184,25 @@ mod tests {
             Symbol {
                 id: 5,
                 name: "a".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Bool),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 6,
                 name: "b".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Real),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 7,
                 name: "c".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Int),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 8,
                 name: "d".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
         ]);
@@ -1238,7 +1251,7 @@ mod tests {
                 Symbol {
                     id: 1,
                     name: "A".to_string(),
-                    kind: SymbolKind::EntType,
+                    kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1406,7 +1419,7 @@ net SECOND {
             Symbol {
                 id: 3,
                 name: "A".to_string(),
-                kind: SymbolKind::EntMember,
+                kind: SymbolKind::EntMember{ parent: 2 },
                 span: Span {line: 7, col: 17},
             },
             Symbol {
@@ -1444,13 +1457,13 @@ net SECOND {
             Symbol {
                 id: 7,
                 name: "a".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Int),
                 span: Span {line: 12, col: 11},
             },
             Symbol {
                 id: 8,
                 name: "q".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Int),
                 span: Span {line: 13, col: 12},
             },
             Symbol {
@@ -1473,13 +1486,13 @@ net SECOND {
             Symbol {
                 id: 10,
                 name: "a".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(2))),
                 span: Span {line: 19, col: 11},
             },
             Symbol {
                 id: 11,
                 name: "c".to_string(),
-                kind: SymbolKind::EntType,
+                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(2))),
                 span: Span {line: 20, col: 12},
             },
         ]);

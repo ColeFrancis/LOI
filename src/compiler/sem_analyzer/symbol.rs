@@ -30,9 +30,12 @@ use crate::compiler::diagnostics::Span;
 pub type SymbolId = usize;
 
 #[derive(PartialEq, Debug)]
-pub struct NetPort {
-    pub symbol: SymbolId,
-    pub ty: Type,
+pub struct Symbol {
+    pub id: SymbolId,
+    pub name: String,
+    pub kind: SymbolKind,
+
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
@@ -40,28 +43,21 @@ pub struct NetPort {
 pub enum SymbolKind {
     Variable(Type),
     EntType,
-    // EntMember {
-    //     parent: SymbolId,
-    // },
-    // Ent
-    EntMember,
+    EntMember {
+        parent: SymbolId,
+    },
+    Ent(Type),
     Rel_t {
         input_types: Vec<Type>,
         return_type: Type
     },
     Net {
-       ports: HashMap<String, NetPort> // Name needs to be available for name resolution of net_inst
+       ports: HashMap<String, NetPort>
     },
 }
 
 #[derive(PartialEq, Debug)]
-pub struct Symbol {
-    pub id: SymbolId,   // index in Vec<Symbol>
-    pub name: String,
-    pub kind: SymbolKind,
-
-    pub span: Span,
-
-    // filled in by later passes
-    // ty: Option<TypeId>
+pub struct NetPort {
+    pub symbol: SymbolId,
+    pub ty: Type,
 }
