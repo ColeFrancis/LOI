@@ -33,7 +33,7 @@ use crate::compiler::diagnostics::CompilerError;
 use crate::compiler::diagnostics::Span;
 
 impl <'a> SemAnalyzer<'a> {
-    // Types are annotated whenever it is explicitely stated, but left as unknown otherwise. for example:
+    // Types are annotated in this step only where it is explicit. For example:
     //      input a: Bool;  <- a annotated with type bool
     //      rel_t ADD: (b: Int) -> Int = ..; <- ADD and b annotated with type Int
     //      ent_t A = {C}; <- A annotated with type Custom
