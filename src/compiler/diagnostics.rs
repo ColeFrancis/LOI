@@ -92,7 +92,8 @@ pub enum CompilerError {
 
     DuplicateDefinition {
         name: String,
-        span: Span,
+        old_span: Span,
+        new_span: Span,
     },
 
     UndefinedIdent {
@@ -115,9 +116,10 @@ pub enum Expected {
     // BoolLiteral,
     IntLiteral,
     // RealLiteral,
+    Net,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub struct Span {
     pub line: usize,
     pub col: usize,

@@ -25,10 +25,10 @@
 use std::collections::HashMap;
 
 use super::SemAnalyzer;
+use super::symbol::Symbol;
+use super::scope::Scope;
 use crate::compiler::parser::ast::Program;
 use crate::compiler::diagnostics::Diagnostics;
-use crate::compiler::sem_analyzer::symbol::Symbol;
-use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
     pub fn new(ast: Program, diagnostics: &'a mut Diagnostics) -> Self {

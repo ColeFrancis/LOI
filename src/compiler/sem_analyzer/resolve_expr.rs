@@ -29,8 +29,7 @@ use super::symbol::{Symbol, SymbolKind, SymbolId};
 use super::scope::Scope;
 use super::types::Type;
 use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::CompilerError;
-use crate::compiler::diagnostics::Span;
+use crate::compiler::diagnostics::{CompilerError, Span};
 
 impl <'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),

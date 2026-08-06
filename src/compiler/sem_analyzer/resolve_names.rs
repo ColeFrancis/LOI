@@ -30,8 +30,7 @@ use super::symbol::{Symbol, SymbolKind, SymbolId, NetPort};
 use super::scope::Scope;
 use super::types::Type;
 use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::CompilerError;
-use crate::compiler::diagnostics::Span;
+use crate::compiler::diagnostics::{CompilerError, Span};
 
 impl <'a> SemAnalyzer<'a> {
     // TODO: Refactor so functions dont take and return AST members but take a mutable
@@ -390,10 +389,14 @@ impl <'a> SemAnalyzer<'a> {
     fn define_symbol(&mut self, name: String, kind: SymbolKind, span: Span) -> Option<SymbolId> {
         let current = self.scopes.last_mut().unwrap();
 
-        if current.symbols.contains_key(&name) {
+        // Duplicate definition
+        if let Some(&old_id) = current.symbols.get(&name) {
+            let old_span = self.symbols[old_id].span;
+
             self.diagnostics.error(CompilerError::DuplicateDefinition {
                 name,
-                span,
+                old_span,
+                new_span: span,
             });
 
             return None;
