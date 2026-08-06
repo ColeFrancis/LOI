@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! - All incoming symbols will have Type::Unknown
 //!
 //! Author: Cole Francis
 

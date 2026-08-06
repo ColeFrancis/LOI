@@ -19,6 +19,7 @@
 //! ## Invariants
 //!
 //! - Must use the same ast as in parsing, just change Idents from Ident::Str to Ident::Symbol
+//! - Resolve names sets all types in new symbols as unknown. Type checking handles setting those types
 //!
 //! Author: Cole Francis
 
@@ -33,13 +34,9 @@ use crate::compiler::diagnostics::CompilerError;
 use crate::compiler::diagnostics::Span;
 
 impl <'a> SemAnalyzer<'a> {
-    // Types are annotated in this step only where it is explicit. For example:
-    //      input a: Bool;  <- a annotated with type bool
-    //      rel_t ADD: (b: Int) -> Int = ..; <- ADD and b annotated with type Int
-    //      ent_t A = {C}; <- A annotated with type Custom
-    //
-    //      let n = a+1; <- n type left unknown
-    //      d := REL(b); <- if this is their first use, d and b types left unknown
+    // TODO: Refactor so functions dont take and return AST members but take a mutable
+    //  referencd to self.ast and modify it in place
+
     pub(super) fn resolve_names(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
 
@@ -110,15 +107,12 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn resolve_rel(&mut self, rel_t: RelType) -> Option<RelType> {
-        let resolved_return_type = self.resolve_type(rel_t.return_type)
-            .unwrap_or(Type::Error);
-        
         let (name, span) = self.extract_ident_str(rel_t.name)?;
         let rel_symbol_id = self.define_symbol(
             name,
             SymbolKind::Rel_t {
                 input_types: Vec::new(),
-                return_type: resolved_return_type.clone(),
+                return_type: Type::Unknown,
             },
             span,
         )?;
@@ -128,26 +122,24 @@ impl <'a> SemAnalyzer<'a> {
         let mut resolved_params: Vec<Param> = Vec::new();
 
         for param in rel_t.params {
-            let resolved_param_type = self.resolve_type(param.param_type)
-                .unwrap_or(Type::Error);
-
             let (name, span) = self.extract_ident_str(param.name)?;
             let param_symbol_id = self.define_symbol(
                 name,
-                SymbolKind::Variable(resolved_param_type.clone()),
+                SymbolKind::Variable(Type::Unknown),
                 span,
             )?;
 
-
-            if let SymbolKind::Rel_t {input_types, .. } = &mut self.symbols[rel_symbol_id].kind {
-                input_types.push(resolved_param_type.clone());
-            }
+            let resolved_param_type = self.resolve_type(param.param_type)
+                .unwrap_or(Type::Error);
 
             resolved_params.push(Param {
                 name: Ident::Symbol(param_symbol_id),
                 param_type: resolved_param_type,
             });
         }
+
+        let resolved_return_type = self.resolve_type(rel_t.return_type)
+            .unwrap_or(Type::Error);
 
         let resolved_body = self.resolve_expr(rel_t.body)
             .unwrap_or(Expr::Error);
@@ -190,14 +182,11 @@ impl <'a> SemAnalyzer<'a> {
     fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
             NetItem::Input(param) => {
-                let resolved_param_type = self.resolve_type(param.param_type)
-                    .unwrap_or(Type::Error);
-
                 let (name, span) = self.extract_ident_str(param.name)?;
 
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
-                    SymbolKind::Ent(resolved_param_type.clone()), 
+                    SymbolKind::Ent(Type::Unknown), 
                     span,
                 );
 
@@ -205,9 +194,12 @@ impl <'a> SemAnalyzer<'a> {
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
                     ports.insert(name, NetPort {
                         symbol: symbol_id,
-                        ty: resolved_param_type.clone(),
+                        ty: Type::Unknown,
                     });
                 }
+
+                let resolved_param_type = self.resolve_type(param.param_type)
+                    .unwrap_or(Type::Error);
 
                 Some(NetItem::Input(Param {
                     name: Ident::Symbol(symbol_id),
@@ -216,13 +208,10 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             NetItem::Output(param) => {
-                let resolved_param_type = self.resolve_type(param.param_type)
-                    .unwrap_or(Type::Error);
-
                 let (name, span) = self.extract_ident_str(param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
-                    SymbolKind::Ent(resolved_param_type.clone()), 
+                    SymbolKind::Ent(Type::Unknown), 
                     span,
                 );
 
@@ -230,9 +219,12 @@ impl <'a> SemAnalyzer<'a> {
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
                     ports.insert(name, NetPort {
                         symbol: symbol_id,
-                        ty: resolved_param_type.clone(),
+                        ty: Type::Unknown,
                     });
                 }
+
+                let resolved_param_type = self.resolve_type(param.param_type)
+                    .unwrap_or(Type::Error);
 
                 Some(NetItem::Output(Param {
                     name: Ident::Symbol(symbol_id),
@@ -241,15 +233,15 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             NetItem::Init(ent_init) => {
-                let resolved_param_type = self.resolve_type(ent_init.param.param_type)
-                    .unwrap_or(Type::Error);
-
                 let (name, span) = self.extract_ident_str(ent_init.param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
-                    SymbolKind::Ent(resolved_param_type.clone()), 
+                    SymbolKind::Ent(Type::Unknown), 
                     span,
                 );
+
+                let resolved_param_type = self.resolve_type(ent_init.param.param_type)
+                    .unwrap_or(Type::Error);
 
                 let resolved_val = self.resolve_expr(ent_init.val)
                     .unwrap_or(Expr::Error);
@@ -267,7 +259,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
                 let asignee_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent(Type::Unknown), // Find during type checking pass
+                    SymbolKind::Ent(Type::Unknown),
                     span,
                 );
 
@@ -280,7 +272,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(arg)?;
                     let symbol_id = self.find_or_define_symbol(
                         &name,
-                        SymbolKind::Ent(Type::Unknown), // Find during type checking pass
+                        SymbolKind::Ent(Type::Unknown),
                         span,
                     );
 
@@ -910,15 +902,15 @@ mod tests {
                 id: 3,
                 name: "is_heads".to_string(),
                 kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Custom(Ident::Symbol(0))],
-                    return_type: Type::Bool,
+                    input_types: vec![],
+                    return_type: Type::Unknown,
                 },
                 span: Span{line: 0, col: 3},
             },
             Symbol {
                 id: 4,
                 name: "c".to_string(),
-                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 4},
             },
         ]);
@@ -956,8 +948,8 @@ mod tests {
                     id: 0,
                     name: "REL".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Bool, Type::Int],
-                        return_type: Type::Bool,
+                        input_types: vec![],
+                        return_type: Type::Unknown,
                     },
                     span: Span{line: 0, col: 0},
                 },
@@ -1130,8 +1122,8 @@ mod tests {
                 id: 0,
                 name: "REL".to_string(),
                 kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Bool, Type::Int],
-                    return_type: Type::Bool,
+                    input_types: vec![],
+                    return_type: Type::Unknown,
                 },
                 span: Span{line: 0, col: 0},
             },
@@ -1171,11 +1163,11 @@ mod tests {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 5,
-                            ty: Type::Bool,
+                            ty: Type::Unknown,
                         }),
                         ("b".to_string(), NetPort {
                             symbol: 6,
-                            ty: Type::Real,
+                            ty: Type::Unknown,
                         }),
                     ])
                 },
@@ -1184,19 +1176,19 @@ mod tests {
             Symbol {
                 id: 5,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Bool),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 6,
                 name: "b".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 7,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
@@ -1426,15 +1418,15 @@ net SECOND {
                 id: 4,
                 name: "ADD".to_string(),
                 kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Int],
-                    return_type: Type::Int,
+                    input_types: vec![],
+                    return_type: Type::Unknown,
                 },
                 span: Span {line: 9, col: 7},
             },
             Symbol {
                 id: 5,
                 name: "b".to_string(),
-                kind: SymbolKind::Variable(Type::Int),
+                kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 9, col: 14},
             },
             Symbol {
@@ -1444,11 +1436,11 @@ net SECOND {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 7,
-                            ty: Type::Int,
+                            ty: Type::Unknown,
                         }),
                         ("q".to_string(), NetPort {
                             symbol: 8,
-                            ty: Type::Int,
+                            ty: Type::Unknown,
                         }),
                     ])
                 },
@@ -1457,13 +1449,13 @@ net SECOND {
             Symbol {
                 id: 7,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 12, col: 11},
             },
             Symbol {
                 id: 8,
                 name: "q".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 13, col: 12},
             },
             Symbol {
@@ -1473,11 +1465,11 @@ net SECOND {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 10,
-                            ty: Type::Custom(Ident::Symbol(2)),
+                            ty: Type::Unknown,
                         }),
                         ("c".to_string(), NetPort {
                             symbol: 11,
-                            ty: Type::Custom(Ident::Symbol(2)),
+                            ty: Type::Unknown,
                         }),
                     ])
                 },
@@ -1486,13 +1478,13 @@ net SECOND {
             Symbol {
                 id: 10,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(2))),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 19, col: 11},
             },
             Symbol {
                 id: 11,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(2))),
+                kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 20, col: 12},
             },
         ]);
