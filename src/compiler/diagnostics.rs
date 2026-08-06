@@ -105,6 +105,18 @@ pub enum CompilerError {
         name: String,
         span: Span,
     }
+    
+    /*UnexpectedIdent {
+        expected: SymbolKind,
+        found: SymbolKind,
+        span: Span,
+    }
+    
+    UnexpectedType {
+        expected: Type,
+        found: Type,
+        span: Span,
+    }*/
 }
 
 #[derive(Debug, PartialEq)]
