@@ -26,6 +26,7 @@ use super::Parser;
 use super::sync::SyncRule;
 use super::ast::*;
 use crate::compiler::lexer::token::TokenKind;
+use crate::compiler::sem_analyzer::types::Type;
 
 impl<'a> Parser<'a> {
     // Rel_t token already consumed

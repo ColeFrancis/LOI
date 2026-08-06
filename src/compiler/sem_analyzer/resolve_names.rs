@@ -25,11 +25,12 @@
 use std::collections::HashMap;
 
 use super::SemAnalyzer;
-use super::symbol::{Symbol, SymbolKind, SymbolId};
+use super::symbol::{Symbol, SymbolKind, SymbolId, NetPort};
+use super::scope::Scope;
+use super::types::Type;
 use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::CompilerError;
 use crate::compiler::diagnostics::Span;
-use crate::compiler::sem_analyzer::scope::Scope;
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {
@@ -71,7 +72,7 @@ impl <'a> SemAnalyzer<'a> {
         let (name, span) = self.extract_ident_str(ent_t.name)?;
         let symbol_id = self.define_symbol(
             name,
-            SymbolKind::Ent_t,
+            SymbolKind::EntType,
             span,
         )?;
 
@@ -84,7 +85,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(ident)?;
                     let symbol_id = self.define_symbol(
                         name,
-                        SymbolKind::Ent_member,
+                        SymbolKind::EntMember,
                         span,
                     )?;
 
@@ -187,13 +188,13 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (name, span) = self.extract_ident_str(param.name)?;
 
-                let symbol_id = self.find_or_define_symbol(&name, SymbolKind::Ent_t, span);
+                let symbol_id = self.find_or_define_symbol(&name, SymbolKind::EntType, span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
-                    ports.insert(name, Param {
-                        name: Ident::Symbol(symbol_id),
-                        param_type: resolved_param_type.clone(),
+                    ports.insert(name, NetPort {
+                        symbol: symbol_id,
+                        ty: resolved_param_type.clone(),
                     });
                 }
 
@@ -212,15 +213,15 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent_t,
+                    SymbolKind::EntType,
                     span,
                 );
 
                 // Ports need to be accessable outside for instantiaing in other nets
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
-                    ports.insert(name, Param {
-                        name: Ident::Symbol(symbol_id),
-                        param_type: resolved_param_type.clone(),
+                    ports.insert(name, NetPort {
+                        symbol: symbol_id,
+                        ty: resolved_param_type.clone(),
                     });
                 }
 
@@ -234,7 +235,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(ent_init.param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent_t,
+                    SymbolKind::EntType,
                     span,
                 );
 
@@ -257,7 +258,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
                 let asignee_id = self.find_or_define_symbol(
                     &name,
-                    SymbolKind::Ent_t,
+                    SymbolKind::EntType,
                     span,
                 );
 
@@ -270,7 +271,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(arg)?;
                     let symbol_id = self.find_or_define_symbol(
                         &name,
-                        SymbolKind::Ent_t,
+                        SymbolKind::EntType,
                         span,
                     );
 
@@ -296,7 +297,7 @@ impl <'a> SemAnalyzer<'a> {
                     let port_id = self.find_net_port(inst_net_id, &name, span)?;
 
                     let (name, span) = self.extract_ident_str(connection.net)?;
-                    let connection_net_id = self.find_or_define_symbol(&name, SymbolKind::Ent_t, span);
+                    let connection_net_id = self.find_or_define_symbol(&name, SymbolKind::EntType, span);
 
                     resolved_connections.push(Connection {
                         port: Ident::Symbol(port_id),
@@ -319,14 +320,7 @@ impl <'a> SemAnalyzer<'a> {
     fn find_net_port(&mut self, net_id: SymbolId, name: &str, span: Span) -> Option<SymbolId> {
         match &self.symbols[net_id].kind {
             SymbolKind::Net { ports } =>  match ports.get(name) {
-                //Some(id) => Some(*id),
-                Some(param) => match param.name {
-                    Ident::Symbol(id) => Some(id),
-                    _ => {
-                        // This should never happen after name resolution.
-                        unreachable!("net port was not resolved to a SymbolId");
-                    }
-                },
+                Some(port) => Some(port.symbol),
                 None => {
                     self.diagnostics.error(CompilerError::UndefinedPort {
                         name: name.to_string(),
@@ -349,6 +343,10 @@ impl <'a> SemAnalyzer<'a> {
             Type::Impulse => Some(Type::Impulse),
             Type::Int     => Some(Type::Int),
             Type::Real    => Some(Type::Real),
+
+            Type::Mod(val) => {
+                Some(Type::Mod(val))
+            }
 
             Type::Custom(ident) => {
                 let (name, span) = self.extract_ident_str(ident)?;
@@ -711,7 +709,7 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "z3".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
             },
         ]);
@@ -754,19 +752,19 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "COIN".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
             },
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::Ent_member,
+                kind: SymbolKind::EntMember,
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::Ent_member,
+                kind: SymbolKind::EntMember,
                 span: Span{line: 0, col: 2},
             },
         ]);
@@ -785,19 +783,19 @@ mod tests {
                 Symbol {
                     id: 0,
                     name: "COIN".to_string(),
-                    kind: SymbolKind::Ent_t,
+                    kind: SymbolKind::EntType,
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     id: 1,
                     name: "H".to_string(),
-                    kind: SymbolKind::Ent_member,
+                    kind: SymbolKind::EntMember,
                     span: Span{line: 0, col: 1},
                 },
                 Symbol {
                     id: 2,
                     name: "T".to_string(),
-                    kind: SymbolKind::Ent_member,
+                    kind: SymbolKind::EntMember,
                     span: Span{line: 0, col: 2},
                 },
             ],
@@ -880,19 +878,19 @@ mod tests {
             Symbol {
                 id: 0,
                 name: "COIN".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
             },
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::Ent_member,
+                kind: SymbolKind::EntMember,
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::Ent_member,
+                kind: SymbolKind::EntMember,
                 span: Span{line: 0, col: 2},
             },
             Symbol {
@@ -955,13 +953,13 @@ mod tests {
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), Param {
-                                name: Ident::Symbol(2),
-                                param_type: Type::Unknown,
+                            ("A".to_string(), NetPort {
+                                symbol: 2,
+                                ty: Type::Unknown,
                             }),
-                            ("B".to_string(), Param {
-                                name: Ident::Symbol(3),
-                                param_type: Type::Unknown,
+                            ("B".to_string(), NetPort {
+                                symbol: 3,
+                                ty: Type::Unknown,
                             }),
                         ])
                     },
@@ -970,13 +968,13 @@ mod tests {
                 Symbol {
                     id: 2,
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent_t,
+                    kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
                     id: 3,
                     name: "B".to_string(),
-                    kind: SymbolKind::Ent_t,
+                    kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1129,13 +1127,13 @@ mod tests {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), Param {
-                            name: Ident::Symbol(2),
-                            param_type: Type::Unknown,
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            ty: Type::Unknown,
                         }),
-                        ("B".to_string(), Param {
-                            name: Ident::Symbol(3),
-                            param_type: Type::Unknown,
+                        ("B".to_string(), NetPort {
+                            symbol: 3,
+                            ty: Type::Unknown,
                         }),
                     ])
                 },
@@ -1144,13 +1142,13 @@ mod tests {
             Symbol {
                 id: 2,
                 name: "A".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0},
             },
             Symbol {
                 id: 3,
                 name: "B".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0},
             },
             Symbol {
@@ -1158,13 +1156,13 @@ mod tests {
                 name: "TEST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), Param {
-                            name: Ident::Symbol(5),
-                            param_type: Type::Bool,
+                        ("a".to_string(), NetPort {
+                            symbol: 5,
+                            ty: Type::Bool,
                         }),
-                        ("b".to_string(), Param {
-                            name: Ident::Symbol(6),
-                            param_type: Type::Real,
+                        ("b".to_string(), NetPort {
+                            symbol: 6,
+                            ty: Type::Real,
                         }),
                     ])
                 },
@@ -1173,25 +1171,25 @@ mod tests {
             Symbol {
                 id: 5,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 6,
                 name: "b".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 7,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0}
             },
             Symbol {
                 id: 8,
                 name: "d".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0}
             },
         ]);
@@ -1229,9 +1227,9 @@ mod tests {
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), Param {
-                                name: Ident::Symbol(1),
-                                param_type: Type::Unknown,
+                            ("A".to_string(), NetPort {
+                                symbol: 1,
+                                ty: Type::Unknown,
                             }),
                         ])
                     },
@@ -1240,7 +1238,7 @@ mod tests {
                 Symbol {
                     id: 1,
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent_t,
+                    kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
             ],
@@ -1402,13 +1400,13 @@ net SECOND {
             Symbol {
                 id: 2,
                 name: "SINGLE".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 7, col: 7},
             },
             Symbol {
                 id: 3,
                 name: "A".to_string(),
-                kind: SymbolKind::Ent_member,
+                kind: SymbolKind::EntMember,
                 span: Span {line: 7, col: 17},
             },
             Symbol {
@@ -1431,13 +1429,13 @@ net SECOND {
                 name: "FIRST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), Param {
-                            name: Ident::Symbol(7),
-                            param_type: Type::Int,
+                        ("a".to_string(), NetPort {
+                            symbol: 7,
+                            ty: Type::Int,
                         }),
-                        ("q".to_string(), Param {
-                            name: Ident::Symbol(8),
-                            param_type: Type::Int,
+                        ("q".to_string(), NetPort {
+                            symbol: 8,
+                            ty: Type::Int,
                         }),
                     ])
                 },
@@ -1446,13 +1444,13 @@ net SECOND {
             Symbol {
                 id: 7,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 12, col: 11},
             },
             Symbol {
                 id: 8,
                 name: "q".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 13, col: 12},
             },
             Symbol {
@@ -1460,13 +1458,13 @@ net SECOND {
                 name: "SECOND".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("a".to_string(), Param {
-                            name: Ident::Symbol(10),
-                            param_type: Type::Custom(Ident::Symbol(2)),
+                        ("a".to_string(), NetPort {
+                            symbol: 10,
+                            ty: Type::Custom(Ident::Symbol(2)),
                         }),
-                        ("c".to_string(), Param {
-                            name: Ident::Symbol(11),
-                            param_type: Type::Custom(Ident::Symbol(2)),
+                        ("c".to_string(), NetPort {
+                            symbol: 11,
+                            ty: Type::Custom(Ident::Symbol(2)),
                         }),
                     ])
                 },
@@ -1475,13 +1473,13 @@ net SECOND {
             Symbol {
                 id: 10,
                 name: "a".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 19, col: 11},
             },
             Symbol {
                 id: 11,
                 name: "c".to_string(),
-                kind: SymbolKind::Ent_t,
+                kind: SymbolKind::EntType,
                 span: Span {line: 20, col: 12},
             },
         ]);

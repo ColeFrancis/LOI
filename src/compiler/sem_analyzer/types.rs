@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-pub mod symbol;
-pub mod types;
-mod scope;
-mod resolve_names;
-mod resolve_expr;
-mod check_types;
-mod fold_const;
+//! # types
+//!
+//! Defines types used in parsing and semantic analysis
+//!
+//! ## Invariants
+//!
+//! - 
+//!
+//! Author: Cole Francis
 
-use crate::compiler::sem_analyzer::symbol::Symbol;
-use crate::compiler::sem_analyzer::scope::{Scope, ScopeId};
-use crate::compiler::diagnostics::Diagnostics;
-use crate::compiler::parser::ast::Program;
+use crate::compiler::parser::ast::Ident;
 
-pub struct SemAnalyzer<'a> {
-    ast: Program,
-    symbols: Vec<Symbol>,
-    scopes: Vec<Scope>,
-
-    diagnostics: &'a mut Diagnostics,
+#[derive(PartialEq, Debug, Clone)]
+pub enum Type {
+    Unknown,
+    Bool,
+    Impulse,
+    Int,
+    Real,
+    Mod(i64),
+    Custom(Ident),
+    Error,
 }

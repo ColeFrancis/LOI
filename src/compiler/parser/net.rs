@@ -27,6 +27,7 @@ use super::sync::SyncRule;
 use super::ast::*;
 use crate::compiler::{
     lexer::token::TokenKind,
+    sem_analyzer::types::Type,
     diagnostics::{CompilerError, Expected},
 };
 

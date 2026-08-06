@@ -23,6 +23,7 @@
 //! Author: Cole Francis
 
 use crate::compiler::sem_analyzer::symbol::SymbolId;
+use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::diagnostics::Span;
 
 #[derive(PartialEq, Debug)]
@@ -50,17 +51,6 @@ pub enum Ident {
         span: Span,
     },
     Symbol(SymbolId),
-}
-
-#[derive(PartialEq, Debug, Clone)]
-pub enum Type {
-    Unknown,
-    Bool,
-    Impulse,
-    Int,
-    Real,
-    Custom(Ident),
-    Error,
 }
 
 #[derive(PartialEq, Debug)]

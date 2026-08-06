@@ -24,23 +24,33 @@
 
 use std::collections::HashMap;
 
+use super::types::Type;
 use crate::compiler::diagnostics::Span;
-use crate::compiler::parser::ast::{Type, Param};
 
 pub type SymbolId = usize;
+
+#[derive(PartialEq, Debug)]
+pub struct NetPort {
+    pub symbol: SymbolId,
+    pub ty: Type,
+}
 
 #[derive(PartialEq, Debug)]
 #[allow(non_camel_case_types)]
 pub enum SymbolKind {
     Variable(Type),
-    Ent_t,
-    Ent_member,
+    EntType,
+    // EntMember {
+    //     parent: SymbolId,
+    // },
+    // Ent
+    EntMember,
     Rel_t {
         input_types: Vec<Type>,
         return_type: Type
     },
     Net {
-       ports: HashMap<String, Param>
+       ports: HashMap<String, NetPort> // Name needs to be available for name resolution of net_inst
     },
 }
 
