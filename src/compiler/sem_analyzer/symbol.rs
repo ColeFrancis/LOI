@@ -38,7 +38,7 @@ pub struct Symbol {
     pub span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub enum SymbolKind {
     Variable(Type),
@@ -56,7 +56,7 @@ pub enum SymbolKind {
     },
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct NetPort {
     pub symbol: SymbolId,
     pub ty: Type,

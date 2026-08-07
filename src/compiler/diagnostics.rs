@@ -23,6 +23,8 @@
 //! Author: Cole Francis
 
 use super::lexer::token::TokenKind;
+use super::sem_analyzer::types::Type;
+use super::sem_analyzer::symbol::SymbolKind;
 
 pub struct Diagnostics {
     errors: Vec<CompilerError>,
@@ -104,19 +106,19 @@ pub enum CompilerError {
     UndefinedPort {
         name: String,
         span: Span,
-    }
+    },
     
-    /*UnexpectedIdent {
-        expected: SymbolKind,
+    UnexpectedIdent {
+        expected: Vec<SymbolKind>,
         found: SymbolKind,
         span: Span,
-    }
+    },
     
     UnexpectedType {
-        expected: Type,
+        expected: Vec<Type>,
         found: Type,
         span: Span,
-    }*/
+    },
 }
 
 #[derive(Debug, PartialEq)]
@@ -125,10 +127,7 @@ pub enum Expected {
     Expr,
     Pattern,
     Ident,
-    // BoolLiteral,
     IntLiteral,
-    // RealLiteral,
-    Net,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]

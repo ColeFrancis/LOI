@@ -30,12 +30,21 @@ use super::symbol::{Symbol, SymbolKind, SymbolId, NetPort};
 use super::scope::Scope;
 use super::types::Type;
 use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Span};
+use crate::compiler::diagnostics::{CompilerError, Span, Expected};
 
 impl <'a> SemAnalyzer<'a> {
     // TODO: Refactor so functions dont take and return AST members but take a mutable
     //  referencd to self.ast and modify it in place
 
+    // pub(super) fn resolve_names(&mut self) {
+    //     let mut items = std::mem::take(&mut self.ast.items);
+
+    //     for item in &mut items {
+    //         self.resolve_item(item)
+    //     }
+
+    //     self.ast.items = items;
+    // }
     pub(super) fn resolve_names(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
 
@@ -45,6 +54,15 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
+    // fn resolve_item(&mut self, item: &mut Item) {
+    //     match item {
+    //         Item::Let(stmt)     => self.resolve_let(stmt),
+    //         Item::Ent(ent_type) => self.resolve_ent(ent_type),
+    //         Item::Rel(rel_type) => self.resolve_rel(rel_type),
+    //         Item::Net(net)      => self.resolve_net(net),
+    //         Item::Error         => {}
+    //     }
+    // }
     fn resolve_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Let(stmt)     => self.resolve_let(stmt).map(Item::Let),
@@ -55,6 +73,23 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
+    // pub(super) fn resolve_let(&mut self, stmt: &mut LetStatement) {
+    //     let (name, span) = match self.extract_ident_str(&stmt.name) {
+    //         Some(value) => value,
+    //         None => return,
+    //     };
+
+    //     let symbol_id = match self.define_symbol(
+    //         name,
+    //         SymbolKind::Variable(Type::Unknown),
+    //         span,
+    //     ) {
+    //         Some(id) => id,
+    //         None => return,
+    //     };
+
+    //     stmt.name = Ident::Symbol(symbol_id);
+    // }
     pub(super) fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
         let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
         let symbol_id = self.define_symbol(
@@ -334,13 +369,44 @@ impl <'a> SemAnalyzer<'a> {
                     None
                 }
             },
-            _ => {
-                // TODO: Report type error
+            other => {
+                self.diagnostics.error(CompilerError::UnexpectedIdent {
+                    expected: vec![SymbolKind::Net { ports: HashMap::new() }],
+                    found: other.clone(),
+                    span,
+                });
+
                 None
             },
         }
     }
 
+    // fn resolve_type(&mut self, ty: &mut Type) {
+    //     match ty {
+    //         Type::Bool
+    //         | Type::Impulse
+    //         | Type::Int
+    //         | Type::Real
+    //         | Type::Mod(_)
+    //         | Type::Error
+    //         | Type::Unknown => {}
+
+    //         Type::Custom(ident) => {
+    //             let (name, span) = match self.extract_ident_str(ident) {
+    //                 Some(x) => x,
+    //                 None => {
+    //                     *ty = Type::Error;
+    //                     return;
+    //                 }
+    //             }
+
+    //             match self.find_symbol(&name, span) {
+    //                 Some(id) => *ident = Ident::Symbol(id)
+    //                 None => *ty = Type::Error,
+    //             }
+    //         }
+    //     }
+    // }
     fn resolve_type(&mut self, ty: Type) -> Option<Type> {
         match ty {
             Type::Bool    => Some(Type::Bool),
@@ -364,7 +430,7 @@ impl <'a> SemAnalyzer<'a> {
             Type::Unknown => Some(Type::Unknown), // Should not reach
         }
     }
- 
+
     pub(super) fn extract_ident_str(&self, ident: Ident) -> Option<(String, Span)> {
         match ident {
             Ident::Str {val, span} => Some((val, span)),
