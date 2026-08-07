@@ -45,6 +45,17 @@ impl <'a> SemAnalyzer<'a> {
 
     //     self.ast.items = items;
     // }
+    /*pub(super) fn resolve_names(&mut self) {
+    for item in &mut self.ast.items {
+        match item {
+            Item::Let(stmt) => self.resolve_let(stmt),
+            Item::Ent(ent)  => self.resolve_ent(ent),
+            Item::Rel(rel)  => self.resolve_rel(rel),
+            Item::Net(net)  => self.resolve_net(net),
+            Item::Error     => {}
+        }
+    }
+}*/
     pub(super) fn resolve_names(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
 
