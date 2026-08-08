@@ -117,7 +117,14 @@ impl <'a> SemAnalyzer<'a> {
     fn resolve_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
         let (name, span) = self.extract_ident_str(rel_t.name)?;
         
-        
+        /*rel_t.name = Ident::Symbol(self.define_symbol(
+            name,
+            SymbolKind::Rel_t {
+                input_types: Vec::new(),
+                return_type: Type::Unknown,
+            },
+            span,
+        )?);*/
         let rel_symbol_id = self.define_symbol(
             name,
             SymbolKind::Rel_t {
@@ -133,12 +140,20 @@ impl <'a> SemAnalyzer<'a> {
 
         for param in rel_t.params {
             let (name, span) = self.extract_ident_str(param.name)?;
+            
+            /*param.name = Ident::Symbol(self.define_symbol(
+                name,
+                SymbolKind::Variable(Type::Unknown),
+                span,
+            )?);*/
             let param_symbol_id = self.define_symbol(
                 name,
                 SymbolKind::Variable(Type::Unknown),
                 span,
             )?;
 
+            // param.param_type = self.resolve_type(param.param_type)
+            //     .unwrap_or(Type::Error);
             let resolved_param_type = self.resolve_type(param.param_type)
                 .unwrap_or(Type::Error);
 
@@ -148,14 +163,19 @@ impl <'a> SemAnalyzer<'a> {
             });
         }
 
+        // rel_t.return_type = self.resolve_type(rel_t.return_type)
+        //     .unwrap_or(Type::Error);
         let resolved_return_type = self.resolve_type(rel_t.return_type)
             .unwrap_or(Type::Error);
 
+        // rel_t.body = self.resolve_expr(rel_t.body)
+        //     .unwrap_or(Expr::Error);
         let resolved_body = self.resolve_expr(rel_t.body)
             .unwrap_or(Expr::Error);
 
         self.exit_scope();
 
+        // Some(rel_t)
         Some(RelType {
             name: Ident::Symbol(rel_symbol_id),
             params: resolved_params,
