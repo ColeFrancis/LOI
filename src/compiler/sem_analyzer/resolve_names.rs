@@ -75,40 +75,21 @@ impl <'a> SemAnalyzer<'a> {
         )?;
 
 
-        /*match &mut ent_t.expr {
-    EntExpr::SetEnt(idents) => {
-        for ident in idents {
-            let (name, span) = self.extract_ident_str(ident)?;
-            *ident = Ident::Symbol(self.define_symbol(
-                name,
-                SymbolKind::EntMember {
-                    parent: ent_t_symbol_id,
-                },
-                span,
-            )?);
-        }
-    }
-    _ => {}
-}*/
-        ent_t.expr = match ent_t.expr {
-            EntExpr::Mod(val) => EntExpr::Mod(val),
+        match &mut ent_t.expr {
             EntExpr::SetEnt(idents) => {
-                let mut resolved_idents: Vec<Ident> = Vec::new();
-
                 for ident in idents {
-                    let (name, span) = self.extract_ident_str(ident)?;
-                    let member_symbol_id = self.define_symbol(
+                    let (name, span) = self.extract_ident_str(ident.clone())?;
+                    *ident = Ident::Symbol(self.define_symbol(
                         name,
-                        SymbolKind::EntMember{parent: ent_t_symbol_id},
+                        SymbolKind::EntMember {
+                            parent: ent_t_symbol_id,
+                        },
                         span,
-                    )?;
-
-                    resolved_idents.push(Ident::Symbol(member_symbol_id));
+                    )?);
                 }
-
-                EntExpr::SetEnt(resolved_idents)
             }
-        };
+            _ => {}
+        }
 
         ent_t.name = Ident::Symbol(ent_t_symbol_id);
         
@@ -118,71 +99,39 @@ impl <'a> SemAnalyzer<'a> {
     fn resolve_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
         let (name, span) = self.extract_ident_str(rel_t.name)?;
         
-        /*rel_t.name = Ident::Symbol(self.define_symbol(
+        rel_t.name = Ident::Symbol(self.define_symbol(
             name,
             SymbolKind::Rel_t {
                 input_types: Vec::new(),
                 return_type: Type::Unknown,
             },
             span,
-        )?);*/
-        let rel_symbol_id = self.define_symbol(
-            name,
-            SymbolKind::Rel_t {
-                input_types: Vec::new(),
-                return_type: Type::Unknown,
-            },
-            span,
-        )?;
+        )?);
 
         self.create_scope();
 
-        let mut resolved_params: Vec<Param> = Vec::new();
-
-        for param in rel_t.params {
-            let (name, span) = self.extract_ident_str(param.name)?;
+        for param in &mut rel_t.params {
+            let (name, span) = self.extract_ident_str(param.name.clone())?;
             
-            /*param.name = Ident::Symbol(self.define_symbol(
+            param.name = Ident::Symbol(self.define_symbol(
                 name,
                 SymbolKind::Variable(Type::Unknown),
                 span,
-            )?);*/
-            let param_symbol_id = self.define_symbol(
-                name,
-                SymbolKind::Variable(Type::Unknown),
-                span,
-            )?;
+            )?);
 
-            // param.param_type = self.resolve_type(param.param_type)
-            //     .unwrap_or(Type::Error);
-            let resolved_param_type = self.resolve_type(param.param_type)
+            param.param_type = self.resolve_type(param.param_type.clone())
                 .unwrap_or(Type::Error);
-
-            resolved_params.push(Param {
-                name: Ident::Symbol(param_symbol_id),
-                param_type: resolved_param_type,
-            });
         }
 
-        // rel_t.return_type = self.resolve_type(rel_t.return_type)
-        //     .unwrap_or(Type::Error);
-        let resolved_return_type = self.resolve_type(rel_t.return_type)
+        rel_t.return_type = self.resolve_type(rel_t.return_type)
             .unwrap_or(Type::Error);
 
-        // rel_t.body = self.resolve_expr(rel_t.body)
-        //     .unwrap_or(Expr::Error);
-        let resolved_body = self.resolve_expr(rel_t.body)
+        rel_t.body = self.resolve_expr(rel_t.body)
             .unwrap_or(Expr::Error);
 
         self.exit_scope();
 
-        // Some(rel_t)
-        Some(RelType {
-            name: Ident::Symbol(rel_symbol_id),
-            params: resolved_params,
-            return_type: resolved_return_type,
-            body: resolved_body,
-        })
+        Some(rel_t)
     }
 
     fn resolve_net(&mut self, net: Net) -> Option<Net> {
