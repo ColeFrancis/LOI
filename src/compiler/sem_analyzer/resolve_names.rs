@@ -75,20 +75,21 @@ impl <'a> SemAnalyzer<'a> {
         )?;
 
 
-        /*match ent_t.expr {
-            EntExpr::SetEnt(idents) => {
-                for mut ident in idents {
-                    let (name, span) = self.extract_ident_str(ident)?;
-                    
-                    ident = Ident::Symbol(self.define_symbol(
-                        name,
-                        SymbolKind::EntMember{parent: ent_t_symbol_id},
-                        span,
-                    )?);
-                }
-            },
-            _ => {}
-        }*/
+        /*match &mut ent_t.expr {
+    EntExpr::SetEnt(idents) => {
+        for ident in idents {
+            let (name, span) = self.extract_ident_str(ident)?;
+            *ident = Ident::Symbol(self.define_symbol(
+                name,
+                SymbolKind::EntMember {
+                    parent: ent_t_symbol_id,
+                },
+                span,
+            )?);
+        }
+    }
+    _ => {}
+}*/
         ent_t.expr = match ent_t.expr {
             EntExpr::Mod(val) => EntExpr::Mod(val),
             EntExpr::SetEnt(idents) => {
