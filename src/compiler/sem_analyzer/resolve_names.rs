@@ -74,6 +74,21 @@ impl <'a> SemAnalyzer<'a> {
             span,
         )?;
 
+
+        /*match ent_t.expr {
+            EntExpr::SetEnt(idents) => {
+                for mut ident in idents {
+                    let (name, span) = self.extract_ident_str(ident)?;
+                    
+                    ident = Ident::Symbol(self.define_symbol(
+                        name,
+                        SymbolKind::EntMember{parent: ent_t_symbol_id},
+                        span,
+                    )?);
+                }
+            },
+            _ => {}
+        }*/
         ent_t.expr = match ent_t.expr {
             EntExpr::Mod(val) => EntExpr::Mod(val),
             EntExpr::SetEnt(idents) => {
@@ -99,8 +114,10 @@ impl <'a> SemAnalyzer<'a> {
         Some(ent_t)
     }
 
-    fn resolve_rel(&mut self, rel_t: RelType) -> Option<RelType> {
+    fn resolve_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
         let (name, span) = self.extract_ident_str(rel_t.name)?;
+        
+        
         let rel_symbol_id = self.define_symbol(
             name,
             SymbolKind::Rel_t {
