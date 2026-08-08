@@ -52,24 +52,21 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // instead if making a new let, modify the same let.
-    pub(super) fn resolve_let(&mut self, stmt: LetStatement) -> Option<LetStatement> {
+    pub(super) fn resolve_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
         let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
-        let symbol_id = self.define_symbol(
+        
+        stmt.name = Ident::Symbol(self.define_symbol(
             name, 
             SymbolKind::Variable(Type::Unknown), 
             span,
-        )?;
+        )?);
 
-        let expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
-        
-        Some(LetStatement {
-            name: Ident::Symbol(symbol_id),
-            expr,
-        })
+        stmt.expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
+
+        Some(stmt)
     }
 
-    fn resolve_ent(&mut self, ent_t: EntType) -> Option<EntType> {
+    fn resolve_ent(&mut self, mut ent_t: EntType) -> Option<EntType> {
         let (name, span) = self.extract_ident_str(ent_t.name)?;
         let ent_t_symbol_id = self.define_symbol(
             name,
@@ -77,7 +74,7 @@ impl <'a> SemAnalyzer<'a> {
             span,
         )?;
 
-        let expr = match ent_t.expr {
+        ent_t.expr = match ent_t.expr {
             EntExpr::Mod(val) => EntExpr::Mod(val),
             EntExpr::SetEnt(idents) => {
                 let mut resolved_idents: Vec<Ident> = Vec::new();
@@ -97,10 +94,9 @@ impl <'a> SemAnalyzer<'a> {
             }
         };
 
-        Some(EntType {
-            name: Ident::Symbol(ent_t_symbol_id),
-            expr,
-        })
+        ent_t.name = Ident::Symbol(ent_t_symbol_id);
+        
+        Some(ent_t)
     }
 
     fn resolve_rel(&mut self, rel_t: RelType) -> Option<RelType> {
@@ -344,32 +340,6 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // fn resolve_type(&mut self, ty: &mut Type) {
-    //     match ty {
-    //         Type::Bool
-    //         | Type::Impulse
-    //         | Type::Int
-    //         | Type::Real
-    //         | Type::Mod(_)
-    //         | Type::Error
-    //         | Type::Unknown => {}
-
-    //         Type::Custom(ident) => {
-    //             let (name, span) = match self.extract_ident_str(ident) {
-    //                 Some(x) => x,
-    //                 None => {
-    //                     *ty = Type::Error;
-    //                     return;
-    //                 }
-    //             }
-
-    //             match self.find_symbol(&name, span) {
-    //                 Some(id) => *ident = Ident::Symbol(id)
-    //                 None => *ty = Type::Error,
-    //             }
-    //         }
-    //     }
-    // }
     fn resolve_type(&mut self, ty: Type) -> Option<Type> {
         match ty {
             Type::Bool    => Some(Type::Bool),
