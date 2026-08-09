@@ -52,24 +52,17 @@ impl <'a> SemAnalyzer<'a> {
                     .unwrap_or(Expr::Error));
                     
                 Some(Expr::Unary(unary_expr))
-                /*let op = unary_expr.op;
-
-                let resolved_expr = self.resolve_expr(*unary_expr.expr)
-                    .unwrap_or(Expr::Error);
-
-                Some(Expr::Unary(UnaryExpr {
-                    op,
-                    expr: Box::new(resolved_expr),
-                }))*/
             }
 
             Expr::Binary(mut binary_expr) => {
-                // binary_expr.left = Box::new(self.resolve_expr(*binary_expr.left)
-                //     .unwrap_or(Expr::Error));
+                binary_expr.left = Box::new(self.resolve_expr(*binary_expr.left)
+                    .unwrap_or(Expr::Error));
                 
-                // binary_expr.right = Box::new(self.resolve_expr(*binary_expr.right)
-                //     .unwrap_or(Expr::Error));
-                let resolved_left = self.resolve_expr(*binary_expr.left)
+                binary_expr.right = Box::new(self.resolve_expr(*binary_expr.right)
+                    .unwrap_or(Expr::Error));
+                    
+                Some(Expr::Binary(binary_expr)
+                /*let resolved_left = self.resolve_expr(*binary_expr.left)
                     .unwrap_or(Expr::Error);
 
                 let op = binary_expr.op;
@@ -81,7 +74,7 @@ impl <'a> SemAnalyzer<'a> {
                     left: Box::new(resolved_left),
                     op,
                     right: Box::new(resolved_right),
-                }))
+                }))*/
             }
 
             Expr::Tuple(tuple_expr) => {
