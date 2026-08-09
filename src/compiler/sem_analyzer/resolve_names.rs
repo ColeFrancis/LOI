@@ -35,6 +35,7 @@ use crate::compiler::diagnostics::{CompilerError, Span, Expected};
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
+        self.ast.items = Vec::with_capacity(items.len());
 
         for item in items {
             let resolved_item = self.resolve_item(item).unwrap_or(Item::Error);
@@ -78,7 +79,7 @@ impl <'a> SemAnalyzer<'a> {
         match &mut ent_t.expr {
             EntExpr::SetEnt(idents) => {
                 for ident in idents {
-                    let (name, span) = self.extract_ident_str(ident.clone())?;
+                    let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
                     *ident = Ident::Symbol(self.define_symbol(
                         name,
                         SymbolKind::EntMember {
@@ -111,7 +112,7 @@ impl <'a> SemAnalyzer<'a> {
         self.create_scope();
 
         for param in &mut rel_t.params {
-            let (name, span) = self.extract_ident_str(param.name.clone())?;
+            let (name, span) = self.extract_ident_str(param.name.clone())?; // TODO: make more efficient without clone
             
             param.name = Ident::Symbol(self.define_symbol(
                 name,
@@ -119,7 +120,7 @@ impl <'a> SemAnalyzer<'a> {
                 span,
             )?);
 
-            param.param_type = self.resolve_type(param.param_type.clone())
+            param.param_type = self.resolve_type(param.param_type.clone()) // TODO: make more efficient without clone
                 .unwrap_or(Type::Error);
         }
 
@@ -134,7 +135,7 @@ impl <'a> SemAnalyzer<'a> {
         Some(rel_t)
     }
 
-    fn resolve_net(&mut self, net: Net) -> Option<Net> {
+    fn resolve_net(&mut self, mut net: Net) -> Option<Net> {
         let (name, span) = self.extract_ident_str(net.name)?;
         let symbol_id = self.define_symbol(
             name,
@@ -144,24 +145,26 @@ impl <'a> SemAnalyzer<'a> {
 
         self.create_scope();
 
-        let mut resolved_items: Vec<NetItem> = Vec::new();
+        let items = std::mem::take(&mut net.items);
+        net.items = Vec::with_capacity(items.len());
 
-        for item in net.items {
-            resolved_items.push(self.resolve_net_item(item, symbol_id)
-                .unwrap_or(NetItem::Error));
+        for item in items {
+            let resolved_item = self.resolve_net_item(item, symbol_id)
+                .unwrap_or(NetItem::Error);
+
+            net.items.push(resolved_item);
         }
 
         self.exit_scope();
 
-        Some(Net {
-            name: Ident::Symbol(symbol_id),
-            items: resolved_items,
-        })
+        net.name = Ident::Symbol(symbol_id);
+
+        Some(net)
     }
 
-    fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
+    fn resolve_net_item(&mut self, mut item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
-            NetItem::Input(param) => {
+            NetItem::Input(mut param) => {
                 let (name, span) = self.extract_ident_str(param.name)?;
 
                 let symbol_id = self.find_or_define_symbol(
@@ -178,16 +181,15 @@ impl <'a> SemAnalyzer<'a> {
                     });
                 }
 
-                let resolved_param_type = self.resolve_type(param.param_type)
+                param.name = Ident::Symbol(symbol_id);
+
+                param.param_type = self.resolve_type(param.param_type)
                     .unwrap_or(Type::Error);
 
-                Some(NetItem::Input(Param {
-                    name: Ident::Symbol(symbol_id),
-                    param_type: resolved_param_type,
-                }))
+                Some(NetItem::Input(param))
             }
 
-            NetItem::Output(param) => {
+            NetItem::Output(mut param) => {
                 let (name, span) = self.extract_ident_str(param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
@@ -203,97 +205,76 @@ impl <'a> SemAnalyzer<'a> {
                     });
                 }
 
-                let resolved_param_type = self.resolve_type(param.param_type)
+                param.name = Ident::Symbol(symbol_id);
+
+                param.param_type = self.resolve_type(param.param_type)
                     .unwrap_or(Type::Error);
 
-                Some(NetItem::Output(Param {
-                    name: Ident::Symbol(symbol_id),
-                    param_type: resolved_param_type,
-                }))
+                Some(NetItem::Output(param))
             }
 
-            NetItem::Init(ent_init) => {
+            NetItem::Init(mut ent_init) => {
                 let (name, span) = self.extract_ident_str(ent_init.param.name)?;
-                let symbol_id = self.find_or_define_symbol(
+                
+                ent_init.param.name = Ident::Symbol(self.find_or_define_symbol(
                     &name, 
                     SymbolKind::Ent(Type::Unknown), 
                     span,
-                );
+                ));
 
-                let resolved_param_type = self.resolve_type(ent_init.param.param_type)
+                ent_init.param.param_type = self.resolve_type(ent_init.param.param_type)
                     .unwrap_or(Type::Error);
 
-                let resolved_val = self.resolve_expr(ent_init.val)
+                ent_init.val = self.resolve_expr(ent_init.val)
                     .unwrap_or(Expr::Error);
 
-                Some(NetItem::Init(EntInit {
-                    param: Param {
-                        name: Ident::Symbol(symbol_id),
-                        param_type: resolved_param_type,
-                    },
-                    val: resolved_val,
-                }))
+                Some(NetItem::Init(ent_init))
             }
 
-            NetItem::RelInst(rel_inst) => {
+            NetItem::RelInst(mut rel_inst) => {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
-                let asignee_id = self.find_or_define_symbol(
+                rel_inst.asignee = Ident::Symbol(self.find_or_define_symbol(
                     &name,
                     SymbolKind::Ent(Type::Unknown),
                     span,
-                );
+                ));
 
                 let (name, span) = self.extract_ident_str(rel_inst.rel)?;
-                let rel_id = self.find_symbol(&name, span)?;
+                rel_inst.rel = Ident::Symbol(self.find_symbol(&name, span)?);
 
-                let mut resolved_args: Vec<Ident> = Vec::new();
+                for arg in &mut rel_inst.args {
+                    let (name, span) = self.extract_ident_str(arg.clone())?; // TODO: make more efficient without clone
 
-                for arg in rel_inst.args {
-                    let (name, span) = self.extract_ident_str(arg)?;
-                    let symbol_id = self.find_or_define_symbol(
+                    *arg = Ident::Symbol(self.find_or_define_symbol(
                         &name,
                         SymbolKind::Ent(Type::Unknown),
                         span,
-                    );
-
-                    resolved_args.push(Ident::Symbol(symbol_id));
+                    ));
                 }
 
-                Some(NetItem::RelInst(RelInst {
-                    asignee: Ident::Symbol(asignee_id),
-                    rel: Ident::Symbol(rel_id),
-                    args: resolved_args,
-                }))
+                Some(NetItem::RelInst(rel_inst))
             }
 
-            NetItem::NetInst(net_inst) => {
+            NetItem::NetInst(mut net_inst) => {
                 let (name, span) = self.extract_ident_str(net_inst.net)?;
                 let inst_net_id = self.find_symbol(&name, span)?;
-
-                let mut resolved_connections: Vec<Connection> = Vec::new();
-
-                for connection in net_inst.connections {
+                
+                for connection in &mut net_inst.connections {
                     // Port symbols have to be checked specialy
-                    let (name, span) = self.extract_ident_str(connection.port)?;
-                    let port_id = self.find_net_port(inst_net_id, &name, span)?;
+                    let (name, span) = self.extract_ident_str(connection.port.clone())?; // TODO: make more efficient without clone
+                    connection.port = Ident::Symbol(self.find_net_port(inst_net_id, &name, span)?);
 
-                    let (name, span) = self.extract_ident_str(connection.net)?;
-                    let connection_net_id = self.find_or_define_symbol(
+                    let (name, span) = self.extract_ident_str(connection.net.clone())?; // TODO: make more efficient without clone
+                    connection.net = Ident::Symbol(self.find_or_define_symbol(
                         &name, 
                         SymbolKind::Ent(Type::Unknown), 
                         span,
-                    );
-
-                    resolved_connections.push(Connection {
-                        port: Ident::Symbol(port_id),
-                        net: Ident::Symbol(connection_net_id),
-                    })
+                    ));
                 }
 
-                Some(NetItem::NetInst(NetInst {
-                    net: Ident::Symbol(inst_net_id),
-                    connections: resolved_connections,
-                }))
+                net_inst.net = Ident::Symbol(inst_net_id);
+
+                Some(NetItem::NetInst(net_inst))
             }
 
             NetItem::Error => {
