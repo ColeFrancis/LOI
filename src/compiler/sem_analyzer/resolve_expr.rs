@@ -61,7 +61,7 @@ impl <'a> SemAnalyzer<'a> {
                 binary_expr.right = Box::new(self.resolve_expr(*binary_expr.right)
                     .unwrap_or(Expr::Error));
                     
-                Some(Expr::Binary(binary_expr)
+                Some(Expr::Binary(binary_expr))
                 /*let resolved_left = self.resolve_expr(*binary_expr.left)
                     .unwrap_or(Expr::Error);
 
