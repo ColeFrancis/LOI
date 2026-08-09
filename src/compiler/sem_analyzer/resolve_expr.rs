@@ -35,6 +35,8 @@ impl <'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
     //  then the whole expression does not become an error, only that portion. This allows for
     //  more helpful diagnostics
+    
+     // TODO: Refactor
     pub(super) fn resolve_expr(&mut self, expr: Expr) -> Option<Expr> {
         match expr { 
             Expr::Literal(literal) => Some(Expr::Literal(literal)),
@@ -62,22 +64,9 @@ impl <'a> SemAnalyzer<'a> {
                     .unwrap_or(Expr::Error));
                     
                 Some(Expr::Binary(binary_expr))
-                /*let resolved_left = self.resolve_expr(*binary_expr.left)
-                    .unwrap_or(Expr::Error);
-
-                let op = binary_expr.op;
-
-                let resolved_right = self.resolve_expr(*binary_expr.right)
-                    .unwrap_or(Expr::Error);
-
-                Some(Expr::Binary(BinaryExpr {
-                    left: Box::new(resolved_left),
-                    op,
-                    right: Box::new(resolved_right),
-                }))*/
             }
 
-            Expr::Tuple(tuple_expr) => {
+            Expr::Tuple(tuple_expr) => { // TODO: Refactor
                 let mut elements = Vec::new();
 
                 for expr in tuple_expr {
@@ -88,7 +77,7 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Tuple(elements))
             }
 
-            Expr::Block(block_expr) => {
+            Expr::Block(block_expr) => { // TODO: Refactor
                 self.create_scope();
 
                 let mut resolved_statements: Vec<Statement> = Vec::new();
@@ -150,6 +139,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
+     // TODO: Refactor
     fn resolve_match_expr(&mut self, match_expr: MatchExpr) -> Option<MatchExpr> {
         let resolved_scrutinee = self.resolve_expr(*match_expr.scrutinee)
             .unwrap_or(Expr::Error);
@@ -179,6 +169,7 @@ impl <'a> SemAnalyzer<'a> {
         })
     }
 
+     // TODO: Refactor
     fn resolve_simple_pattern(&mut self, simple_pattern: SimplePattern) -> Option<SimplePattern> {
         match simple_pattern {
             SimplePattern::Default => Some(SimplePattern::Default),
