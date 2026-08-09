@@ -48,9 +48,11 @@ impl <'a> SemAnalyzer<'a> {
             },
 
             Expr::Unary(mut unary_expr) => {
-                // unary_expr.expr = Box::new(self.resolve_expr(*unary_expr.expr)
-                //     .unwrap_or(Expr::Error));
-                let op = unary_expr.op;
+                unary_expr.expr = Box::new(self.resolve_expr(*unary_expr.expr)
+                    .unwrap_or(Expr::Error));
+                    
+                Some(Expr::Unary(unary_expr))
+                /*let op = unary_expr.op;
 
                 let resolved_expr = self.resolve_expr(*unary_expr.expr)
                     .unwrap_or(Expr::Error);
@@ -58,7 +60,7 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Unary(UnaryExpr {
                     op,
                     expr: Box::new(resolved_expr),
-                }))
+                }))*/
             }
 
             Expr::Binary(mut binary_expr) => {
