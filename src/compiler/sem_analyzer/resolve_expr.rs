@@ -66,15 +66,16 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Binary(binary_expr))
             }
 
-            Expr::Tuple(tuple_expr) => { // TODO: Refactor
-                let mut elements = Vec::new();
+            Expr::Tuple(mut tuple_expr) => {
+                let elements = std::mem::take(&mut tuple_expr);
+                tuple_expr = Vec::with_capacity(elements.len());
 
-                for expr in tuple_expr {
-                    elements.push(self.resolve_expr(expr)
+                for expr in elements {
+                    tuple_expr.push(self.resolve_expr(expr)
                         .unwrap_or(Expr::Error));
                 }
 
-                Some(Expr::Tuple(elements))
+                Some(Expr::Tuple(tuple_expr))
             }
 
             Expr::Block(block_expr) => { // TODO: Refactor
