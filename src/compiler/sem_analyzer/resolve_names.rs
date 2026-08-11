@@ -145,14 +145,11 @@ impl <'a> SemAnalyzer<'a> {
 
         self.create_scope();
 
-        let items = std::mem::take(&mut net.items);
-        net.items = Vec::with_capacity(items.len());
+        for item in &mut net.items {
+            let owned_item = std::mem::replace(item, NetItem::Error);
 
-        for item in items {
-            let resolved_item = self.resolve_net_item(item, symbol_id)
+            *item = self.resolve_net_item(owned_item, symbol_id)
                 .unwrap_or(NetItem::Error);
-
-            net.items.push(resolved_item);
         }
 
         self.exit_scope();
@@ -162,7 +159,7 @@ impl <'a> SemAnalyzer<'a> {
         Some(net)
     }
 
-    fn resolve_net_item(&mut self, mut item: NetItem, net_id: SymbolId) -> Option<NetItem> {
+    fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
             NetItem::Input(mut param) => {
                 let (name, span) = self.extract_ident_str(param.name)?;

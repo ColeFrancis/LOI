@@ -35,8 +35,6 @@ impl <'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
     //  then the whole expression does not become an error, only that portion. This allows for
     //  more helpful diagnostics
-    
-     // TODO: Refactor
     pub(super) fn resolve_expr(&mut self, expr: Expr) -> Option<Expr> {
         match expr { 
             Expr::Literal(literal) => Some(Expr::Literal(literal)),
@@ -67,45 +65,39 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Tuple(mut tuple_expr) => {
-                let elements = std::mem::take(&mut tuple_expr);
-                tuple_expr = Vec::with_capacity(elements.len());
+                for expr in &mut tuple_expr {
+                    let owned_expr = std::mem::replace(expr, Expr::Error);
 
-                for expr in elements {
-                    tuple_expr.push(self.resolve_expr(expr)
-                        .unwrap_or(Expr::Error));
+                    *expr = self.resolve_expr(owned_expr)
+                        .unwrap_or(Expr::Error);
                 }
 
                 Some(Expr::Tuple(tuple_expr))
             }
 
-            Expr::Block(block_expr) => { // TODO: Refactor
+            Expr::Block(mut block_expr) => { // TODO: Refactor
                 self.create_scope();
 
-                let mut resolved_statements: Vec<Statement> = Vec::new();
+                for stmt in &mut block_expr.statements {
+                    let owned_stmt = std::mem::replace(stmt, Statement::Error);
 
-                for stmt in block_expr.statements {
-                    match stmt {
+                    *stmt = match owned_stmt {
                         Statement::Let(let_stmt) => {
-                            resolved_statements.push(match self.resolve_let(let_stmt) {
+                            match self.resolve_let(let_stmt) {
                                 Some(resolved_let) => Statement::Let(resolved_let),
                                 None => Statement::Error,
-                            })
-                        },
-                        Statement::Error =>  {
-                            resolved_statements.push(Statement::Error)
+                            }
                         }
+                        Statement::Error => Statement::Error
                     }
                 }
 
-                let resolved_expr = self.resolve_expr(*block_expr.expr)
-                    .unwrap_or(Expr::Error);
+                block_expr.expr = Box::new(self.resolve_expr(*block_expr.expr)
+                    .unwrap_or(Expr::Error));
 
                 self.exit_scope();
-
-                Some(Expr::Block(BlockExpr {
-                    statements: resolved_statements,
-                    expr: Box::new(resolved_expr),
-                }))
+                
+                Some(Expr::Block(block_expr))
             }
 
             Expr::Match(match_expr) => {
@@ -115,59 +107,45 @@ impl <'a> SemAnalyzer<'a> {
                 }
             }
 
-            Expr::Sample(sample_expr) => {
-                let mut resolved_arms: Vec<SampleArm> = Vec::new();
-
-                for arm in sample_expr {
-                    let resolved_prob = match arm.prob {
+            Expr::Sample(mut sample_expr) => {
+                for arm in &mut sample_expr {
+                    let owned_prob = std::mem::replace(&mut arm.prob, Prob::Default);
+                    arm.prob = match owned_prob {
                         Prob::Default => Prob::Default,
                         Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr)
                             .unwrap_or(Expr::Error)),
                     };
 
-                    let resolved_expr = self.resolve_expr(arm.expr).unwrap_or(Expr::Error);
+                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
 
-                    resolved_arms.push(SampleArm {
-                        prob: resolved_prob,
-                        expr: resolved_expr,
-                    });
+                    arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
                 }
 
-                Some(Expr::Sample(resolved_arms))
+                Some(Expr::Sample(sample_expr))
             }
 
             Expr::Error => Some(Expr::Error),
         }
     }
 
-     // TODO: Refactor
-    fn resolve_match_expr(&mut self, match_expr: MatchExpr) -> Option<MatchExpr> {
-        let resolved_scrutinee = self.resolve_expr(*match_expr.scrutinee)
-            .unwrap_or(Expr::Error);
+    fn resolve_match_expr(&mut self, mut match_expr: MatchExpr) -> Option<MatchExpr> {
+        match_expr.scrutinee = Box::new(self.resolve_expr(*match_expr.scrutinee)
+            .unwrap_or(Expr::Error));
 
-        let mut resolved_arms: Vec<MatchArm> = Vec::new();
+        for arm in &mut match_expr.arms {
+            for simple_pattern in &mut arm.pattern {
+                let owned_pattern = std::mem::replace(simple_pattern, SimplePattern::Error);
 
-        for arm in match_expr.arms {
-            let mut resolved_pattern: Vec<SimplePattern> = Vec::new();
-
-            for simple_pattern in arm.pattern {
-                resolved_pattern.push(self.resolve_simple_pattern(simple_pattern)
-                    .unwrap_or(SimplePattern::Error));
+                *simple_pattern = self.resolve_simple_pattern(owned_pattern)
+                    .unwrap_or(SimplePattern::Error);
             }
 
-            let resolved_expr = self.resolve_expr(arm.expr)
-                .unwrap_or(Expr::Error);
+            let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
 
-            resolved_arms.push(MatchArm {
-                pattern: resolved_pattern,
-                expr: resolved_expr,
-            });
+            arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
         }
 
-        Some(MatchExpr {
-            scrutinee: Box::new(resolved_scrutinee),
-            arms: resolved_arms,
-        })
+        Some(match_expr)
     }
 
      // TODO: Refactor
@@ -185,27 +163,22 @@ impl <'a> SemAnalyzer<'a> {
                 Some(SimplePattern::Ident(Ident::Symbol(symbol)))
             }
 
-            SimplePattern::Tuple(tuple_pattern) => {
-                let mut elements: Vec<SimplePattern> = Vec::new();
+            SimplePattern::Tuple(mut tuple_pattern) => {
+                for pattern in &mut tuple_pattern {
+                    let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
 
-                for pattern in tuple_pattern {
-                    elements.push(self.resolve_simple_pattern(pattern)
-                        .unwrap_or(SimplePattern::Error));
+                    *pattern = self.resolve_simple_pattern(owned_pattern)
+                        .unwrap_or(SimplePattern::Error);
                 }
 
-                Some(SimplePattern::Tuple(elements))
+                Some(SimplePattern::Tuple(tuple_pattern))
             }
 
-            SimplePattern::Comparison(comparison_pattern) => {
-                let op = comparison_pattern.op;
+            SimplePattern::Comparison(mut comparison_pattern) => {
+                comparison_pattern.expr = Box::new(self.resolve_expr(*comparison_pattern.expr)
+                    .unwrap_or(Expr::Error));
 
-                let resolved_expr = self.resolve_expr(*comparison_pattern.expr)
-                    .unwrap_or(Expr::Error);
-
-                Some(SimplePattern::Comparison(ComparisonPattern {
-                    op,
-                    expr: Box::new(resolved_expr),
-                }))
+                Some(SimplePattern::Comparison(comparison_pattern))
             }
 
             SimplePattern::Error => Some(SimplePattern::Error),

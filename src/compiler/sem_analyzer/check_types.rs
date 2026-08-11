@@ -26,6 +26,7 @@ use super::SemAnalyzer;
 use crate::compiler::parser::ast::*;
 
 impl <'a> SemAnalyzer<'a> {
+    // Also check only one default
     pub(super) fn check_types(&mut self) {
         let mut items = std::mem::take(&mut self.ast.items);
 
