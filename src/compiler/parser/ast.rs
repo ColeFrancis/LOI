@@ -62,7 +62,7 @@ pub enum Expr {
     Tuple(Vec<Expr>),
     Block(BlockExpr),
     Match(MatchExpr),      
-    Sample(Vec<SampleArm>), // TODO: Add struct with type
+    Sample(SampleExpr), // TODO: Add struct with type
     Error,
 }
 

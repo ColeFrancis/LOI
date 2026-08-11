@@ -161,16 +161,19 @@ mod tests {
                     name: build_ident_str("p"),
                     expr: Expr::Literal(Literal::Real(0.5)),
                 })],
-                expr: Box::new(Expr::Sample( vec![
-                    SampleArm {
-                        prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
-                        expr: Expr::Literal(Literal::Bool(true)),
-                    },
-                    SampleArm {
-                        prob: Prob::Default,
-                        expr: Expr::Literal(Literal::Bool(false)),
-                    },
-                ])),
+                expr: Box::new(Expr::Sample(SampleExpr {
+                    arms: vec![
+                        SampleArm {
+                            prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
+                            expr: Expr::Literal(Literal::Bool(true)),
+                        },
+                        SampleArm {
+                            prob: Prob::Default,
+                            expr: Expr::Literal(Literal::Bool(false)),
+                        },
+                    ],
+                    expr_type: Type::Unknown,
+                })),
                 expr_type: Type::Unknown,
             }),
         }));

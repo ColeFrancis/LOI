@@ -107,21 +107,11 @@ impl <'a> SemAnalyzer<'a> {
                 }
             }
 
-            Expr::Sample(mut sample_expr) => {
-                for arm in &mut sample_expr {
-                    let owned_prob = std::mem::replace(&mut arm.prob, Prob::Default);
-                    arm.prob = match owned_prob {
-                        Prob::Default => Prob::Default,
-                        Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr)
-                            .unwrap_or(Expr::Error)),
-                    };
-
-                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-
-                    arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
+            Expr::Sample(sample_expr) => {
+                match self.resolve_sample_expr(sample_expr) {
+                    Some(expr) => Some(Expr::Sample(expr)),
+                    None => Some(Expr::Error),
                 }
-
-                Some(Expr::Sample(sample_expr))
             }
 
             Expr::Error => Some(Expr::Error),
@@ -148,7 +138,6 @@ impl <'a> SemAnalyzer<'a> {
         Some(match_expr)
     }
 
-     // TODO: Refactor
     fn resolve_simple_pattern(&mut self, simple_pattern: SimplePattern) -> Option<SimplePattern> {
         match simple_pattern {
             SimplePattern::Default => Some(SimplePattern::Default),
@@ -183,6 +172,23 @@ impl <'a> SemAnalyzer<'a> {
 
             SimplePattern::Error => Some(SimplePattern::Error),
         }
+    }
+
+    fn resolve_sample_expr(&mut self, mut sample_expr: SampleExpr) -> Option<SampleExpr> {
+        for arm in &mut sample_expr.arms {
+            let owned_prob = std::mem::replace(&mut arm.prob, Prob::Default);
+            arm.prob = match owned_prob {
+                Prob::Default => Prob::Default,
+                Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr)
+                    .unwrap_or(Expr::Error)),
+            };
+
+            let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+
+            arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
+        }
+        
+        Some(sample_expr)
     }
 }
 
@@ -696,33 +702,39 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.resolve_expr(Expr::Sample(vec![
-            SampleArm {
-                prob: Prob::Expr(Expr::Ident(Ident::Str{
-                    val: "a".to_string(),
-                    span: Span{line: 0, col: 0}
-                })),
-                expr: Expr::Ident(Ident::Str{
-                    val: "b".to_string(),
-                    span: Span{line: 1, col: 0},
-                })
-            },
-            SampleArm {
-                prob: Prob::Default,
-                expr: Expr::Literal(Literal::Bool(false)),
-            }
-        ]));
+        let result = sem_analyzer.resolve_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Ident(Ident::Str{
+                        val: "a".to_string(),
+                        span: Span{line: 0, col: 0}
+                    })),
+                    expr: Expr::Ident(Ident::Str{
+                        val: "b".to_string(),
+                        span: Span{line: 1, col: 0},
+                    })
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                }
+            ],
+            expr_type: Type::Unknown,
+        }));
 
-        assert_eq!(result, Some(Expr::Sample(vec![
-            SampleArm {
-                prob: Prob::Expr(Expr::Error),
-                expr: Expr::Error,
-            },
-            SampleArm {
-                prob: Prob::Default,
-                expr: Expr::Literal(Literal::Bool(false)),
-            }
-        ])));
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Error),
+                    expr: Expr::Error,
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                }
+            ],
+            expr_type: Type::Unknown,
+        })));
         assert_eq!(diagnostics.num_errors(), 2);
     }
 }

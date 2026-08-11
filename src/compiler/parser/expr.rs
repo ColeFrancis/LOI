@@ -375,7 +375,10 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::RBrace, &SyncRule::Expr {depth: 0})?;
 
-        Some(Expr::Sample(arms))
+        Some(Expr::Sample(SampleExpr {
+            arms,
+            expr_type: Type::Unknown,
+        }))
     }
 
     fn parse_sample_arm(&mut self) -> Option<SampleArm> {
@@ -489,8 +492,9 @@ mod tests {
             }
 
             // (sample (arm 0.5 1) (arm _ 0))
-            Expr::Sample(arms) => {
-                let arms = arms
+            Expr::Sample(sample_expr) => {
+                let arms = sample_expr
+                    .arms
                     .iter()
                     .map(build_sample_arm)
                     .collect::<Vec<_>>()
@@ -909,7 +913,7 @@ mod tests {
 
         let result = parser.parse_expr(0);
 
-        assert_eq!(result, Some(Expr::Sample(vec![])));
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {arms: vec![], expr_type: Type::Unknown})));
 
         // sample {
         //     a => sample {
@@ -932,19 +936,25 @@ mod tests {
 
         diagnostics.debug_print();
 
-        assert_eq!(result, Some(Expr::Sample(vec![
-            SampleArm {
-                prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
-                expr: Expr::Sample(vec![SampleArm {
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
                     prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
-                    expr: Expr::Ident(build_ident_str("b")),
-                }]),
-            },
-            SampleArm {
-                prob: Prob::Default,
-                expr: Expr::Ident(build_ident_str("c")),
-            },
-        ])));
+                    expr: Expr::Sample(SampleExpr {
+                        arms: vec![SampleArm {
+                            prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
+                            expr: Expr::Ident(build_ident_str("b")),
+                        }],
+                        expr_type: Type::Unknown,
+                    }),
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Ident(build_ident_str("c")),
+                },
+            ],
+            expr_type: Type::Unknown,
+        })));
     }
 
     #[test]
@@ -1267,16 +1277,19 @@ mod tests {
 
         let result = parser.parse_expr(0);
 
-        assert_eq!(result, Some(Expr::Sample(vec![
-            SampleArm {
-                prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
-                expr: Expr::Error,
-            },
-            SampleArm {
-                prob: Prob::Default,
-                expr: Expr::Ident(build_ident_str("c")),
-            },
-        ])));
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
+                    expr: Expr::Error,
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Ident(build_ident_str("c")),
+                },
+            ],
+            expr_type: Type::Unknown,
+        })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
 }

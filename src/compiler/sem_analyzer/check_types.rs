@@ -53,7 +53,7 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn check_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
-
+        // Recursively go through expr. Then at the end, set variable type to that
         Some(stmt)
     }
 
