@@ -211,6 +211,8 @@ impl<'a> Parser<'a> {
             TokenKind::Asterisk => Some((BinaryOp::Mul, 20, 21)),
             TokenKind::Slash    => Some((BinaryOp::Div, 20, 21)),
             TokenKind::Caret    => Some((BinaryOp::Pow, 31, 30)),
+            TokenKind::Pipe     => Some((BinaryOp::Or,  10, 11)),
+            TokenKind::Ampersand=> Some((BinaryOp::And, 20, 21)),
             _ => None,
         }
     }
@@ -609,6 +611,8 @@ mod tests {
             BinaryOp::Mul => "*",
             BinaryOp::Div => "/",
             BinaryOp::Pow => "^",
+            BinaryOp::Or  => "|",
+            BinaryOp::And => "&",
             BinaryOp::Gt  => ">",
             BinaryOp::Lt  => "<",
             BinaryOp::Ge  => ">=",
@@ -720,9 +724,9 @@ mod tests {
 
         assert_eq!(result_str, "(+ (+ (- 5) (* 2 a)) b)".to_string()); 
     
-        // (9 + 10) * 5
+        // (9 + 10) | 5
         let kinds: Vec<TokenKind> = vec![LParen, IntLiteral(9), Plus, 
-        IntLiteral(10), RParen, Asterisk, IntLiteral(5), Eof];
+        IntLiteral(10), RParen, Pipe, IntLiteral(5), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -732,7 +736,7 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(* (+ 9 10) 5)".to_string()); 
+        assert_eq!(result_str, "(| (+ 9 10) 5)".to_string()); 
     
         //-3^(-7)^(8-2-4/-1)
         let kinds: Vec<TokenKind> = vec![Minus, IntLiteral(3), Caret, LParen, 

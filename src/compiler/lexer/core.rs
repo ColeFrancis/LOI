@@ -156,6 +156,7 @@ impl<'a> Lexer<'a> {
                 b'^' => return Some(Token::new(TokenKind::Caret, line, col)),
                 b'~' => return Some(Token::new(TokenKind::BitNot, line, col)),
                 b'|' => return Some(Token::new(TokenKind::Pipe, line, col)),
+                b'&' => return Some(Token::new(TokenKind::Ampersand, line, col)),
 
                 // Unknown
                 _ => {

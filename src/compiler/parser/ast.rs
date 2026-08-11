@@ -105,6 +105,8 @@ pub enum BinaryOp {
     Mul,        // *
     Div,        // /
     Pow,        // ^
+    Or,         // |
+    And,        // &
 }
 
 #[derive(PartialEq, Debug)]

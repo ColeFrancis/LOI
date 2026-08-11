@@ -94,6 +94,7 @@ pub enum TokenKind {
     BitNot,   // ~
 
     Pipe,       // |
+    Ampersand,  // &
     Underscore, // _
     
     Equals,   // =
