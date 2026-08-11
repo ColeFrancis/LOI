@@ -19,6 +19,7 @@ mod scope;
 mod resolve_names;
 mod resolve_expr;
 mod check_types;
+mod check_expr;
 mod fold_const;
 
 use crate::compiler::sem_analyzer::symbol::Symbol;
