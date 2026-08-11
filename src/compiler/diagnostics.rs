@@ -115,7 +115,7 @@ pub enum CompilerError {
     },
     
     UnexpectedType {
-        expected: Vec<Type>,
+        expected: Type,
         found: Type,
         span: Span,
     },

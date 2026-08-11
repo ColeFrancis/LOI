@@ -820,6 +820,7 @@ mod tests {
                         expr: Expr::Literal(Literal::Bool(false)),
                     }
                 ],
+                expr_type: Type::Unknown,
             }),
         });
 
@@ -844,6 +845,7 @@ mod tests {
                         expr: Expr::Literal(Literal::Bool(false)),
                     }
                 ],
+                expr_type: Type::Unknown,
             }),
         }));
         assert_eq!(sem_analyzer.symbols, vec![
@@ -1469,7 +1471,9 @@ net SECOND {
                         left: Box::new(Expr::Ident(Ident::Symbol(1))),
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Literal(Literal::Int(1))),
+                        expr_type: Type::Unknown,
                     })),
+                    expr_type: Type::Unknown,
                 }),
             }),
             Item::Ent(EntType {
@@ -1491,6 +1495,7 @@ net SECOND {
                     left: Box::new(Expr::Ident(Ident::Symbol(0))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(Ident::Symbol(5))),
+                    expr_type: Type::Unknown,
                 }),
             }),
             Item::Net(Net {

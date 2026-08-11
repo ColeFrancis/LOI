@@ -281,12 +281,14 @@ mod tests {
             })),
             op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Int(1))),
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Error),
             op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Int(1))),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -346,7 +348,8 @@ mod tests {
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "n".to_string(),
                 span: Span{line: 3, col: 0},
-            }))
+            })),
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Block(BlockExpr {
@@ -357,6 +360,7 @@ mod tests {
                 })
             ],
             expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
@@ -428,28 +432,32 @@ mod tests {
                                                 expr: Box::new(Expr::Ident(Ident::Str {
                                                     val: "n".to_string(),
                                                     span: Span{line: 0, col: 0},
-                                                }))
+                                                })),
+                                                expr_type: Type::Unknown,
                                             }),
                                         }),
                                     ],
                                     expr: Box::new(Expr::Ident(Ident::Str {
                                         val: "n".to_string(),
                                         span: Span{line: 0, col: 0},
-                                    }))
+                                    })),
+                                    expr_type: Type::Unknown,
                                 }),
                             }),
                         ],
                         expr: Box::new(Expr::Ident(Ident::Str {
                             val: "n".to_string(),
                             span: Span{line: 0, col: 0},
-                        }))
+                        })),
+                        expr_type: Type::Unknown,
                     }),
                 }),
             ],
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "n".to_string(),
                 span: Span{line: 0, col: 0},
-            }))
+            })),
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Block(BlockExpr {
@@ -471,19 +479,23 @@ mod tests {
                                                         expr: Expr::Literal(Literal::Int(1)),
                                                     }),
                                                 ],
-                                                expr: Box::new(Expr::Ident(Ident::Symbol(3)))
+                                                expr: Box::new(Expr::Ident(Ident::Symbol(3))),
+                                                expr_type: Type::Unknown,
                                             }),
                                         }),
                                     ],
-                                    expr: Box::new(Expr::Ident(Ident::Symbol(2)))
+                                    expr: Box::new(Expr::Ident(Ident::Symbol(2))),
+                                    expr_type: Type::Unknown,
                                 }),
                             }),
                         ],
-                        expr: Box::new(Expr::Ident(Ident::Symbol(1)))
+                        expr: Box::new(Expr::Ident(Ident::Symbol(1))),
+                        expr_type: Type::Unknown,
                     }),
                 }),
             ],
-            expr: Box::new(Expr::Ident(Ident::Symbol(0)))
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(sem_analyzer.scopes, vec![
             Scope {
@@ -517,7 +529,8 @@ mod tests {
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "m".to_string(),
                 span: Span{line: 3, col: 0},
-            }))
+            })),
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Block(BlockExpr {
@@ -528,6 +541,7 @@ mod tests {
                 })
             ],
             expr: Box::new(Expr::Error),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -573,7 +587,8 @@ mod tests {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
-            ]
+            ],
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Match(MatchExpr {
@@ -590,7 +605,8 @@ mod tests {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
-            ]
+            ],
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -636,7 +652,8 @@ mod tests {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
-            ]
+            ],
+            expr_type: Type::Unknown,
         }));
 
         assert_eq!(result, Some(Expr::Match(MatchExpr {
@@ -653,7 +670,8 @@ mod tests {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
-            ]
+            ],
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }

@@ -124,7 +124,8 @@ mod tests {
             body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(build_ident_str("a"))),
                 op: BinaryOp::Mul,
-                right: Box::new(Expr::Ident(build_ident_str("b")))
+                right: Box::new(Expr::Ident(build_ident_str("b"))),
+                expr_type: Type::Unknown,
             }),
         }));
     }
@@ -170,6 +171,7 @@ mod tests {
                         expr: Expr::Literal(Literal::Bool(false)),
                     },
                 ])),
+                expr_type: Type::Unknown,
             }),
         }));
     }
@@ -235,8 +237,10 @@ mod tests {
                 expr: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Ident(build_ident_str("p"))),
                     op: BinaryOp::Add,
-                    right: Box::new(Expr::Ident(build_ident_str("q")))
+                    right: Box::new(Expr::Ident(build_ident_str("q"))),
+                    expr_type: Type::Unknown,
                 })),
+                expr_type: Type::Unknown,
             }),
         }));
         assert_eq!(diagnostics.num_errors(), 1);
@@ -277,6 +281,7 @@ mod tests {
                     }),
                 ],
                 expr: Box::new(Expr::Error),
+                expr_type: Type::Unknown,
             }),
         }));
         assert_eq!(diagnostics.num_errors(), 1);

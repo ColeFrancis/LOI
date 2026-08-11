@@ -23,43 +23,71 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
+use super::types::Type;
 use crate::compiler::parser::ast::*;
+use crate::compiler::diagnostics::{CompilerError, Span};
 
 impl <'a> SemAnalyzer<'a> {
-    // Also check only one default
+    // Add type info to symbols
+    // Verify all types match
+    // Check number of relation arguments
+    // Also check only one default in samples/matches
     pub(super) fn check_types(&mut self) {
-        let mut items = std::mem::take(&mut self.ast.items);
+        let items = std::mem::take(&mut self.ast.items);
+        self.ast.items = Vec::with_capacity(items.len());
 
-        for item in &mut items {
-            self.check_item(item);
+        for item in items {
+            let resolved_item = self.check_item(item).unwrap_or(Item::Error);
+            self.ast.items.push(resolved_item);
         }
-
-        self.ast.items = items;
     }
 
-    fn check_item(&mut self, item: &mut Item) {
+    fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt)     => self.check_let(stmt),
-            Item::Ent(ent_type) => self.check_ent(ent_type),
-            Item::Rel(rel_type) => self.check_rel(rel_type),
-            Item::Net(net)      => self.check_net(net),
-            Item::Error         => {}
+            Item::Let(stmt)     => self.check_let(stmt).map(Item::Let),
+            Item::Ent(ent_type) => self.check_ent(ent_type).map(Item::Ent),
+            Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
+            Item::Net(net)      => self.check_net(net).map(Item::Net),
+            Item::Error         => Some(Item::Error),
         }
     }
 
-    fn check_let(&mut self, stmt: &mut LetStatement) {
+    fn check_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
 
+        Some(stmt)
     }
 
-    fn check_ent(&mut self, ent_t: &mut EntType) {
-
+    fn check_ent(&mut self, mut ent_t: EntType) -> Option<EntType> {
+        Some(ent_t)
     }
 
-    fn check_rel(&mut self, rel_t: &mut RelType) {
-
+    fn check_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
+        Some(rel_t)
     }
 
-    fn check_net(&mut self, net: &mut Net) {
+    fn check_net(&mut self, mut net: Net) -> Option<Net> {
+        Some(net)
+    }
 
+    fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
+        if symbol_type == object_type {
+            return Some(symbol_type)
+        }
+
+        match symbol_type {
+            Type::Unknown => {
+                Some(object_type)
+            }
+
+            _ => {
+                self.diagnostics.error(CompilerError::UnexpectedType {
+                    expected: object_type,
+                    found: symbol_type,
+                    span: symbol_span,
+                });
+
+                None
+            }
+        }
     }
 }

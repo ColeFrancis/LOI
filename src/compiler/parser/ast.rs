@@ -55,14 +55,14 @@ pub enum Ident {
 
 #[derive(PartialEq, Debug)]
 pub enum Expr {
-    Literal(Literal),
+    Literal(Literal), 
     Ident(Ident),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
     Block(BlockExpr),
-    Match(MatchExpr),
-    Sample(Vec<SampleArm>),
+    Match(MatchExpr),      
+    Sample(Vec<SampleArm>), // TODO: Add struct with type
     Error,
 }
 
@@ -77,6 +77,7 @@ pub enum Literal {
 pub struct UnaryExpr {
     pub op: UnaryOp,
     pub expr: Box<Expr>,
+    pub expr_type: Type
 }
 
 #[derive(PartialEq, Debug)]
@@ -90,6 +91,7 @@ pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub op: BinaryOp,
     pub right: Box<Expr>,
+    pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]
@@ -117,12 +119,14 @@ pub enum CompOp {
 pub struct BlockExpr {
     pub statements: Vec<Statement>,
     pub expr: Box<Expr>,
+    pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]
 pub struct MatchExpr {
     pub scrutinee: Box<Expr>,
     pub arms: Vec<MatchArm>,
+    pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]
@@ -145,6 +149,12 @@ pub enum SimplePattern {
 pub struct ComparisonPattern {
     pub op: CompOp,
     pub expr: Box<Expr>,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct SampleExpr {
+    pub arms: Vec<SampleArm>,
+    pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]

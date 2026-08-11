@@ -26,6 +26,7 @@ use super::Parser;
 use super::sync::SyncRule;
 use super::ast::*;
 use crate::compiler::lexer::token::TokenKind;
+use crate::compiler::sem_analyzer::types::Type;
 
 impl<'a> Parser<'a> {
     // Let token already consumed
@@ -86,6 +87,7 @@ mod tests {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Literal(Literal::Int(2))),
+                expr_type: Type::Unknown,
             })
         }));
         assert!(!diagnostics.has_errors());

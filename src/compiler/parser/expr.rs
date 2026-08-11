@@ -18,13 +18,14 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! - Expr types will always be unknown until type checking
 //!
 //! Author: Cole Francis
 
 use super::Parser;
 use super::sync::SyncRule;
 use super::ast::*;
+use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::{
     lexer::token::{Token, TokenKind},
     diagnostics::{CompilerError, Expected},
@@ -69,6 +70,7 @@ impl<'a> Parser<'a> {
                 left: Box::new(lhs),
                 op,
                 right: Box::new(rhs),
+                expr_type: Type::Unknown,
             });
         }
 
@@ -105,6 +107,7 @@ impl<'a> Parser<'a> {
                 Some(Expr::Unary(UnaryExpr {
                     op: UnaryOp::Neg,
                     expr: Box::new(rhs),
+                    expr_type: Type::Unknown,
                 }))
             }
 
@@ -114,6 +117,7 @@ impl<'a> Parser<'a> {
                 Some(Expr::Unary(UnaryExpr {
                     op: UnaryOp::BitNot,
                     expr: Box::new(rhs),
+                    expr_type: Type::Unknown,
                 }))
             }
 
@@ -235,6 +239,7 @@ impl<'a> Parser<'a> {
         Some(Expr::Block(BlockExpr {
             statements,
             expr: Box::new(expr),
+            expr_type: Type::Unknown,
         }))
     }
 
@@ -261,6 +266,7 @@ impl<'a> Parser<'a> {
         Some(Expr::Match(MatchExpr {
             scrutinee: Box::new(scrutinee),
             arms,
+            expr_type: Type::Unknown,
         }))
     }
 
@@ -621,13 +627,16 @@ mod tests {
             left: Box::new(Expr::Unary(UnaryExpr {
                 op: UnaryOp::Neg,
                 expr: Box::new(Expr::Literal(Literal::Int(5))),
+                expr_type: Type::Unknown,
             })),
             op: BinaryOp::Add,
             right: Box::new(Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(2))),
                 op: BinaryOp::Mul,
                 right: Box::new(Expr::Ident(build_ident_str("a"))),
+                expr_type: Type::Unknown
             })),
+            expr_type: Type::Unknown,
         });
 
         let result: String = build_s_expr(&start);
@@ -1008,6 +1017,7 @@ mod tests {
                 Statement::Error,
             ],
             expr: Box::new(Expr::Error),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 2);
     }
@@ -1040,6 +1050,7 @@ mod tests {
                 })
             ],
             expr: Box::new(Expr::Error),
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -1168,6 +1179,7 @@ mod tests {
                     expr: Expr::Literal(Literal::Int(0)),
                 }
             ],
+            expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
