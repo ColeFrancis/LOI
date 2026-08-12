@@ -28,5 +28,7 @@ use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::{CompilerError, Span};
 
 impl <'a> SemAnalyzer<'a> {
-
+    fn check_expr(&mut self, mut expr: Expr) -> Option<Expr> {
+        Some(expr)
+    }
 }
