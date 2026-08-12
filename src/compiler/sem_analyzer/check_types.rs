@@ -69,8 +69,6 @@ impl <'a> SemAnalyzer<'a> {
         Some(net)
     }
 
-    // fn annotate_expr(&mut self, mut expr: Expr) -> Option<Expr> {}
-
     fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
         if symbol_type == object_type {
             return Some(symbol_type)
