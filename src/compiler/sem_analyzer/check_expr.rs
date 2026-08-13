@@ -198,28 +198,28 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Bool,     BinaryOp::Or ) => Some(Type::Bool),
             (Type::Bool,     BinaryOp::And) => Some(Type::Bool),
 
-            (Type::Mod(val), BinaryOp::Lt ) => Some(Type::Mod(*val)),
-            (Type::Mod(val), BinaryOp::Gt ) => Some(Type::Mod(*val)),
-            (Type::Mod(val), BinaryOp::Le ) => Some(Type::Mod(*val)),
-            (Type::Mod(val), BinaryOp::Ge ) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Lt ) => Some(Type::Bool),
+            (Type::Mod(val), BinaryOp::Gt ) => Some(Type::Bool),
+            (Type::Mod(val), BinaryOp::Le ) => Some(Type::Bool),
+            (Type::Mod(val), BinaryOp::Ge ) => Some(Type::Bool),
             (Type::Mod(val), BinaryOp::Add) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Div) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Pow) => Some(Type::Mod(*val)),
-            (Type::Int,      BinaryOp::Lt ) => Some(Type::Int),
-            (Type::Int,      BinaryOp::Gt ) => Some(Type::Int),
-            (Type::Int,      BinaryOp::Le ) => Some(Type::Int),
-            (Type::Int,      BinaryOp::Ge ) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Lt ) => Some(Type::Bool),
+            (Type::Int,      BinaryOp::Gt ) => Some(Type::Bool),
+            (Type::Int,      BinaryOp::Le ) => Some(Type::Bool),
+            (Type::Int,      BinaryOp::Ge ) => Some(Type::Bool),
             (Type::Int,      BinaryOp::Add) => Some(Type::Int),
             (Type::Int,      BinaryOp::Sub) => Some(Type::Int),
             (Type::Int,      BinaryOp::Mul) => Some(Type::Int),
             (Type::Int,      BinaryOp::Div) => Some(Type::Int),
             (Type::Int,      BinaryOp::Pow) => Some(Type::Int),
-            (Type::Real,     BinaryOp::Gt ) => Some(Type::Real),
-            (Type::Real,     BinaryOp::Lt ) => Some(Type::Real),
-            (Type::Real,     BinaryOp::Le ) => Some(Type::Real),
-            (Type::Real,     BinaryOp::Ge ) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Gt ) => Some(Type::Bool),
+            (Type::Real,     BinaryOp::Lt ) => Some(Type::Bool),
+            (Type::Real,     BinaryOp::Le ) => Some(Type::Bool),
+            (Type::Real,     BinaryOp::Ge ) => Some(Type::Bool),
             (Type::Real,     BinaryOp::Add) => Some(Type::Real),
             (Type::Real,     BinaryOp::Sub) => Some(Type::Real),
             (Type::Real,     BinaryOp::Mul) => Some(Type::Real),
@@ -481,5 +481,46 @@ mod tests {
         
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn binary_expr_4() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "r".to_string(),
+                    kind: SymbolKind::Variable(Type::Real),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("r".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // 1 < r // r is a Real
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Lt,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Lt,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Bool,
+        })));
     }
 }
