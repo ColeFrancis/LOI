@@ -65,7 +65,15 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Binary(binary_expr))
             } 
 
-            // Expr::Tuple(tuple_expr) => {}
+            Expr::Tuple(mut tuple_expr) => {
+                for expr in &mut tuple_expr {
+                    let owned_expr = std::mem::replace(expr, Expr::Error);
+
+                    *expr = self.add_types_expr(owned_expr).unwrap_or(Expr::Error);
+                }
+
+                Some(Expr::Tuple(tuple_expr))
+            }
 
             // Expr::Block(block_expr) => {}
 
@@ -205,10 +213,10 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Bool,     BinaryOp::Or ) => Some(Type::Bool),
             (Type::Bool,     BinaryOp::And) => Some(Type::Bool),
 
-            (Type::Mod(val), BinaryOp::Lt ) => Some(Type::Bool),
-            (Type::Mod(val), BinaryOp::Gt ) => Some(Type::Bool),
-            (Type::Mod(val), BinaryOp::Le ) => Some(Type::Bool),
-            (Type::Mod(val), BinaryOp::Ge ) => Some(Type::Bool),
+            (Type::Mod(_),   BinaryOp::Lt ) => Some(Type::Bool),
+            (Type::Mod(_),   BinaryOp::Gt ) => Some(Type::Bool),
+            (Type::Mod(_),   BinaryOp::Le ) => Some(Type::Bool),
+            (Type::Mod(_),   BinaryOp::Ge ) => Some(Type::Bool),
             (Type::Mod(val), BinaryOp::Add) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
@@ -572,5 +580,34 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn tuple_expr_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.add_types_expr(Expr::Tuple(vec![
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Literal(Literal::Int(3))),
+                op: UnaryOp::Neg,
+                op_span: Span {line: 0, col: 0},
+                expr_type: Type::Unknown,
+            }),
+            Expr::Literal(Literal::Int(1)),
+        ]));
+
+        assert_eq!(result, Some(Expr::Tuple(vec![
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Literal(Literal::Int(3))),
+                op: UnaryOp::Neg,
+                op_span: Span {line: 0, col: 0},
+                expr_type: Type::Int,
+            }),
+            Expr::Literal(Literal::Int(1)),
+        ])));
     }
 }
