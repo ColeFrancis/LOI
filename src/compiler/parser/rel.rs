@@ -125,6 +125,7 @@ mod tests {
                 left: Box::new(Expr::Ident(build_ident_str("a"))),
                 op: BinaryOp::Mul,
                 right: Box::new(Expr::Ident(build_ident_str("b"))),
+                op_span: Span {line: 0, col: 0},
                 expr_type: Type::Unknown,
             }),
         }));
@@ -241,6 +242,7 @@ mod tests {
                     left: Box::new(Expr::Ident(build_ident_str("p"))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(build_ident_str("q"))),
+                    op_span: Span {line: 0, col: 0},
                     expr_type: Type::Unknown,
                 })),
                 expr_type: Type::Unknown,

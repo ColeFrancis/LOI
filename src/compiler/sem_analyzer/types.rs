@@ -31,6 +31,7 @@ pub enum Type {
     Impulse,
     Int,
     Real,
+    Tuple(Vec<Type>),
     Mod(i64),
     Custom(Ident),
     Error,

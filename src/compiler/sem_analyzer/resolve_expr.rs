@@ -287,6 +287,7 @@ mod tests {
             })),
             op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Int(1))),
+            op_span: Span {line: 0, col: 0},
             expr_type: Type::Unknown,
         }));
 
@@ -294,6 +295,7 @@ mod tests {
             left: Box::new(Expr::Error),
             op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Int(1))),
+            op_span: Span {line: 0, col: 0},
             expr_type: Type::Unknown,
         })));
         assert_eq!(diagnostics.num_errors(), 1);

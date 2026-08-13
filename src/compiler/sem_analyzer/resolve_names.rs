@@ -312,6 +312,17 @@ impl <'a> SemAnalyzer<'a> {
             Type::Int     => Some(Type::Int),
             Type::Real    => Some(Type::Real),
 
+            Type::Tuple(mut types) => {
+                for type_box in &mut types {
+                    let owned_type_box = std::mem::replace(type_box, Type::Error);
+
+                    *type_box = self.resolve_type(owned_type_box)
+                        .unwrap_or(Type::Error);
+                }
+
+                Some(Type::Tuple(types))
+            }
+
             Type::Mod(val) => {
                 Some(Type::Mod(val))
             }
@@ -624,6 +635,46 @@ mod tests {
                 ])
             },
         ]);
+    }
+
+    #[test]
+    fn resolve_type_tuple() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "a".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_type(Type::Tuple(vec![
+            Type::Bool,
+            Type::Mod(16),
+            Type::Custom(Ident::Str {
+                val: "a".to_string(),
+                span: Span {line: 0, col: 0},
+            }),
+        ]));
+
+        assert_eq!(result, Some(Type::Tuple(vec![
+            Type::Bool,
+            Type::Mod(16),
+            Type::Custom(Ident::Symbol(0)),
+        ])));
     }
 
     #[test]
@@ -1471,6 +1522,7 @@ net SECOND {
                         left: Box::new(Expr::Ident(Ident::Symbol(1))),
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op_span: Span {line: 4, col: 6},
                         expr_type: Type::Unknown,
                     })),
                     expr_type: Type::Unknown,
@@ -1495,6 +1547,7 @@ net SECOND {
                     left: Box::new(Expr::Ident(Ident::Symbol(0))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(Ident::Symbol(5))),
+                    op_span: Span {line: 9, col: 33},
                     expr_type: Type::Unknown,
                 }),
             }),

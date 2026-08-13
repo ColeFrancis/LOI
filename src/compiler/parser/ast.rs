@@ -77,7 +77,8 @@ pub enum Literal {
 pub struct UnaryExpr {
     pub op: UnaryOp,
     pub expr: Box<Expr>,
-    pub expr_type: Type
+    pub op_span: Span,
+    pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]
@@ -91,6 +92,7 @@ pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub op: BinaryOp,
     pub right: Box<Expr>,
+    pub op_span: Span,
     pub expr_type: Type,
 }
 

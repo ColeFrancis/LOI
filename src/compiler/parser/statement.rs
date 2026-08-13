@@ -87,6 +87,7 @@ mod tests {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
                 right: Box::new(Expr::Literal(Literal::Int(2))),
+                op_span: Span {line: 0, col: 0},
                 expr_type: Type::Unknown,
             })
         }));

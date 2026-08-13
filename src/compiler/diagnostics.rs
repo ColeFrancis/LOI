@@ -98,6 +98,7 @@ pub enum CompilerError {
         new_span: Span,
     },
 
+    // When searching up a symbol resolving names
     UndefinedIdent {
         name: String,
         span: Span,
@@ -119,6 +120,12 @@ pub enum CompilerError {
         found: Type,
         span: Span,
     },
+
+    IncompatibleOp {
+        expr_type: Type,
+        op: Operation,
+        op_span: Span,
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -128,6 +135,19 @@ pub enum Expected {
     Pattern,
     Ident,
     IntLiteral,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Operation {
+    Cmp,
+    Add,
+    Sub,
+    Mul,
+    Div, 
+    Pow,
+    Or,
+    And,
+    Not,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]

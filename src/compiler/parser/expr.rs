@@ -28,7 +28,7 @@ use super::ast::*;
 use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::{
     lexer::token::{Token, TokenKind},
-    diagnostics::{CompilerError, Expected},
+    diagnostics::{CompilerError, Expected, Span},
 };
 
 impl<'a> Parser<'a> {
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
         loop {
             let token = self.peek().clone();
 
-            let Some((op, left_bp, right_bp)) = 
+            let Some((op, op_span, left_bp, right_bp)) = 
                 self.infix_into(&token)
             else {
                 break;
@@ -70,6 +70,7 @@ impl<'a> Parser<'a> {
                 left: Box::new(lhs),
                 op,
                 right: Box::new(rhs),
+                op_span,
                 expr_type: Type::Unknown,
             });
         }
@@ -107,6 +108,7 @@ impl<'a> Parser<'a> {
                 Some(Expr::Unary(UnaryExpr {
                     op: UnaryOp::Neg,
                     expr: Box::new(rhs),
+                    op_span: token.span,
                     expr_type: Type::Unknown,
                 }))
             }
@@ -117,6 +119,7 @@ impl<'a> Parser<'a> {
                 Some(Expr::Unary(UnaryExpr {
                     op: UnaryOp::BitNot,
                     expr: Box::new(rhs),
+                    op_span: token.span,
                     expr_type: Type::Unknown,
                 }))
             }
@@ -200,19 +203,19 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn infix_into(&mut self, token: &Token) -> Option<(BinaryOp, u8, u8)> {
+    fn infix_into(&mut self, token: &Token) -> Option<(BinaryOp, Span, u8, u8)> {
         match &token.kind {
-            TokenKind::Gt       => Some((BinaryOp::Gt,   1,  2)),
-            TokenKind::Lt       => Some((BinaryOp::Lt,   1,  2)),
-            TokenKind::Ge       => Some((BinaryOp::Ge,   1,  2)),
-            TokenKind::Le       => Some((BinaryOp::Le,   1,  2)),
-            TokenKind::Plus     => Some((BinaryOp::Add, 10, 11)),
-            TokenKind::Minus    => Some((BinaryOp::Sub, 10, 11)),
-            TokenKind::Asterisk => Some((BinaryOp::Mul, 20, 21)),
-            TokenKind::Slash    => Some((BinaryOp::Div, 20, 21)),
-            TokenKind::Caret    => Some((BinaryOp::Pow, 31, 30)),
-            TokenKind::Pipe     => Some((BinaryOp::Or,  10, 11)),
-            TokenKind::Ampersand=> Some((BinaryOp::And, 20, 21)),
+            TokenKind::Gt       => Some((BinaryOp::Gt,  token.span.clone(),  1,  2)),
+            TokenKind::Lt       => Some((BinaryOp::Lt,  token.span.clone(),  1,  2)),
+            TokenKind::Ge       => Some((BinaryOp::Ge,  token.span.clone(),  1,  2)),
+            TokenKind::Le       => Some((BinaryOp::Le,  token.span.clone(),  1,  2)),
+            TokenKind::Plus     => Some((BinaryOp::Add, token.span.clone(), 10, 11)),
+            TokenKind::Minus    => Some((BinaryOp::Sub, token.span.clone(), 10, 11)),
+            TokenKind::Asterisk => Some((BinaryOp::Mul, token.span.clone(), 20, 21)),
+            TokenKind::Slash    => Some((BinaryOp::Div, token.span.clone(), 20, 21)),
+            TokenKind::Caret    => Some((BinaryOp::Pow, token.span.clone(), 31, 30)),
+            TokenKind::Pipe     => Some((BinaryOp::Or,  token.span.clone(), 10, 11)),
+            TokenKind::Ampersand=> Some((BinaryOp::And, token.span.clone(), 20, 21)),
             _ => None,
         }
     }
@@ -635,6 +638,7 @@ mod tests {
             left: Box::new(Expr::Unary(UnaryExpr {
                 op: UnaryOp::Neg,
                 expr: Box::new(Expr::Literal(Literal::Int(5))),
+                op_span: Span {line: 0, col: 0},
                 expr_type: Type::Unknown,
             })),
             op: BinaryOp::Add,
@@ -642,8 +646,10 @@ mod tests {
                 left: Box::new(Expr::Literal(Literal::Int(2))),
                 op: BinaryOp::Mul,
                 right: Box::new(Expr::Ident(build_ident_str("a"))),
+                op_span: Span {line: 0, col: 0},
                 expr_type: Type::Unknown
             })),
+            op_span: Span {line: 0, col: 0},
             expr_type: Type::Unknown,
         });
 
