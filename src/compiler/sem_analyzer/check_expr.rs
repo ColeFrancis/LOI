@@ -159,11 +159,18 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Bool,    Type::Bool   ) => Some(Type::Bool),
 
             (Type::Mod(val_left), Type::Mod(val_right)) => {
-                if val_left >= val_right {
+                if val_left == val_right {
                     Some(Type::Mod(*val_left))
                 }
                 else {
-                    Some(Type::Mod(*val_right))
+                    // Cannot combine mod types that are different
+                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                        left: left.clone(),
+                        right: right.clone(),
+                        op_span: op_span.clone(),
+                    });
+                    
+                    None
                 }
             } 
             (Type::Mod(_), Type::Int   ) => Some(Type::Int),
@@ -522,5 +529,48 @@ mod tests {
             op_span: Span {line: 0, col: 0},
             expr_type: Type::Bool,
         })));
+    }
+
+    #[test]
+    fn binary_expr_5() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "z2".to_string(),
+                    kind: SymbolKind::Variable(Type::Mod(2)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "z3".to_string(),
+                    kind: SymbolKind::Variable(Type::Mod(3)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("z2".to_string(), 0),
+                        ("z3".to_string(), 1),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // z2 + z3 // mod variables incompatible
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(1))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }
