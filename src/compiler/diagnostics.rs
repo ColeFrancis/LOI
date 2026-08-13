@@ -121,11 +121,17 @@ pub enum CompilerError {
         span: Span,
     },
 
+    IncompatibleTypes { // In binary expressions both sides are compatible
+        left: Type,
+        right: Type,
+        op_span: Span,
+    },
+
     IncompatibleOp {
         expr_type: Type,
         op: Operation,
         op_span: Span,
-    }
+    },
 }
 
 #[derive(Debug, PartialEq)]

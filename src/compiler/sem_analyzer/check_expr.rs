@@ -44,12 +44,26 @@ impl <'a> SemAnalyzer<'a> {
 
                 unary_expr.expr_type = self.get_expr_type(&unary_expr.expr);
 
-                self.verify_unary_op_type_match(&unary_expr.expr_type, &unary_expr.op, &unary_expr.op_span);
+                self.verify_unary_op_type_match(&unary_expr.expr_type, &unary_expr.op, &unary_expr.op_span)?;
 
                 Some(Expr::Unary(unary_expr))
             }
 
-            // Expr::Binary(binary_expr) => {}
+            Expr::Binary(mut binary_expr) => {
+                binary_expr.left = Box::new(self.add_types_expr(*binary_expr.left)
+                    .unwrap_or(Expr::Error));
+                binary_expr.right = Box::new(self.add_types_expr(*binary_expr.right)
+                    .unwrap_or(Expr::Error));
+
+                let left_expr_type = self.get_expr_type(&binary_expr.left);
+                let right_expr_type = self.get_expr_type(&binary_expr.right);
+
+                binary_expr.expr_type = self.verify_binary_expr_type_match(&left_expr_type, &right_expr_type, &binary_expr.op_span)?;
+
+                binary_expr.expr_type = self.verify_binary_op_type_match(&binary_expr.expr_type, &binary_expr.op, &binary_expr.op_span)?;
+
+                Some(Expr::Binary(binary_expr))
+            } 
 
             // Expr::Tuple(tuple_expr) => {}
 
@@ -118,6 +132,8 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Real,    UnaryOp::Neg) => Some(()),
             (Type::Mod(_),  UnaryOp::Neg) => Some(()),
 
+            (Type::Error, _) => None,
+
             _ => {
                 let diagnostics_op = match op {
                     UnaryOp::BitNot => Operation::Not,
@@ -135,9 +151,108 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // fn verify_binary_expr_type_match(&mut self, left: &Type, right: &Type) -> Option<Type> {}
+    fn verify_binary_expr_type_match(&mut self, left: &Type, right: &Type, op_span: &Span) -> Option<Type> {
+        match (left, right) {
+            (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
+            (Type::Bool,    Type::Impulse) => Some(Type::Bool),
+            (Type::Impulse, Type::Bool   ) => Some(Type::Bool),
+            (Type::Bool,    Type::Bool   ) => Some(Type::Bool),
 
-    // fn verify_binary_op_type_match(&mut self, expr_type: &Type, op: &BinaryOp, op_span: &Span) -> Option<()> {}
+            (Type::Mod(val_left), Type::Mod(val_right)) => {
+                if val_left >= val_right {
+                    Some(Type::Mod(*val_left))
+                }
+                else {
+                    Some(Type::Mod(*val_right))
+                }
+            } 
+            (Type::Mod(_), Type::Int   ) => Some(Type::Int),
+            (Type::Int,    Type::Mod(_)) => Some(Type::Int),
+            (Type::Int,    Type::Int   ) => Some(Type::Int),
+            (Type::Mod(_), Type::Real  ) => Some(Type::Real),
+            (Type::Real,   Type::Mod(_)) => Some(Type::Real),
+            (Type::Int,    Type::Real  ) => Some(Type::Real),
+            (Type::Real,   Type::Int   ) => Some(Type::Real),
+            (Type::Real,   Type::Real  ) => Some(Type::Real),
+
+            (Type::Error, _) => None,
+            (_, Type::Error) => None,
+
+            _ => {
+                self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    left: left.clone(),
+                    right: right.clone(),
+                    op_span: op_span.clone(),
+                });
+
+                None
+            }
+        }
+    }
+
+    fn verify_binary_op_type_match(&mut self, expr_type: &Type, op: &BinaryOp, op_span: &Span) -> Option<Type> {
+        match (expr_type, op) {
+            (Type::Impulse,  BinaryOp::Or ) => Some(Type::Impulse),
+            (Type::Impulse,  BinaryOp::And) => Some(Type::Impulse),
+
+            (Type::Bool,     BinaryOp::Or ) => Some(Type::Bool),
+            (Type::Bool,     BinaryOp::And) => Some(Type::Bool),
+
+            (Type::Mod(val), BinaryOp::Lt ) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Gt ) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Le ) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Ge ) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Add) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Div) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Pow) => Some(Type::Mod(*val)),
+            (Type::Int,      BinaryOp::Lt ) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Gt ) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Le ) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Ge ) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Add) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Sub) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Mul) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Div) => Some(Type::Int),
+            (Type::Int,      BinaryOp::Pow) => Some(Type::Int),
+            (Type::Real,     BinaryOp::Gt ) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Lt ) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Le ) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Ge ) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Add) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Sub) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Mul) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Div) => Some(Type::Real),
+            (Type::Real,     BinaryOp::Pow) => Some(Type::Real),
+
+            (Type::Error, _) => None,
+
+            _ => {
+                let diagnostics_op = match op {
+                    BinaryOp::Lt  => Operation::Cmp,
+                    BinaryOp::Gt  => Operation::Cmp,
+                    BinaryOp::Le  => Operation::Cmp,
+                    BinaryOp::Ge  => Operation::Cmp,
+                    BinaryOp::Add => Operation::Add,
+                    BinaryOp::Sub => Operation::Sub,
+                    BinaryOp::Mul => Operation::Mul,
+                    BinaryOp::Div => Operation::Div,
+                    BinaryOp::Pow => Operation::Pow,
+                    BinaryOp::Or  => Operation::Or,
+                    BinaryOp::And => Operation::And,
+                };
+
+                self.diagnostics.error(CompilerError::IncompatibleOp {
+                    expr_type: expr_type.clone(),
+                    op: diagnostics_op,
+                    op_span: op_span.clone(),
+                });
+
+                None
+            },
+        }
+    }
 
 
 }
@@ -195,5 +310,176 @@ mod tests {
             Type::Real,
             Type::Int,
         ]));
+    }
+
+    #[test]
+    fn unary_expr_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.add_types_expr(Expr::Unary(UnaryExpr {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Unary(UnaryExpr {
+                op: UnaryOp::Neg,
+                expr: Box::new(Expr::Literal(Literal::Int(1))),
+                op_span: Span {line:0, col: 0},
+                expr_type: Type::Unknown,
+            })),
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Unary(UnaryExpr {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Unary(UnaryExpr {
+                op: UnaryOp::Neg,
+                expr: Box::new(Expr::Literal(Literal::Int(1))),
+                op_span: Span {line:0, col: 0},
+                expr_type: Type::Int,
+            })),
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Int,
+        })));
+    }
+
+    #[test]
+    fn unary_expr_2() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics,
+        );
+
+        let result = sem_analyzer.add_types_expr(Expr::Unary(UnaryExpr {
+            op: UnaryOp::Neg,
+            expr: Box::new(Expr::Unary(UnaryExpr {
+                op: UnaryOp::Neg,
+                expr: Box::new(Expr::Literal(Literal::Bool(true))),
+                op_span: Span {line:0, col: 0},
+                expr_type: Type::Unknown,
+            })),
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        diagnostics.debug_print();
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn binary_expr_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "r".to_string(),
+                    kind: SymbolKind::Variable(Type::Real),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("r".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // 1 + r // r is a Real
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Real,
+        })));
+    }
+
+    #[test]
+    fn binary_expr_2() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("b".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // 1 + b // b is a bool
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+        
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn binary_expr_3() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("b".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // true + b // b is a bool
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Bool(true))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+        
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }

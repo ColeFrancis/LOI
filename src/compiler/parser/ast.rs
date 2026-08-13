@@ -90,8 +90,8 @@ pub enum UnaryOp {
 #[derive(PartialEq, Debug)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
-    pub op: BinaryOp,
     pub right: Box<Expr>,
+    pub op: BinaryOp,
     pub op_span: Span,
     pub expr_type: Type,
 }
