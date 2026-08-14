@@ -167,6 +167,8 @@ impl <'a> SemAnalyzer<'a> {
                 Ident::Symbol(symbol_id) => match &self.symbols[*symbol_id].kind {
                     SymbolKind::Variable(ty) => ty.clone(),
 
+                    SymbolKind::EntMember(parent_id) => Type::Custom(Ident::Symbol(*parent_id)),
+
                     _ => Type::Error, // Should not be reachable
                 }
                 
@@ -294,7 +296,16 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Real,   Type::Int   ) => Some(Type::Real),
             (Type::Real,   Type::Real  ) => Some(Type::Real),
 
-            // (Type::Custom(ident_l), Type::Custom(ident_r)) => {}
+            (Type::Custom(ident_l), Type::Custom(ident_r)) => {
+                let (parent_l, parent_r) = match (ident_l, ident_r) {
+                    (Ident::Symbol(id_l), Ident::Symbol(id_r)) => {
+
+                    }
+
+                    _ => return None // Unreachable
+                }
+                
+            }
 
             (Type::Error, _) => None,
             (_, Type::Error) => None,
@@ -1411,6 +1422,86 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn cases_expr_7() {
+        // cases c {  // C is type COIN = {H, T}
+        //     T : true,
+        //     _ : false,
+        // }
+        let mut diagnostics = Diagnostics::new();  // TODO v
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(3))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Bool(true)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(0)),
+                            SimplePattern::Literal(Literal::Bool(false)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Some(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Bool(true)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(0)),
+                            SimplePattern::Literal(Literal::Bool(false)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span {line: 0, col: 0},
+        })));
     }
 
     #[test]
