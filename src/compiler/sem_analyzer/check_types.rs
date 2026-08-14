@@ -53,6 +53,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
+    // There is no way checking types on LetStatement results in an error item. Maybe a Type::Error or Expr::Error but not the whole thing.
     pub(super) fn check_let(&mut self, mut stmt: LetStatement) -> LetStatement {
         stmt.expr = self.add_types_expr(stmt.expr).unwrap_or(Expr::Error);
 

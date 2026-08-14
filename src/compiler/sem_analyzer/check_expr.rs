@@ -88,7 +88,7 @@ impl <'a> SemAnalyzer<'a> {
 
                 block_expr.expr = Box::new(self.add_types_expr(*block_expr.expr).unwrap_or(Expr::Error));
 
-                block_expr.expr_type = self.get_expr_type(&*block_expr.expr);
+                block_expr.expr_type = self.get_expr_type(&block_expr.expr);
 
                 Some(Expr::Block(block_expr))
             }
@@ -97,7 +97,7 @@ impl <'a> SemAnalyzer<'a> {
 
             // Expr::Sample(sample_expr) => {}
 
-            // Expr::Error => Some(Expr::Error)
+            Expr::Error => Some(Expr::Error)
 
             _ => Some(Expr::Error)
         }
