@@ -514,7 +514,7 @@ mod tests {
 
     #[test]
     fn get_expr_type() {
-        // (1+1, true, 2.0, a) // a already in symbol table as an Int
+        // (1+1, true, 2.0, a, H) // a already in symbol table as an Int, H as member of COIN
         let mut diagnostics = Diagnostics::new();
         let sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -525,11 +525,32 @@ mod tests {
                     kind: SymbolKind::Variable(Type::Int),
                     span: Span{line: 0, col: 0},
                 },
+                Symbol {
+                    id: 1,
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember(1),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 3,
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember(1),
+                    span: Span{line: 0, col: 0},
+                },
             ],
             scopes: vec![
                 Scope {
                     symbols: HashMap::from([
                         ("a".to_string(), 0),
+                        ("COIN".to_string(), 1),
+                        ("H".to_string(), 2),
+                        ("T".to_string(), 3),
                     ])
                 },
             ],
@@ -548,6 +569,7 @@ mod tests {
             Expr::Literal(Literal::Bool(true)),
             Expr::Literal(Literal::Real(2.0)),
             Expr::Ident(Ident::Symbol(0)),
+            Expr::Ident(Ident::Symbol(2)),
         ]));
 
         assert_eq!(result, Type::Tuple(vec![
@@ -555,6 +577,7 @@ mod tests {
             Type::Bool,
             Type::Real,
             Type::Int,
+            Type::Custom(Ident::Symbol(1)),
         ]));
     }
 
