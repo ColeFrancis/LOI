@@ -93,11 +93,14 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Block(block_expr))
             }
 
+            // Check scrutinee matches each arm's pattern
+            // Check that there is at most one default arm
+            // Annotate expression type
             // Expr::Match(match_expr) => {}
 
             // Expr::Sample(sample_expr) => {}
 
-            Expr::Error => Some(Expr::Error)
+            Expr::Error => Some(Expr::Error),
 
             _ => Some(Expr::Error)
         }

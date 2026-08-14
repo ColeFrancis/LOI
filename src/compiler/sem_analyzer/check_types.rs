@@ -46,7 +46,7 @@ impl <'a> SemAnalyzer<'a> {
     fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Let(stmt)     => Some(Item::Let(self.check_let(stmt))),
-            Item::Ent(ent_type) => self.check_ent(ent_type).map(Item::Ent),
+            Item::Ent(ent_type) => Some(Item::Ent(ent_type)),
             Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
             Item::Net(net)      => self.check_net(net).map(Item::Net),
             Item::Error         => Some(Item::Error),
@@ -68,11 +68,9 @@ impl <'a> SemAnalyzer<'a> {
         stmt
     }
 
-    fn check_ent(&mut self, mut ent_t: EntType) -> Option<EntType> {
-        Some(ent_t)
-    }
-
     fn check_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
+        // Annotate types of each parameter's symbol
+        // Check expression type matches return type
         Some(rel_t)
     }
 
