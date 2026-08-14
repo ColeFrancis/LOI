@@ -61,7 +61,7 @@ pub enum Expr {
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
     Block(BlockExpr),
-    Match(MatchExpr),      
+    Cases(CasesExpr),      
     Sample(SampleExpr), // TODO: Add struct with type
     Error,
 }
@@ -127,14 +127,14 @@ pub struct BlockExpr {
 }
 
 #[derive(PartialEq, Debug)]
-pub struct MatchExpr {
+pub struct CasesExpr {
     pub scrutinee: Box<Expr>,
-    pub arms: Vec<MatchArm>,
+    pub arms: Vec<CasesArm>,
     pub expr_type: Type,
 }
 
 #[derive(PartialEq, Debug)]
-pub struct MatchArm {
+pub struct CasesArm {
     pub pattern: Vec<SimplePattern>,
     pub expr: Expr,
 }

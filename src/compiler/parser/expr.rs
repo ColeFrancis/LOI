@@ -42,10 +42,10 @@ impl<'a> Parser<'a> {
     //  Three "exceptions" to this are:
     //      if one of the expressions in a block expression is an error, only that expression is Expr::Error not the entire block.
     //      if one part of a tuple expression is an error, only that portion is Expr::Error and not the whole tuple expression.
-    //      if the return portion of a match or sample expression contains an error, 
-    //     only the return portion of the match expression will be Expr::Error and no the entire match expression.
-    //          ex: match a {1 => 2+, _ => 0} is match a {1 => Expr::Error, _ => 0} not Expr::Error
-    //          ex match a {1+ => 1, _ => 0} is Expr::Error
+    //      if the return portion of a cases or sample expression contains an error, 
+    //     only the return portion of the cases expression will be Expr::Error and no the entire cases expression.
+    //          ex: cases a {1 : 2+, _ : 0} is cases a {1 : Expr::Error, _ : 0} not Expr::Error
+    //          ex cases a {1+ : 1, _ : 0} is Expr::Error
     pub(super) fn parse_expr(&mut self, min_bp: u8) -> Option<Expr> {
         let mut lhs = self.parse_prefix()?;
 
@@ -177,9 +177,9 @@ impl<'a> Parser<'a> {
                 self.parse_block_expr()
             }
 
-            TokenKind::Match => {
+            TokenKind::Cases => {
                 self.next();
-                self.parse_match()
+                self.parse_cases()
             }
 
             TokenKind::Sample => {
@@ -248,8 +248,8 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    // Match token already consumed
-    fn parse_match(&mut self) -> Option<Expr> {
+    // Cases token already consumed
+    fn parse_cases(&mut self) -> Option<Expr> {
         let scrutinee = self.parse_expr(0)?;
 
         self.expect(TokenKind::LBrace, &SyncRule::Expr {depth: 0})?;
@@ -257,7 +257,7 @@ impl<'a> Parser<'a> {
         let mut arms = Vec::new();
 
         while self.peek().kind != TokenKind::RBrace {
-            arms.push(self.parse_match_arm()?);
+            arms.push(self.parse_cases_arm()?);
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -268,24 +268,24 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::RBrace, &SyncRule::Expr {depth: 0})?;
 
-        Some(Expr::Match(MatchExpr {
+        Some(Expr::Cases(CasesExpr {
             scrutinee: Box::new(scrutinee),
             arms,
             expr_type: Type::Unknown,
         }))
     }
 
-    fn parse_match_arm(&mut self) -> Option<MatchArm> {
+    fn parse_cases_arm(&mut self) -> Option<CasesArm> {
         let pattern = self.parse_pattern()?;
 
-        self.expect(TokenKind::FatArrow, &SyncRule::Expr {depth: 1})?;
+        self.expect(TokenKind::Colon, &SyncRule::Expr {depth: 1})?;
 
         let expr = match self.parse_expr(0) {
             Some(expr) => expr,
             None => Expr::Error,
         };
 
-        Some(MatchArm {
+        Some(CasesArm {
             pattern,
             expr,
         })
@@ -398,7 +398,7 @@ impl<'a> Parser<'a> {
             }),
         };
 
-        self.expect(TokenKind::FatArrow, &SyncRule::Expr {depth: 1})?;
+        self.expect(TokenKind::Colon, &SyncRule::Expr {depth: 1})?;
 
         let expr = match self.parse_expr(0) {
             Some(expr) => expr,
@@ -484,16 +484,16 @@ mod tests {
                 format!("(block {} {})", statements, build_s_expr(&block.expr))
             }
 
-            // (match x (arm 0 1) (arm _ 2))
-            Expr::Match(match_expr) => {
-                let arms = match_expr 
+            // (cases x (arm 0 1) (arm _ 2))
+            Expr::Cases(cases_expr) => {
+                let arms = cases_expr 
                     .arms
                     .iter()
-                    .map(build_match_arm)
+                    .map(build_cases_arm)
                     .collect::<Vec<_>>()
                     .join(" ");
 
-                format!("(match {} {})", build_s_expr(&match_expr.scrutinee), arms)
+                format!("(cases {} {})", build_s_expr(&cases_expr.scrutinee), arms)
             }
 
             // (sample (arm 0.5 1) (arm _ 0))
@@ -530,7 +530,7 @@ mod tests {
         }
     }
 
-    fn build_match_arm(arm: &MatchArm) -> String {
+    fn build_cases_arm(arm: &CasesArm) -> String {
         let pattern = if arm.pattern.len() == 1 {
             build_pattern(&arm.pattern[0])
         } else {
@@ -820,13 +820,13 @@ mod tests {
 
     #[test]
     fn match_expr() {
-        // match a {
-        //     1 => 1+a,
-        //     _ => a,
+        // cases a {
+        //     1 : 1+a,
+        //     _ : a,
         // } - 2
-        let kinds: Vec<TokenKind> = vec![Match, Ident("a".to_string()), LBrace, 
-            IntLiteral(1), FatArrow, IntLiteral(1), Plus, Ident("a".to_string()), Comma,
-            Underscore, FatArrow, Ident("a".to_string()), Comma,
+        let kinds: Vec<TokenKind> = vec![Cases, Ident("a".to_string()), LBrace, 
+            IntLiteral(1), Colon, IntLiteral(1), Plus, Ident("a".to_string()), Comma,
+            Underscore, Colon, Ident("a".to_string()), Comma,
             RBrace, Minus, IntLiteral(2), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -837,18 +837,18 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(- (match a (arm 1 (+ 1 a)) (arm _ a)) 2)".to_string());
+        assert_eq!(result_str, "(- (cases a (arm 1 (+ 1 a)) (arm _ a)) 2)".to_string());
 
-        // match (a, b) {
-        //     (1, 0) | (0, 1) | (1, 1) => 1,
-        //     _ => 0,
+        // cases (a, b) {
+        //     (1, 0) | (0, 1) | (1, 1) : 1,
+        //     _ : 0,
         // }
-        let kinds: Vec<TokenKind> = vec![Match, LParen, Ident("a".to_string()), Comma,  Ident("b".to_string()), RParen, LBrace,
+        let kinds: Vec<TokenKind> = vec![Cases, LParen, Ident("a".to_string()), Comma,  Ident("b".to_string()), RParen, LBrace,
                 LParen, IntLiteral(1), Comma, IntLiteral(0), RParen, Pipe, 
                 LParen, IntLiteral(0), Comma, IntLiteral(1), RParen, Pipe,
                 LParen, IntLiteral(1), Comma, IntLiteral(1), RParen,
-                FatArrow, IntLiteral(1), Comma,
-            Underscore, FatArrow, IntLiteral(0),
+                Colon, IntLiteral(1), Comma,
+            Underscore, Colon, IntLiteral(0),
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -859,18 +859,18 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(match (tuple a b) (arm (or (tuple 1 0) (tuple 0 1) (tuple 1 1)) 1) (arm _ 0))".to_string());
+        assert_eq!(result_str, "(cases (tuple a b) (arm (or (tuple 1 0) (tuple 0 1) (tuple 1 1)) 1) (arm _ 0))".to_string());
     }
 
     #[test]
     fn sample_expr() {
         // sample {
-        //     0.5 => 1,
-        //     _ => 0,
+        //     0.5 : 1,
+        //     _ : 0,
         // }
         let kinds: Vec<TokenKind> = vec![Sample, LBrace,
-            RealLiteral(0.5), FatArrow, IntLiteral(1), Comma,
-            Underscore, FatArrow, IntLiteral(0), Comma,
+            RealLiteral(0.5), Colon, IntLiteral(1), Comma,
+            Underscore, Colon, IntLiteral(0), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -883,24 +883,24 @@ mod tests {
 
         assert_eq!(result_str, "(sample (arm 0.5 1) (arm _ 0))".to_string());
 
-        // match coin {
-        //     H => sample {
-        //         0.1 => H,
-        //         _ => T
+        // cases coin {
+        //     H : sample {
+        //         0.1 : H,
+        //         _ : T
         //     },
-        //     T => sample {
-        //         0.8 => H,
-        //         _ => T
+        //     T : sample {
+        //         0.8 : H,
+        //         _ : T
         //     },
         // }
-        let kinds: Vec<TokenKind> = vec![Match, Ident("coin".to_string()), LBrace,
-            Ident("H".to_string()), FatArrow, Sample, LBrace,
-                RealLiteral(0.1), FatArrow, Ident("H".to_string()), Comma,
-                Underscore, FatArrow, Ident("T".to_string()),
+        let kinds: Vec<TokenKind> = vec![Cases, Ident("coin".to_string()), LBrace,
+            Ident("H".to_string()), Colon, Sample, LBrace,
+                RealLiteral(0.1), Colon, Ident("H".to_string()), Comma,
+                Underscore, Colon, Ident("T".to_string()),
             RBrace, Comma,
-            Ident("T".to_string()), FatArrow, Sample, LBrace,
-                RealLiteral(0.8), FatArrow, Ident("H".to_string()), Comma,
-                Underscore, FatArrow, Ident("T".to_string()),
+            Ident("T".to_string()), Colon, Sample, LBrace,
+                RealLiteral(0.8), Colon, Ident("H".to_string()), Comma,
+                Underscore, Colon, Ident("T".to_string()),
             RBrace, Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
@@ -912,7 +912,7 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(match coin (arm H (sample (arm 0.1 H) (arm _ T))) (arm T (sample (arm 0.8 H) (arm _ T))))".to_string());
+        assert_eq!(result_str, "(cases coin (arm H (sample (arm 0.1 H) (arm _ T))) (arm T (sample (arm 0.8 H) (arm _ T))))".to_string());
 
         // sample {}
         let kinds: Vec<TokenKind> = vec![Sample, LBrace, RBrace, Eof];
@@ -926,16 +926,16 @@ mod tests {
         assert_eq!(result, Some(Expr::Sample(SampleExpr {arms: vec![], expr_type: Type::Unknown})));
 
         // sample {
-        //     a => sample {
-        //        a => b        // no fat arrow
+        //     a : sample {
+        //        a : b        // no fat arrow
         //     },
-        //     _ => c
+        //     _ : c
         // }
         let kinds: Vec<TokenKind> = vec![Sample, LBrace,
-            Ident("a".to_string()), FatArrow, Sample, LBrace, 
-                Ident("a".to_string()), FatArrow, Ident("b".to_string()),
+            Ident("a".to_string()), Colon, Sample, LBrace, 
+                Ident("a".to_string()), Colon, Ident("b".to_string()),
             RBrace, Comma,
-            Underscore, FatArrow, Ident("c".to_string()), Comma,
+            Underscore, Colon, Ident("c".to_string()), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1099,14 +1099,14 @@ mod tests {
 
     #[test]
     fn bad_match_1() {
-        //     match { // missing expression after match
-        //         a => 1,
-        //         _ => 0,
+        //     cases { // missing expression after cases
+        //         a : 1,
+        //         _ : 0,
         //     }
         // }
-        let kinds: Vec<TokenKind> = vec![Match, LBrace,
-            Ident("a".to_string()), FatArrow, IntLiteral(1), Comma, 
-            Underscore, FatArrow, IntLiteral(0), Comma,
+        let kinds: Vec<TokenKind> = vec![Cases, LBrace,
+            Ident("a".to_string()), Colon, IntLiteral(1), Comma, 
+            Underscore, Colon, IntLiteral(0), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1121,14 +1121,14 @@ mod tests {
 
     #[test]
     fn bad_match_2() {
-        //     match a { 
-        //         @ => 1, // unknown token
-        //         _ => 0,
+        //     cases a { 
+        //         @ : 1, // unknown token
+        //         _ : 0,
         //     }
         // }
-        let kinds: Vec<TokenKind> = vec![Match, Ident("a".to_string()), LBrace,
-            ErrorToken, FatArrow, IntLiteral(1), Comma, 
-            Underscore, FatArrow, IntLiteral(0), Comma,
+        let kinds: Vec<TokenKind> = vec![Cases, Ident("a".to_string()), LBrace,
+            ErrorToken, Colon, IntLiteral(1), Comma, 
+            Underscore, Colon, IntLiteral(0), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1145,14 +1145,14 @@ mod tests {
 
     #[test]
     fn bad_match_3() {
-        //     match a { 
-        //         => 1, // missing expr
-        //         _ => 0,
+        //     cases a { 
+        //         : 1, // missing expr
+        //         _ : 0,
         //     }
         // }
-        let kinds: Vec<TokenKind> = vec![Match, Ident("a".to_string()), LBrace,
-            FatArrow, IntLiteral(1), Comma, 
-            Underscore, FatArrow, IntLiteral(0), Comma,
+        let kinds: Vec<TokenKind> = vec![Cases, Ident("a".to_string()), LBrace,
+            Colon, IntLiteral(1), Comma, 
+            Underscore, Colon, IntLiteral(0), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1169,14 +1169,14 @@ mod tests {
 
     #[test]
     fn bad_match_4() {
-        //     match a { 
-        //         b => , // missing expr
-        //         _ => 0,
+        //     cases a { 
+        //         b : , // missing expr
+        //         _ : 0,
         //     }
         // }
-        let kinds: Vec<TokenKind> = vec![Match, Ident("a".to_string()), LBrace,
-            Ident("b".to_string()), FatArrow, Comma, 
-            Underscore, FatArrow, IntLiteral(0), Comma,
+        let kinds: Vec<TokenKind> = vec![Cases, Ident("a".to_string()), LBrace,
+            Ident("b".to_string()), Colon, Comma, 
+            Underscore, Colon, IntLiteral(0), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1187,14 +1187,14 @@ mod tests {
 
         diagnostics.debug_print();
 
-        assert_eq!(result, Some(Expr::Match(MatchExpr {
+        assert_eq!(result, Some(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(build_ident_str("a"))),
             arms: vec![
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Ident(build_ident_str("b"))],
                     expr: Expr::Error,
                 },
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
@@ -1228,12 +1228,12 @@ mod tests {
     #[test]
     fn bad_sample_expr_2() {
         // sample {
-        //     b => 1   // no comma
-        //     _ => c
+        //     b : 1   // no comma
+        //     _ : c
         // }
         let kinds: Vec<TokenKind> = vec![Sample, LBrace,
-            Ident("b".to_string()), FatArrow, IntLiteral(1),
-            Underscore, FatArrow, Ident("c".to_string()), 
+            Ident("b".to_string()), Colon, IntLiteral(1),
+            Underscore, Colon, Ident("c".to_string()), 
             RBrace];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1249,12 +1249,12 @@ mod tests {
     #[test]
     fn bad_sample_expr_3() {
         // sample {
-        //     a => sample {, // No closing brace causes last } to be mistaken for the second samples closing.
-        //     _ => c
+        //     a : sample {, // No closing brace causes last } to be mistaken for the second samples closing.
+        //     _ : c
         // }
         let kinds: Vec<TokenKind> = vec![Sample, LBrace,
-            Ident("a".to_string()), FatArrow, Sample, LBrace, Comma,
-            Underscore, FatArrow, Ident("c".to_string()), Comma,
+            Ident("a".to_string()), Colon, Sample, LBrace, Comma,
+            Underscore, Colon, Ident("c".to_string()), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -1269,16 +1269,16 @@ mod tests {
     #[test]
     fn bad_sample_expr_4() {
         // sample {
-        //     a => sample {
+        //     a : sample {
         //        a b        // no fat arrow
         //     },
-        //     _ => c
+        //     _ : c
         // }
         let kinds: Vec<TokenKind> = vec![Sample, LBrace,
-            Ident("a".to_string()), FatArrow, Sample, LBrace, 
+            Ident("a".to_string()), Colon, Sample, LBrace, 
                 Ident("a".to_string()), Ident("b".to_string()),
             RBrace, Comma,
-            Underscore, FatArrow, Ident("c".to_string()), Comma,
+            Underscore, Colon, Ident("c".to_string()), Comma,
             RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 

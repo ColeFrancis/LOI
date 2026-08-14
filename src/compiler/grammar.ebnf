@@ -35,7 +35,7 @@ expr =
     binary_expr
     | tuple_expr
     | block_expr
-    | match_expr
+    | cases_expr
     | sample_expr ;
 
 binary_expr = comparison ;
@@ -72,13 +72,13 @@ block_expr =
 
 let_stmt = "let" IDENT "=" expr ";" ;
 
-match_expr =
-    "match" expr "{"
-        match_arm ("," match_arm)* ","?
+cases_expr =
+    "cases" expr "{"
+        cases_arm ("," cases_arm)* ","?
     "}" ;
 
-match_arm =
-    pattern "=>" expr ;
+cases_arm =
+    pattern ":" expr ;
 
 pattern =
     simple_pattern ("|" simple_pattern)* ;
@@ -102,7 +102,7 @@ sample_expr =
     "}" ;
 
 sample_arm =
-    ("_" | expr) "=>" expr;
+    ("_" | expr) ":" expr;
 
 ////////////////////////////////////////////////////////////////////////////////
 

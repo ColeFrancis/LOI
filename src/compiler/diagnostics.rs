@@ -236,7 +236,7 @@ mod tests {
     fn expr() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"let n = match a {
+"let n = cases a {
     let => 1,
 };", &mut diagnostics).tokenize();
 

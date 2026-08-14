@@ -143,14 +143,7 @@ impl<'a> Lexer<'a> {
                         return Some(Token::new(TokenKind::Minus, line, col));
                     }
                 }
-                b'=' => {
-                    if self.peek() == Some(b'>') {
-                        self.next();
-                        return Some(Token::new(TokenKind::FatArrow, line, col));
-                    } else {
-                        return Some(Token::new(TokenKind::Equals, line, col));
-                    }
-                }
+                b'=' => return Some(Token::new(TokenKind::Equals, line, col)),
                 b'+' => return Some(Token::new(TokenKind::Plus, line, col)),
                 b'*' => return Some(Token::new(TokenKind::Asterisk, line, col)),
                 b'^' => return Some(Token::new(TokenKind::Caret, line, col)),
@@ -231,7 +224,7 @@ impl<'a> Lexer<'a> {
             "ent_t"   => TokenKind::Ent_t,
             "rel_t"   => TokenKind::Rel_t,
             "net"     => TokenKind::NetToken,
-            "match"   => TokenKind::Match,
+            "cases"   => TokenKind::Cases,
             "sample"  => TokenKind::Sample,
             "input"   => TokenKind::Input,
             "output"  => TokenKind::Output,
@@ -379,7 +372,7 @@ mod test {
     fn test_every_token() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("
-            ent_t rel_t net match sample 
+            ent_t rel_t net cases sample 
             input output init let
             Bool Impulse Int Real Mod
             apple true 10 1.0
@@ -389,12 +382,12 @@ mod test {
             + - * / ^
             ~
             | _
-            = -> => :=
+            = -> :=
             @
             ", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![
-            Ent_t, Rel_t, NetToken, Match, Sample,
+            Ent_t, Rel_t, NetToken, Cases, Sample,
             Input, Output, Init, Let,
             Bool, Impulse, Int, Real, Mod,
             Ident("apple".to_string()), BoolLiteral(true), IntLiteral(10), RealLiteral(1.0),
@@ -404,7 +397,7 @@ mod test {
             Plus, Minus, Asterisk, Slash, Caret,
             BitNot,
             Pipe, Underscore,
-            Equals, Arrow, FatArrow, Connect,
+            Equals, Arrow, Connect,
             ErrorToken,
             Eof,
         ]);

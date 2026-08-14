@@ -100,9 +100,9 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Block(block_expr))
             }
 
-            Expr::Match(match_expr) => {
+            Expr::Cases(match_expr) => {
                 match self.resolve_match_expr(match_expr) {
-                    Some(expr) => Some(Expr::Match(expr)),
+                    Some(expr) => Some(Expr::Cases(expr)),
                     None => Some(Expr::Error),
                 }
             }
@@ -118,7 +118,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn resolve_match_expr(&mut self, mut match_expr: MatchExpr) -> Option<MatchExpr> {
+    fn resolve_match_expr(&mut self, mut match_expr: CasesExpr) -> Option<CasesExpr> {
         match_expr.scrutinee = Box::new(self.resolve_expr(*match_expr.scrutinee)
             .unwrap_or(Expr::Error));
 
@@ -555,8 +555,8 @@ mod tests {
     }
 
     #[test]
-    fn expr_match_1() {
-        // match a {
+    fn expr_cases_1() {
+        // cases a {
         //     >= 0.5 => b, // b undefined
         //     _ => 0
         // }
@@ -575,13 +575,13 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.resolve_expr(Expr::Match(MatchExpr {
+        let result = sem_analyzer.resolve_expr(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(Ident::Str {
                 val: "a".to_string(),
                 span: Span{line: 1, col: 0}
             })),
             arms: vec![
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
@@ -591,7 +591,7 @@ mod tests {
                         span: Span{line: 2, col: 0},
                     }),
                 },
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
@@ -599,17 +599,17 @@ mod tests {
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Match(MatchExpr {
+        assert_eq!(result, Some(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(Ident::Symbol(1))),
             arms: vec![
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
                     })],
                     expr: Expr::Error,
                 },
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
@@ -620,8 +620,8 @@ mod tests {
     }
 
     #[test]
-    fn expr_match_2() {
-        // match a {  // a undefined
+    fn expr_cases_2() {
+        // cases a {  // a undefined
         //     >= 0.5 => b,
         //     _ => 0
         // }
@@ -640,13 +640,13 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.resolve_expr(Expr::Match(MatchExpr {
+        let result = sem_analyzer.resolve_expr(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(Ident::Str {
                 val: "a".to_string(),
                 span: Span{line: 1, col: 0}
             })),
             arms: vec![
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
@@ -656,7 +656,7 @@ mod tests {
                         span: Span{line: 2, col: 0},
                     }),
                 },
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }
@@ -664,17 +664,17 @@ mod tests {
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Match(MatchExpr {
+        assert_eq!(result, Some(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Error),
             arms: vec![
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
                     })],
                     expr: Expr::Ident(Ident::Symbol(10)),
                 },
-                MatchArm {
+                CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
                 }

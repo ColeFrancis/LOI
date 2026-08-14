@@ -28,7 +28,7 @@ Some other design constraints:
 I'd mainly like feedback on:
 
 - Whether the syntax feels natural and readable.
-- Whether the match/pattern syntax is intuitive.
+- Whether the cases/pattern syntax is intuitive.
 - Whether the distinction between entities and relations makes sense.
 - Any syntax that feels awkward, inconsistent, or surprising.
 
@@ -68,59 +68,59 @@ rel ADD : (a: R, b: R) -> R =
 
 // Simple nand gate
 rel NAND : (a:Bool, b:Bool) -> Bool = 
-    match (a, b) {
-        (0, 0) => 1,
-        (0, 1) => 1,
-        (1, 0) => 1,
-        (1, 1) => 0,
+    cases (a, b) {
+        (0, 0) : 1,
+        (0, 1) : 1,
+        (1, 0) : 1,
+        (1, 1) : 0,
     };
 
 // Produces a random 0 or 1
 rel RAND : () -> Bool = 
     sample {
-        0.5 => 0,
-        0.5 => 1,
+        0.5 : 0,
+        0.5 : 1,
     };
 
 // Produces a random H or T, differing depending on input value
 rel COND_PROB : (x: COIN) -> COIN = 
-    match x {
-        H => sample {
-            0.9 => H,   // H with a 90% probability
-            0.1 => T,
+    cases x {
+        H : sample {
+            0.9 : H,   // H with a 90% probability
+            0.1 : T,
         },
-        T => sample {
-            0.2 => H,
-            0.8 => T,
+        T : sample {
+            0.2 : H,
+            0.8 : T,
         }
     };
 
 
 // Returns a 1 if x is over some threshold
 rel THRESH : (x:R) -> Bool = 
-    match x {
-        >= 1 => true,
-        _ => false
+    cases x {
+        >= 1 : true,
+        _ : false
     };
 
 rel CUSTOM_BINOM : (p : Real) -> Bool = 
     sample {
-        p => true,
-        _ => false
+        p : true,
+        _ : false
     };
 
 // Simulates the rule in the cellular atomata "conway's game of life"
 rel LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
     let n = u+ur+r+rd+d+dl+l+ul;
     
-    match (c) {
-        0 => match (n) {
-            (3) => 1,
-            (_) => 0
+    cases (c) {
+        0 : cases (n) {
+            (3) : 1,
+            (_) : 0
         },
-        1 => match (n) {
-            (3 | 2) => 1,
-            (_) => 0,
+        1 : cases (n) {
+            (3 | 2) : 1,
+            (_) : 0,
         }
     }
 };
@@ -226,18 +226,18 @@ net DLATCH {
 Leaky integrate and fire neuron example
 
 rel_t SYNAPSE: (spike_in: Inpulse, weight: Real, last_potential: Real) -> Real = {
-    match (spike_in) {
-        true => last_potential + weight,
-        _ => last_potential,
+    cases (spike_in) {
+        true : last_potential + weight,
+        _ : last_potential,
     }
 }
 
 rel_t AXON: (curr_potential: Real) -> Impulse = {
     let threshold = 10;
 
-    match (curr_potential) {
-        >= threshold => true,
-        _ => false,
+    cases (curr_potential) {
+        >= threshold : true,
+        _ : false,
     }
 }
 
@@ -245,9 +245,9 @@ rel_t BODY: (spike: Impulse, curr_potential: Real) -> Real {
     let refrac_potential = 0;
     let tau = 0.1;
 
-    match (spike) {
-        true => refrac_potential,
-        _ => curr_potential * (1 - tau),
+    cases (spike) {
+        true : refrac_potential,
+        _ : curr_potential * (1 - tau),
     }
 }
 
@@ -300,15 +300,15 @@ net FLIP_FLOP {
 RULE 110 on a ring-shaped grid of length 5
 
 rel RULE_110(l: Bool, c: Bool, r: Bool) -> Bool = {
-    match(l, c, r) {
-        (true, true, true ) => false,
-        (true, true, false) => true,
-        (true, false,true ) => true,
-        (true, false,false) => false,
-        (false,true, true ) => true,
-        (false,true, false) => true,
-        (false,false,true ) => true,
-        (false,false,false) => false,
+    cases(l, c, r) {
+        (true, true, true ) : false,
+        (true, true, false) : true,
+        (true, false,true ) : true,
+        (true, false,false) : false,
+        (false,true, true ) : true,
+        (false,true, false) : true,
+        (false,false,true ) : true,
+        (false,false,false) : false,
     }
 }
 
@@ -355,6 +355,6 @@ For V2 of language:
 
    Random connections:
    a_rand := sample {
-      0.5 => a_1,
-      _ => a_2
+      0.5 : a_1,
+      _ : a_2
    };

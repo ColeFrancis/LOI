@@ -137,14 +137,14 @@ mod tests {
         //     let p = 0.5;
 
         //     sample {
-        //         p => true,
-        //         _ => false,
+        //         p : true,
+        //         _ : false,
         //     }
         // };
         let kinds: Vec<TokenKind> = vec![Ident("FLIP".to_string()), Colon, LParen, RParen, Arrow, Bool, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Sample, LBrace, Ident("p".to_string()), FatArrow, BoolLiteral(true), Comma,
-            Underscore, FatArrow, BoolLiteral(false), Comma, RBrace,
+            Sample, LBrace, Ident("p".to_string()), Colon, BoolLiteral(true), Comma,
+            Underscore, Colon, BoolLiteral(false), Comma, RBrace,
             RBrace, Semicolon, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 

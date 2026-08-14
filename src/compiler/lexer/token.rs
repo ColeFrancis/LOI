@@ -50,7 +50,7 @@ pub enum TokenKind {
     Ent_t,    // ent_t
     Rel_t,    // rel_t
     NetToken,    // net
-    Match,  // match
+    Cases,  // match
     Sample, // sample
 
     Input,  // input 
@@ -99,7 +99,6 @@ pub enum TokenKind {
     
     Equals,   // =
     Arrow,    // ->
-    FatArrow, // =>
     Connect,  // :=
     
     ErrorToken,

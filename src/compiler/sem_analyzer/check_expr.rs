@@ -96,7 +96,7 @@ impl <'a> SemAnalyzer<'a> {
             // Check scrutinee matches each arm's pattern
             // Check that there is at most one default arm
             // Annotate expression type
-            // Expr::Match(match_expr) => {}
+            // Expr::Cases(match_expr) => {}
 
             // Expr::Sample(sample_expr) => {}
 
@@ -142,7 +142,7 @@ impl <'a> SemAnalyzer<'a> {
 
             Expr::Block(block_expr) => block_expr.expr_type.clone(),
 
-            Expr::Match(match_expr) => match_expr.expr_type.clone(),
+            Expr::Cases(cases_expr) => cases_expr.expr_type.clone(),
 
             Expr::Sample(sample_expr) => sample_expr.expr_type.clone(),
 
@@ -302,6 +302,7 @@ mod tests {
 
     #[test]
     fn get_expr_type() {
+        // (1+1, true, 2.0, a) // a already in symbol table as an Int
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -324,7 +325,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // (1+1, true, 2.0, a) // a already in symbol table as an Int
         let result = sem_analyzer.get_expr_type(&Expr::Tuple(vec![
             Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(1))),
@@ -406,6 +406,7 @@ mod tests {
 
     #[test]
     fn binary_expr_1() {
+        // 1 + r // r is a Real
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -427,7 +428,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // 1 + r // r is a Real
         let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Literal(Literal::Int(1))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -447,6 +447,7 @@ mod tests {
 
     #[test]
     fn binary_expr_2() {
+        // 1 + b // b is a bool
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -468,7 +469,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // 1 + b // b is a bool
         let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Literal(Literal::Int(1))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -483,6 +483,7 @@ mod tests {
 
     #[test]
     fn binary_expr_3() {
+        // true + b // b is a bool
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -504,7 +505,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // true + b // b is a bool
         let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Literal(Literal::Bool(true))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -519,6 +519,7 @@ mod tests {
 
     #[test]
     fn binary_expr_4() {
+        // 1 < r // r is a Real
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -540,7 +541,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // 1 < r // r is a Real
         let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Literal(Literal::Int(1))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -560,6 +560,7 @@ mod tests {
 
     #[test]
     fn binary_expr_5() {
+        // z2 + z3 // mod variables incompatible
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -588,7 +589,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // z2 + z3 // mod variables incompatible
         let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
             right: Box::new(Expr::Ident(Ident::Symbol(1))),
@@ -632,6 +632,7 @@ mod tests {
 
     #[test]
     fn block_expr_1() {
+        // {let n = 1; n}
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -653,7 +654,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // {let n = 1; n}
         let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
             statements: vec![
                 Statement::Let(LetStatement {
@@ -687,6 +687,7 @@ mod tests {
 
     #[test]
     fn block_expr_2() {
+        // {let n = 1+true; n} // 1 and true are incompatible types
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -708,7 +709,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // {let n = 1+true; n} // 1 and true are incompatible types
         let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
             statements: vec![
                 Statement::Let(LetStatement {

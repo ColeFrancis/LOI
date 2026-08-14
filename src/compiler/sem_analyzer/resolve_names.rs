@@ -853,20 +853,20 @@ mod tests {
                 }
             ],
             return_type: Type::Bool,
-            body: Expr::Match(MatchExpr {
+            body: Expr::Cases(CasesExpr {
                 scrutinee: Box::new(Expr::Ident(Ident::Str {
                     val: "c".to_string(),
                     span: Span{line: 1, col: 4}
                 })),
                 arms: vec![
-                    MatchArm {
+                    CasesArm {
                         pattern: vec![SimplePattern::Ident(Ident::Str {
                             val: "H".to_string(),
                             span: Span{line: 1, col: 0},
                         })],
                         expr: Expr::Literal(Literal::Bool(true)),
                     },
-                    MatchArm {
+                    CasesArm {
                         pattern: vec![SimplePattern::Default],
                         expr: Expr::Literal(Literal::Bool(false)),
                     }
@@ -884,14 +884,14 @@ mod tests {
                 }
             ],
             return_type: Type::Bool,
-            body: Expr::Match(MatchExpr {
+            body: Expr::Cases(CasesExpr {
                 scrutinee: Box::new(Expr::Ident(Ident::Symbol(4))),
                 arms: vec![
-                    MatchArm {
+                    CasesArm {
                         pattern: vec![SimplePattern::Ident(Ident::Symbol(1))],
                         expr: Expr::Literal(Literal::Bool(true)),
                     },
-                    MatchArm {
+                    CasesArm {
                         pattern: vec![SimplePattern::Default],
                         expr: Expr::Literal(Literal::Bool(false)),
                     }

@@ -32,7 +32,7 @@ impl <'a> SemAnalyzer<'a> {
     // Add type info to symbols
     // Verify all types match
     // Check number of relation arguments
-    // Also check only one default in samples/matches
+    // Also check only one default in samples/Caseses
     pub(super) fn check_types(&mut self) {
         let items = std::mem::take(&mut self.ast.items);
         self.ast.items = Vec::with_capacity(items.len());
@@ -112,6 +112,7 @@ mod tests {
 
     #[test]
     fn check_let_1() {
+        // let n = 1;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
@@ -134,7 +135,6 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        // let n = 1;
         let result = sem_analyzer.check_let(LetStatement {
             name: Ident::Symbol(0),
             expr: Expr::Literal(Literal::Int(1)),
