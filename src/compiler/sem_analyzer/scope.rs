@@ -25,8 +25,6 @@
 use std::collections::HashMap;
 use super::symbol::SymbolId;
 
-pub type ScopeId = usize;
-
 #[derive(PartialEq, Debug)]
 pub struct Scope {
     pub symbols: HashMap<String, SymbolId>,

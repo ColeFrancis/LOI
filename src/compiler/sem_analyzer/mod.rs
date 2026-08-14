@@ -23,7 +23,7 @@ mod check_expr;
 mod fold_const;
 
 use crate::compiler::sem_analyzer::symbol::Symbol;
-use crate::compiler::sem_analyzer::scope::{Scope, ScopeId};
+use crate::compiler::sem_analyzer::scope::Scope;
 use crate::compiler::diagnostics::Diagnostics;
 use crate::compiler::parser::ast::Program;
 
