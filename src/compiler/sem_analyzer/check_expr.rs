@@ -150,8 +150,6 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Error => Some(Expr::Error),
-
-            _ => Some(Expr::Error)
         }
     }
 
@@ -516,7 +514,7 @@ mod tests {
     fn get_expr_type() {
         // (1+1, true, 2.0, a) // a already in symbol table as an Int
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer {
+        let sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {

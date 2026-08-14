@@ -27,7 +27,6 @@ use super::sync::SyncRule;
 use super::ast::*;
 use crate::compiler::{
     lexer::token::TokenKind,
-    sem_analyzer::types::Type,
     diagnostics::{CompilerError, Expected},
 };
 
@@ -205,6 +204,7 @@ mod tests {
     use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
     use crate::compiler::parser::ast;
+    use crate::compiler::sem_analyzer::types::Type;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
