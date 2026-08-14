@@ -178,13 +178,15 @@ impl<'a> Parser<'a> {
             }
 
             TokenKind::Cases => {
+                let span = token.span;
                 self.next();
-                self.parse_cases()
+                self.parse_cases(span)
             }
 
             TokenKind::Sample => {
+                let span = token.span;
                 self.next();
-                self.parse_sample()
+                self.parse_sample(span)
             }
 
             other => {
@@ -249,7 +251,7 @@ impl<'a> Parser<'a> {
     }
 
     // Cases token already consumed
-    fn parse_cases(&mut self) -> Option<Expr> {
+    fn parse_cases(&mut self, span: Span) -> Option<Expr> {
         let scrutinee = self.parse_expr(0)?;
 
         self.expect(TokenKind::LBrace, &SyncRule::Expr {depth: 0})?;
@@ -272,10 +274,13 @@ impl<'a> Parser<'a> {
             scrutinee: Box::new(scrutinee),
             arms,
             expr_type: Type::Unknown,
+            span,
         }))
     }
 
     fn parse_cases_arm(&mut self) -> Option<CasesArm> {
+        let arm_span = self.peek().span.clone();
+
         let pattern = self.parse_pattern()?;
 
         self.expect(TokenKind::Colon, &SyncRule::Expr {depth: 1})?;
@@ -288,6 +293,7 @@ impl<'a> Parser<'a> {
         Some(CasesArm {
             pattern,
             expr,
+            arm_span,
         })
     }
 
@@ -364,7 +370,7 @@ impl<'a> Parser<'a> {
     }
 
     // Sample token already consumed
-    fn parse_sample(&mut self) -> Option<Expr> {
+    fn parse_sample(&mut self, span: Span) -> Option<Expr> {
         self.expect(TokenKind::LBrace, &SyncRule::Expr {depth: 0})?;
 
         let mut arms = Vec::new();
@@ -383,10 +389,13 @@ impl<'a> Parser<'a> {
         Some(Expr::Sample(SampleExpr {
             arms,
             expr_type: Type::Unknown,
+            span,
         }))
     }
 
     fn parse_sample_arm(&mut self) -> Option<SampleArm> {
+        let arm_span = self.peek().span.clone();
+
         let prob = match &self.peek().kind {
             TokenKind::Underscore => {
                 self.next();
@@ -408,6 +417,7 @@ impl<'a> Parser<'a> {
         Some(SampleArm {
             prob,
             expr,
+            arm_span,
         })
     }
 }
@@ -923,7 +933,7 @@ mod tests {
 
         let result = parser.parse_expr(0);
 
-        assert_eq!(result, Some(Expr::Sample(SampleExpr {arms: vec![], expr_type: Type::Unknown})));
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {arms: vec![], expr_type: Type::Unknown, span: Span {line: 0, col: 0}})));
 
         // sample {
         //     a : sample {
@@ -954,16 +964,21 @@ mod tests {
                         arms: vec![SampleArm {
                             prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
                             expr: Expr::Ident(build_ident_str("b")),
+                            arm_span: Span {line: 0, col: 0},
                         }],
                         expr_type: Type::Unknown,
+                        span: Span {line: 0, col: 0},
                     }),
+                    arm_span: Span {line: 0, col: 0},
                 },
                 SampleArm {
                     prob: Prob::Default,
                     expr: Expr::Ident(build_ident_str("c")),
+                    arm_span: Span {line: 0, col: 0},
                 },
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
     }
 
@@ -1193,13 +1208,16 @@ mod tests {
                 CasesArm {
                     pattern: vec![SimplePattern::Ident(build_ident_str("b"))],
                     expr: Expr::Error,
+                    arm_span: Span {line: 0, col: 0},
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -1292,13 +1310,16 @@ mod tests {
                 SampleArm {
                     prob: Prob::Expr(Expr::Ident(build_ident_str("a"))),
                     expr: Expr::Error,
+                    arm_span: Span {line: 0, col: 0},
                 },
                 SampleArm {
                     prob: Prob::Default,
                     expr: Expr::Ident(build_ident_str("c")),
+                    arm_span: Span {line: 0, col: 0},
                 },
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }

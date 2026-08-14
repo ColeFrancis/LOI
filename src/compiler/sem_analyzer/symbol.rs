@@ -25,6 +25,7 @@
 use std::collections::HashMap;
 
 use super::types::Type;
+use crate::compiler::parser::ast::Literal;
 use crate::compiler::diagnostics::Span;
 
 pub type SymbolId = usize;
@@ -41,6 +42,7 @@ pub struct Symbol {
 #[derive(PartialEq, Debug, Clone)]
 #[allow(non_camel_case_types)]
 pub enum SymbolKind {
+    Const(Literal),
     Variable(Type),
     EntType,
     EntMember {

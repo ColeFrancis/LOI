@@ -66,7 +66,7 @@ pub enum Expr {
     Error,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Literal {
     Bool(bool),
     Int(i64),
@@ -131,12 +131,14 @@ pub struct CasesExpr {
     pub scrutinee: Box<Expr>,
     pub arms: Vec<CasesArm>,
     pub expr_type: Type,
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
 pub struct CasesArm {
     pub pattern: Vec<SimplePattern>,
     pub expr: Expr,
+    pub arm_span: Span
 }
 
 #[derive(PartialEq, Debug)]
@@ -159,12 +161,14 @@ pub struct ComparisonPattern {
 pub struct SampleExpr {
     pub arms: Vec<SampleArm>,
     pub expr_type: Type,
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
 pub struct SampleArm {
     pub prob: Prob,
     pub expr: Expr,
+    pub arm_span: Span,
 }
 
 #[derive(PartialEq, Debug)]

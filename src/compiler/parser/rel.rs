@@ -167,13 +167,16 @@ mod tests {
                         SampleArm {
                             prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
                             expr: Expr::Literal(Literal::Bool(true)),
+                            arm_span: Span {line: 0, col: 0},
                         },
                         SampleArm {
                             prob: Prob::Default,
                             expr: Expr::Literal(Literal::Bool(false)),
+                            arm_span: Span {line: 0, col: 0},
                         },
                     ],
                     expr_type: Type::Unknown,
+                    span: Span {line: 0, col: 0},
                 })),
                 expr_type: Type::Unknown,
             }),

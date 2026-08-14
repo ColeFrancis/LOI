@@ -590,13 +590,16 @@ mod tests {
                         val: "b".to_string(),
                         span: Span{line: 2, col: 0},
                     }),
+                    arm_span: Span {line: 0, col: 0},
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         }));
 
         assert_eq!(result, Some(Expr::Cases(CasesExpr {
@@ -608,13 +611,16 @@ mod tests {
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
                     })],
                     expr: Expr::Error,
+                    arm_span: Span {line: 0, col: 0},
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -655,13 +661,16 @@ mod tests {
                         val: "b".to_string(),
                         span: Span{line: 2, col: 0},
                     }),
+                    arm_span: Span {line: 0, col: 0},
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         }));
 
         assert_eq!(result, Some(Expr::Cases(CasesExpr {
@@ -673,13 +682,16 @@ mod tests {
                         expr: Box::new(Expr::Literal(Literal::Real(0.5))),
                     })],
                     expr: Expr::Ident(Ident::Symbol(10)),
+                    arm_span: Span {line: 0, col: 0},
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -714,14 +726,17 @@ mod tests {
                     expr: Expr::Ident(Ident::Str{
                         val: "b".to_string(),
                         span: Span{line: 1, col: 0},
-                    })
+                    }),
+                    arm_span: Span {line: 0, col: 0},
                 },
                 SampleArm {
                     prob: Prob::Default,
                     expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         }));
 
         assert_eq!(result, Some(Expr::Sample(SampleExpr {
@@ -729,13 +744,16 @@ mod tests {
                 SampleArm {
                     prob: Prob::Expr(Expr::Error),
                     expr: Expr::Error,
+                    arm_span: Span {line: 0, col: 0},
                 },
                 SampleArm {
                     prob: Prob::Default,
                     expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
                 }
             ],
             expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
         })));
         assert_eq!(diagnostics.num_errors(), 2);
     }

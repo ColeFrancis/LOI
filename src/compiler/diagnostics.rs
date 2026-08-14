@@ -104,33 +104,43 @@ pub enum CompilerError {
         span: Span,
     },
 
+    // When resolving names of NetInst
     UndefinedPort {
         name: String,
         span: Span,
     },
     
+    // When processing instantiations
     UnexpectedIdent {
         expected: Vec<SymbolKind>,
         found: SymbolKind,
         span: Span,
     },
-    
-    UnexpectedType {
-        expected: Type,
-        found: Type,
-        span: Span,
-    },
 
-    IncompatibleTypes { // In binary expressions both sides are compatible
+    // In binary expressions or matching case scrutinee and arms
+    IncompatibleTypes {
         left: Type,
         right: Type,
         op_span: Span,
     },
 
-    IncompatibleOp {
+    // Unary/binary expressions
+    IncompatibleOp { 
         expr_type: Type,
         op: Operation,
         op_span: Span,
+    },
+
+    UnequalTupleLength {
+        left_len: usize,
+        right_len: usize,
+        right_span: Span,
+    },
+
+    IllegalScrutineeExpr {
+        expected: Vec<ExprType>,
+        found: ExprType,
+        cases_span: Span,
     },
 }
 
@@ -154,6 +164,19 @@ pub enum Operation {
     Or,
     And,
     Not,
+}
+
+#[derive(Debug, PartialEq)]
+pub enum ExprType {
+    Literal,
+    Ident,
+    Unary,
+    Binary,
+    Tuple,
+    Block,
+    Cases,
+    Sample,
+    Error,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]

@@ -865,13 +865,16 @@ mod tests {
                             span: Span{line: 1, col: 0},
                         })],
                         expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span {line: 0, col: 0},
                     },
                     CasesArm {
                         pattern: vec![SimplePattern::Default],
                         expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span {line: 0, col: 0},
                     }
                 ],
                 expr_type: Type::Unknown,
+                span: Span {line: 0, col: 0},
             }),
         });
 
@@ -890,13 +893,16 @@ mod tests {
                     CasesArm {
                         pattern: vec![SimplePattern::Ident(Ident::Symbol(1))],
                         expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span {line: 0, col: 0},
                     },
                     CasesArm {
                         pattern: vec![SimplePattern::Default],
                         expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span {line: 0, col: 0},
                     }
                 ],
                 expr_type: Type::Unknown,
+                span: Span {line: 0, col: 0},
             }),
         }));
         assert_eq!(sem_analyzer.symbols, vec![

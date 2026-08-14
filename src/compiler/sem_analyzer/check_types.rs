@@ -135,7 +135,7 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.check_let(LetStatement {
+        let _result = sem_analyzer.check_let(LetStatement {
             name: Ident::Symbol(0),
             expr: Expr::Literal(Literal::Int(1)),
         });
