@@ -294,6 +294,8 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Real,   Type::Int   ) => Some(Type::Real),
             (Type::Real,   Type::Real  ) => Some(Type::Real),
 
+            // (Type::Custom(ident_l), Type::Custom(ident_r)) => {}
+
             (Type::Error, _) => None,
             (_, Type::Error) => None,
 
@@ -1395,10 +1397,12 @@ mod tests {
         //     _ : false,
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics,
-        );
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+            diagnostics: &mut diagnostics,
+        };
 
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
@@ -1434,6 +1438,7 @@ mod tests {
             span: Span {line: 0, col: 0},
         })));
     }
+
     #[test]
     fn sample_expr_2() {
         // sample {
@@ -1471,5 +1476,83 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn sample_expr_3() { // TODO: Handling set ent types
+        // ent_t COIN = {H, T};
+        //
+        // sample {
+        //     0.5 : H,
+        //     _ : T,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("COIN".to_string(), 0),
+                        ("H".to_string(), 1),
+                        ("T".to_string(), 2)
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    expr: Expr::Ident(Ident::Symbol(1)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Ident(Ident::Symbol(2)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    expr: Expr::Ident(Ident::Symbol(1)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Ident(Ident::Symbol(2)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Custom(Ident::Symbol(0)),
+            span: Span {line: 0, col: 0},
+        })));
     }
 }

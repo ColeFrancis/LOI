@@ -82,9 +82,7 @@ impl <'a> SemAnalyzer<'a> {
                     let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
                     *ident = Ident::Symbol(self.define_symbol(
                         name,
-                        SymbolKind::EntMember {
-                            parent: ent_t_symbol_id,
-                        },
+                        SymbolKind::EntMember(ent_t_symbol_id),
                         span,
                     )?);
                 }
@@ -781,13 +779,13 @@ mod tests {
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember{ parent: 0 },
+                kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember{ parent: 0 },
+                kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 2},
             },
         ]);
@@ -812,13 +810,13 @@ mod tests {
                 Symbol {
                     id: 1,
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{ parent: 0 },
+                    kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 1},
                 },
                 Symbol {
                     id: 2,
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{ parent: 0 },
+                    kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 2},
                 },
             ],
@@ -915,13 +913,13 @@ mod tests {
             Symbol {
                 id: 1,
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember{ parent: 0 },
+                kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 id: 2,
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember{ parent: 0 },
+                kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 2},
             },
             Symbol {
@@ -1437,7 +1435,7 @@ net SECOND {
             Symbol {
                 id: 3,
                 name: "A".to_string(),
-                kind: SymbolKind::EntMember{ parent: 2 },
+                kind: SymbolKind::EntMember(2),
                 span: Span {line: 7, col: 17},
             },
             Symbol {
