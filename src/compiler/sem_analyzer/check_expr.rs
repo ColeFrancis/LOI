@@ -75,7 +75,23 @@ impl <'a> SemAnalyzer<'a> {
                 Some(Expr::Tuple(tuple_expr))
             }
 
-            // Expr::Block(block_expr) => {}
+            Expr::Block(mut block_expr) => {
+                for statement in &mut block_expr.statements {
+                    let owned_statement = std::mem::replace(statement, Statement::Error);
+
+                    *statement = match owned_statement {
+                        Statement::Let(let_statement) => Statement::Let(self.check_let(let_statement)),
+
+                        Statement::Error => Statement::Error,
+                    };
+                }
+
+                block_expr.expr = Box::new(self.add_types_expr(*block_expr.expr).unwrap_or(Expr::Error));
+
+                block_expr.expr_type = self.get_expr_type(&*block_expr.expr);
+
+                Some(Expr::Block(block_expr))
+            }
 
             // Expr::Match(match_expr) => {}
 
@@ -87,7 +103,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn get_expr_type(&self, expr: &Expr) -> Type {
+    pub(super) fn get_expr_type(&self, expr: &Expr) -> Type {
         match expr {
             Expr::Literal(literal) => match literal {
                 Literal::Bool(_) => Type::Bool,
@@ -609,5 +625,122 @@ mod tests {
             }),
             Expr::Literal(Literal::Int(1)),
         ])));
+    }
+
+    #[test]
+    fn block_expr_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // {let n = 1; n}
+        let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Int,
+        })));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ]);
+    }
+
+    #[test]
+    fn block_expr_2() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        // {let n = 1+true; n} // 1 and true are incompatible types
+        let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Bool(true))),
+                        op: BinaryOp::Add,
+                        op_span: Span {line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Error,
+                }),
+            ],
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr_type: Type::Error,
+        })));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Error),
+                span: Span{line: 0, col: 0},
+            },
+        ]);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }

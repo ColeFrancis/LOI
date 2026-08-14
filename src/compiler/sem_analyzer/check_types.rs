@@ -24,6 +24,7 @@
 
 use super::SemAnalyzer;
 use super::types::Type;
+use super::symbol::SymbolKind;
 use crate::compiler::parser::ast::*;
 use crate::compiler::diagnostics::{CompilerError, Span};
 
@@ -44,7 +45,7 @@ impl <'a> SemAnalyzer<'a> {
 
     fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt)     => self.check_let(stmt).map(Item::Let),
+            Item::Let(stmt)     => Some(Item::Let(self.check_let(stmt))),
             Item::Ent(ent_type) => self.check_ent(ent_type).map(Item::Ent),
             Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
             Item::Net(net)      => self.check_net(net).map(Item::Net),
@@ -52,9 +53,18 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn check_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
-        // Recursively go through expr. Then at the end, set variable type to that
-        Some(stmt)
+    pub(super) fn check_let(&mut self, mut stmt: LetStatement) -> LetStatement {
+        stmt.expr = self.add_types_expr(stmt.expr).unwrap_or(Expr::Error);
+
+        let expr_type = self.get_expr_type(&stmt.expr);
+
+        if let Ident::Symbol(symbol_id) = stmt.name {
+            if let SymbolKind::Variable(var_type) = &mut self.symbols[symbol_id].kind {
+                *var_type = expr_type;
+            }
+        }
+
+        stmt
     }
 
     fn check_ent(&mut self, mut ent_t: EntType) -> Option<EntType> {
@@ -69,25 +79,75 @@ impl <'a> SemAnalyzer<'a> {
         Some(net)
     }
 
-    fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
-        if symbol_type == object_type {
-            return Some(symbol_type)
-        }
+    // fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
+    //     if symbol_type == object_type {
+    //         return Some(symbol_type)
+    //     }
 
-        match symbol_type {
-            Type::Unknown => {
-                Some(object_type)
-            }
+    //     match symbol_type {
+    //         Type::Unknown => {
+    //             Some(object_type)
+    //         }
 
-            _ => {
-                self.diagnostics.error(CompilerError::UnexpectedType {
-                    expected: object_type,
-                    found: symbol_type,
-                    span: symbol_span,
-                });
+    //         _ => {
+    //             self.diagnostics.error(CompilerError::UnexpectedType {
+    //                 expected: object_type,
+    //                 found: symbol_type,
+    //                 span: symbol_span,
+    //             });
 
-                None
-            }
-        }
+    //             None
+    //         }
+    //     }
+    // }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::compiler::sem_analyzer::scope::Scope;
+    use crate::compiler::sem_analyzer::symbol::Symbol;
+    use crate::compiler::diagnostics::Diagnostics;
+
+    #[test]
+    fn check_let_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        // let n = 1;
+        let result = sem_analyzer.check_let(LetStatement {
+            name: Ident::Symbol(0),
+            expr: Expr::Literal(Literal::Int(1)),
+        });
+
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ]);
     }
 }
