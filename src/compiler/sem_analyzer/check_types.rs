@@ -90,7 +90,9 @@ impl <'a> SemAnalyzer<'a> {
 
         rel_t.body = self.add_types_expr(rel_t.body).unwrap_or(Expr::Error);
 
-        rel_t.return_type = self.get_expr_type(&rel_t.body);
+
+        // TODO: check types match by calling verify_expr_type match?
+        if rel_t.return_type = self.get_expr_type(&rel_t.body);
 
         if let Ident::Symbol(rel_name_id) = rel_t.name {
             if let SymbolKind::Rel_t {return_type, ..} = &mut self.symbols[rel_name_id].kind {
