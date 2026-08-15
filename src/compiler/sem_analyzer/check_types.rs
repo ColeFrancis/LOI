@@ -69,7 +69,8 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn check_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
-        // Annotate types of each parameter's symbol
+        // Annotate types of each parameter's symbol 
+        // Annotate types of parameter and return in the relations name symbol
         // Check expression type matches return type
         Some(rel_t)
     }
