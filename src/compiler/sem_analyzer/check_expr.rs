@@ -58,7 +58,7 @@ impl <'a> SemAnalyzer<'a> {
                 let left_expr_type = self.get_expr_type(&binary_expr.left);
                 let right_expr_type = self.get_expr_type(&binary_expr.right);
 
-                binary_expr.expr_type = self.verify_binary_expr_type_match(&left_expr_type, &right_expr_type, &binary_expr.op_span)?;
+                binary_expr.expr_type = self.verify_expr_type_match(&left_expr_type, &right_expr_type, &binary_expr.op_span)?;
 
                 binary_expr.expr_type = self.verify_binary_op_type_match(&binary_expr.expr_type, &binary_expr.op, &binary_expr.op_span)?;
 
@@ -104,7 +104,7 @@ impl <'a> SemAnalyzer<'a> {
 
                     let curr_expr_type = self.get_expr_type(&arm.expr);
 
-                    expr_type = match self.verify_binary_expr_type_match(&expr_type, &curr_expr_type, &cases_expr.span) {
+                    expr_type = match self.verify_expr_type_match(&expr_type, &curr_expr_type, &cases_expr.span) {
                         Some(expr_type) => expr_type,
                         None => {
                             has_errors = true;
@@ -130,7 +130,7 @@ impl <'a> SemAnalyzer<'a> {
                 for arm in &sample_expr.arms {
                     let curr_expr_type = self.get_expr_type(&arm.expr);
 
-                    expr_type = match self.verify_binary_expr_type_match(&expr_type, &curr_expr_type, &sample_expr.span) {
+                    expr_type = match self.verify_expr_type_match(&expr_type, &curr_expr_type, &sample_expr.span) {
                         Some(expr_type) => expr_type,
                         None => {
                             has_errors = true;
@@ -215,6 +215,8 @@ impl <'a> SemAnalyzer<'a> {
                 Ident::Symbol(symbol_id) => match &self.symbols[*symbol_id].kind {
                     SymbolKind::Variable(ty) => ty.clone(),
 
+                    SymbolKind::EntMember(parent_id) => Type::Custom(Ident::Symbol(*parent_id)),
+
                     _ => Type::Error, // Should not be reachable
                 }
                 
@@ -265,7 +267,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn verify_binary_expr_type_match(&mut self, left: &Type, right: &Type, op_span: &Span) -> Option<Type> {
+    fn verify_expr_type_match(&mut self, left: &Type, right: &Type, op_span: &Span) -> Option<Type> {
         match (left, right) {
             (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
             (Type::Bool,    Type::Impulse) => Some(Type::Bool),
@@ -298,11 +300,22 @@ impl <'a> SemAnalyzer<'a> {
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
-                    (Ident::Symbol(id_l), Ident::Symbol(id_r)) => {
+                    (Ident::Symbol(id_l), Ident::Symbol(id_r)) => (*id_l, *id_r),
+                    
+                    _ => return None, // Unreachable after name resolution
+                };
 
-                    }
+                if parent_l == parent_r {
+                    Some(Type::Custom(Ident::Symbol(parent_l)))
+                }
+                else {
+                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                        left: Type::Custom(Ident::Symbol(parent_l)),
+                        right: Type::Custom(Ident::Symbol(parent_r)),
+                        op_span: op_span.clone(),
+                    });
 
-                    _ => return None // Unreachable
+                    None
                 }
                 
             }
@@ -497,6 +510,28 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Real,    Type::Mod(_)) => Some(()),
             (Type::Real,    Type::Int) => Some(()),
             (Type::Real,    Type::Real) => Some(()),
+
+            (Type::Custom(ident_l), Type::Custom(ident_r)) => {
+                let (parent_l, parent_r) = match (ident_l, ident_r) {
+                    (Ident::Symbol(id_l), Ident::Symbol(id_r)) => (*id_l, *id_r),
+                    
+                    _ => return None, // Unreachable after name resolution
+                };
+
+                if parent_l == parent_r {
+                    Some(())
+                }
+                else {
+                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                        left: Type::Custom(Ident::Symbol(parent_l)),
+                        right: Type::Custom(Ident::Symbol(parent_r)),
+                        op_span: arm_span.clone(),
+                    });
+
+                    None
+                }
+                
+            }
 
             (Type::Error, _) => None,
             (_, Type::Error) => None,
@@ -1434,12 +1469,38 @@ mod tests {
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
             symbols: vec![
-                
+                Symbol {
+                    id: 0,
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 3,
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                    span: Span {line: 0, col: 0},
+                },
             ],
             scopes: vec![
                 Scope {
                     symbols: HashMap::from([
-                        
+                        ("COIN".to_string(), 0),
+                        ("H".to_string(), 1),
+                        ("T".to_string(), 2),
+                        ("c".to_string(), 3),
                     ])
                 },
             ],
@@ -1451,14 +1512,7 @@ mod tests {
             arms: vec![
                 CasesArm {
                     pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(1)),
-                            SimplePattern::Literal(Literal::Bool(true)),
-                        ]),
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(0)),
-                            SimplePattern::Literal(Literal::Bool(false)),
-                        ]),
+                        SimplePattern::Ident(Ident::Symbol(2)),
                     ],
                     expr: Expr::Literal(Literal::Bool(true)),
                     arm_span: Span {line: 0, col: 0},
@@ -1474,21 +1528,11 @@ mod tests {
         }));
 
         assert_eq!(result, Some(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Ident(Ident::Symbol(1)),
-            ])),
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(3))),
             arms: vec![
                 CasesArm {
                     pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(1)),
-                            SimplePattern::Literal(Literal::Bool(true)),
-                        ]),
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(0)),
-                            SimplePattern::Literal(Literal::Bool(false)),
-                        ]),
+                        SimplePattern::Ident(Ident::Symbol(2)),
                     ],
                     expr: Expr::Literal(Literal::Bool(true)),
                     arm_span: Span {line: 0, col: 0},
@@ -1502,6 +1546,95 @@ mod tests {
             expr_type: Type::Bool,
             span: Span {line: 0, col: 0},
         })));
+    }
+
+    #[test]
+    fn cases_expr_8() {
+        // cases c {  // C is type COIN = {H, T}
+        //     T : true,
+        //     B : false, // Different ent type
+        // }
+        let mut diagnostics = Diagnostics::new();  // TODO v
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span {line: 0, col: 0},
+                },
+                
+                Symbol {
+                    id: 3,
+                    name: "A".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 4,
+                    name: "B".to_string(),
+                    kind: SymbolKind::EntMember(3),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 5,
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("COIN".to_string(), 0),
+                        ("H".to_string(), 1),
+                        ("T".to_string(), 2),
+                        ("A".to_string(), 3),
+                        ("B".to_string(), 4),
+                        ("c".to_string(), 5),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(5))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(2)),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(4))
+                    ],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
+        }));
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
@@ -1593,7 +1726,7 @@ mod tests {
     }
 
     #[test]
-    fn sample_expr_3() { // TODO: Handling set ent types
+    fn sample_expr_3() { 
         // ent_t COIN = {H, T};
         //
         // sample {
@@ -1651,6 +1784,8 @@ mod tests {
             expr_type: Type::Unknown,
             span: Span {line: 0, col: 0},
         }));
+
+        diagnostics.debug_print();
 
         assert_eq!(result, Some(Expr::Sample(SampleExpr {
             arms: vec![
