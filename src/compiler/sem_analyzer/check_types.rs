@@ -72,6 +72,32 @@ impl <'a> SemAnalyzer<'a> {
         // Annotate types of each parameter's symbol 
         // Annotate types of parameter and return in the relations name symbol
         // Check expression type matches return type
+
+        for param in &mut rel_t.params {
+            if let Ident::Symbol(param_id) = param.name {
+                if let SymbolKind::Variable(param_symbol_type) = &mut self.symbols[param_id].kind {
+                    *param_symbol_type = param.param_type.clone();
+                }
+            }
+
+
+            if let Ident::Symbol(rel_name_id) = rel_t.name {
+                if let SymbolKind::Rel_t {input_types, ..} = &mut self.symbols[rel_name_id].kind {
+                    input_types.push(param.param_type.clone());
+                }
+            }
+        }
+
+        rel_t.body = self.add_types_expr(rel_t.body).unwrap_or(Expr::Error);
+
+        rel_t.return_type = self.get_expr_type(&rel_t.body);
+
+        if let Ident::Symbol(rel_name_id) = rel_t.name {
+            if let SymbolKind::Rel_t {return_type, ..} = &mut self.symbols[rel_name_id].kind {
+                *return_type = rel_t.return_type.clone();
+            }
+        }
+
         Some(rel_t)
     }
 
@@ -147,6 +173,91 @@ mod tests {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
                 span: Span{line: 0, col: 0},
+            },
+        ]);
+    }
+
+    #[test]
+    fn check_rel_1() {
+        // rel_t ADD : (a: Real) -> Real = a + 1;
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: Vec::new(),
+                        return_type: Type::Unknown,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 5},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("ADD".to_string(), 0),
+                        ("a".to_string(), 1),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_rel(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Real,
+            }],
+            return_type: Type::Unknown,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 10},
+                expr_type: Type::Unknown,
+            }),
+        });
+
+        assert_eq!(result, Some(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Real,
+            }],
+            return_type: Type::Real,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 10},
+                expr_type: Type::Real,
+            }),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "ADD".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Real],
+                    return_type: Type::Real,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Real),
+                span: Span{line: 0, col: 5},
             },
         ]);
     }

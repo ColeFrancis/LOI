@@ -458,7 +458,7 @@ impl <'a> SemAnalyzer<'a> {
                     has_errors = true;
                 }
 
-                (other_scrutinee, other_pattern) => {
+                (_other_scrutinee, _other_pattern) => {
                     self.diagnostics.error(CompilerError::IncompatibleTypes {
                         left: self.get_expr_type(scrutinee),
                         right: self.get_simple_pattern_type(simple_pattern),
