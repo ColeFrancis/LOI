@@ -378,7 +378,6 @@ impl <'a> SemAnalyzer<'a> {
         let id = self.symbols.len();
 
         self.symbols.push(Symbol {
-            id,
             name: name.clone(),
             kind,
             span,
@@ -399,7 +398,6 @@ impl <'a> SemAnalyzer<'a> {
         let id = self.symbols.len();
 
         self.symbols.push(Symbol {
-            id,
             name: name.to_string(),
             kind,
             span,
@@ -436,19 +434,16 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "c".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -482,13 +477,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -515,19 +508,16 @@ mod tests {
         assert_eq!(result, Some(2));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 2,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
@@ -554,13 +544,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -583,13 +571,11 @@ mod tests {
         assert_eq!(sem_analyzer.diagnostics.num_errors(), 1);
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 0},
@@ -642,7 +628,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "a".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span{line: 0, col: 0},
@@ -697,7 +682,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 1, col: 2},
@@ -728,7 +712,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "z3".to_string(),
                 kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
@@ -771,19 +754,16 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "COIN".to_string(),
                 kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "H".to_string(),
                 kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 1},
             },
             Symbol {
-                id: 2,
                 name: "T".to_string(),
                 kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 2},
@@ -802,19 +782,16 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "H".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 1},
                 },
                 Symbol {
-                    id: 2,
                     name: "T".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 2},
@@ -905,25 +882,21 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "COIN".to_string(),
                 kind: SymbolKind::EntType,
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "H".to_string(),
                 kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 1},
             },
             Symbol {
-                id: 2,
                 name: "T".to_string(),
                 kind: SymbolKind::EntMember(0),
                 span: Span{line: 0, col: 2},
             },
             Symbol {
-                id: 3,
                 name: "is_heads".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
@@ -932,7 +905,6 @@ mod tests {
                 span: Span{line: 0, col: 3},
             },
             Symbol {
-                id: 4,
                 name: "c".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span{line: 0, col: 4},
@@ -969,7 +941,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "REL".to_string(),
                     kind: SymbolKind::Rel_t {
                         input_types: vec![],
@@ -978,7 +949,6 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
@@ -995,13 +965,11 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "A".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 3,
                     name: "B".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
@@ -1143,7 +1111,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "REL".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
@@ -1152,7 +1119,6 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
@@ -1169,19 +1135,16 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 2,
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0},
             },
             Symbol {
-                id: 3,
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0},
             },
             Symbol {
-                id: 4,
                 name: "TEST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
@@ -1198,25 +1161,21 @@ mod tests {
                 span: Span {line: 0, col: 0},
             },
             Symbol {
-                id: 5,
                 name: "a".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
-                id: 6,
                 name: "b".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
-                id: 7,
                 name: "c".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
             },
             Symbol {
-                id: 8,
                 name: "d".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 0, col: 0}
@@ -1252,7 +1211,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "NET".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
@@ -1265,7 +1223,6 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "A".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
                     span: Span {line: 0, col: 0},
@@ -1415,31 +1372,26 @@ net SECOND {
 
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 2, col: 5},
             },
             Symbol {
-                id: 1,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 3, col: 9},
             },
             Symbol {
-                id: 2,
                 name: "SINGLE".to_string(),
                 kind: SymbolKind::EntType,
                 span: Span {line: 7, col: 7},
             },
             Symbol {
-                id: 3,
                 name: "A".to_string(),
                 kind: SymbolKind::EntMember(2),
                 span: Span {line: 7, col: 17},
             },
             Symbol {
-                id: 4,
                 name: "ADD".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
@@ -1448,13 +1400,11 @@ net SECOND {
                 span: Span {line: 9, col: 7},
             },
             Symbol {
-                id: 5,
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 9, col: 14},
             },
             Symbol {
-                id: 6,
                 name: "FIRST".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
@@ -1471,19 +1421,16 @@ net SECOND {
                 span: Span {line: 11, col: 5},
             },
             Symbol {
-                id: 7,
                 name: "a".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 12, col: 11},
             },
             Symbol {
-                id: 8,
                 name: "q".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 13, col: 12},
             },
             Symbol {
-                id: 9,
                 name: "SECOND".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
@@ -1500,13 +1447,11 @@ net SECOND {
                 span: Span {line: 18, col: 5},
             },
             Symbol {
-                id: 10,
                 name: "a".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 19, col: 11},
             },
             Symbol {
-                id: 11,
                 name: "c".to_string(),
                 kind: SymbolKind::Ent(Type::Unknown),
                 span: Span {line: 20, col: 12},

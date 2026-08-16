@@ -566,25 +566,21 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Int),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "H".to_string(),
                     kind: SymbolKind::EntMember(1),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 3,
                     name: "T".to_string(),
                     kind: SymbolKind::EntMember(1),
                     span: Span{line: 0, col: 0},
@@ -693,7 +689,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
@@ -734,7 +729,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -770,7 +764,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -806,7 +799,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
@@ -847,13 +839,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "z2".to_string(),
                     kind: SymbolKind::Variable(Type::Mod(2)),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "z3".to_string(),
                     kind: SymbolKind::Variable(Type::Mod(3)),
                     span: Span{line: 0, col: 0},
@@ -880,6 +870,52 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn binary_expr_6() {
+        // z3 + z3
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "z2".to_string(),
+                    kind: SymbolKind::Variable(Type::Mod(3)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "z3".to_string(),
+                    kind: SymbolKind::Variable(Type::Mod(3)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("z2".to_string(), 0),
+                        ("z3".to_string(), 1),
+                    ])
+                },
+            ],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(1))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(result, Some(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(1))),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Mod(3),
+        })));
     }
 
     #[test]
@@ -919,7 +955,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "n".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -958,7 +993,6 @@ mod tests {
         })));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
                 span: Span{line: 0, col: 0},
@@ -974,7 +1008,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "n".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -1019,7 +1052,6 @@ mod tests {
         })));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Error),
                 span: Span{line: 0, col: 0},
@@ -1039,13 +1071,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1134,13 +1164,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1196,13 +1224,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1262,13 +1288,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1331,13 +1355,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1405,13 +1427,11 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "r".to_string(),
                     kind: SymbolKind::Variable(Type::Real),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "b".to_string(),
                     kind: SymbolKind::Variable(Type::Bool),
                     span: Span{line: 0, col: 0},
@@ -1470,25 +1490,21 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "H".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "T".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 3,
                     name: "c".to_string(),
                     kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
                     span: Span {line: 0, col: 0},
@@ -1559,38 +1575,32 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "H".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "T".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span {line: 0, col: 0},
                 },
                 
                 Symbol {
-                    id: 3,
                     name: "A".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 4,
                     name: "B".to_string(),
                     kind: SymbolKind::EntMember(3),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 5,
                     name: "c".to_string(),
                     kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
                     span: Span {line: 0, col: 0},
@@ -1738,19 +1748,16 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "H".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "T".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span{line: 0, col: 0},

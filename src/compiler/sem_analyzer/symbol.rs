@@ -32,7 +32,6 @@ pub type SymbolId = usize;
 
 #[derive(PartialEq, Debug)]
 pub struct Symbol {
-    pub id: SymbolId,
     pub name: String,
     pub kind: SymbolKind,
 

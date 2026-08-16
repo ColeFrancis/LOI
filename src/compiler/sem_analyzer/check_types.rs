@@ -93,7 +93,7 @@ impl <'a> SemAnalyzer<'a> {
         let expr_type = self.get_expr_type(&rel_t.body);
 
         let span = match &rel_t.name {
-            Ident::Str { span, ..} => span.clone(),
+            Ident::Str { span, ..} => span.clone(),  // Not reached but needed for compiling
             Ident::Symbol(id) => self.symbols[*id].span.clone(),
         };
 
@@ -216,7 +216,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "n".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 0},
@@ -240,7 +239,6 @@ mod tests {
 
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
                 span: Span{line: 0, col: 0},
@@ -256,7 +254,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
@@ -265,7 +262,6 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 5},
@@ -316,7 +312,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "ADD".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Real],
@@ -325,7 +320,6 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Real),
                 span: Span{line: 0, col: 5},
@@ -341,19 +335,16 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "PARENT".to_string(),
                     kind: SymbolKind::EntType,
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "CHILD".to_string(),
                     kind: SymbolKind::EntMember(0),
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
-                    id: 2,
                     name: "EX".to_string(),
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
@@ -390,19 +381,16 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "PARENT".to_string(),
                 kind: SymbolKind::EntType,
                 span: Span {line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "CHILD".to_string(),
                 kind: SymbolKind::EntMember(0),
                 span: Span {line: 0, col: 0},
             },
             Symbol {
-                id: 2,
                 name: "EX".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: Vec::new(),
@@ -421,7 +409,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
@@ -430,7 +417,6 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 5},
@@ -481,7 +467,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "ADD".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int],
@@ -490,7 +475,6 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
                 span: Span{line: 0, col: 5},
@@ -508,7 +492,6 @@ mod tests {
             ast: Program {items: Vec::new()},
             symbols: vec![
                 Symbol {
-                    id: 0,
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
@@ -517,7 +500,6 @@ mod tests {
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
-                    id: 1,
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
                     span: Span{line: 0, col: 5},
@@ -562,7 +544,6 @@ mod tests {
         }));
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                id: 0,
                 name: "ADD".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Bool],
@@ -571,7 +552,6 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                id: 1,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Bool),
                 span: Span{line: 0, col: 5},
