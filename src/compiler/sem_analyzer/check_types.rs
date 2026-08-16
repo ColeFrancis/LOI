@@ -113,6 +113,10 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn check_net(&mut self, mut net: Net) -> Option<Net> {
+        // For each net inst, verify the type
+        // Verify type for init
+        // Verify type and number of parameters of rel inst
+        // Verify types for connections in net inst
         Some(net)
     }
 
