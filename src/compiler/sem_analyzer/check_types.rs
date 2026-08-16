@@ -90,9 +90,18 @@ impl <'a> SemAnalyzer<'a> {
 
         rel_t.body = self.add_types_expr(rel_t.body).unwrap_or(Expr::Error);
 
+        let expr_type = self.get_expr_type(&rel_t.body);
 
-        // TODO: check types match by calling verify_expr_type match?
-        if rel_t.return_type = self.get_expr_type(&rel_t.body);
+        let span = match &rel_t.name {
+            Ident::Str { span, ..} => span.clone(),
+            Ident::Symbol(id) => self.symbols[*id].span.clone(),
+        };
+
+        rel_t.return_type = self.verify_rel_return_type(
+            &rel_t.return_type, 
+            &expr_type,
+            &span
+        ).unwrap_or(Type::Error);
 
         if let Ident::Symbol(rel_name_id) = rel_t.name {
             if let SymbolKind::Rel_t {return_type, ..} = &mut self.symbols[rel_name_id].kind {
@@ -105,6 +114,66 @@ impl <'a> SemAnalyzer<'a> {
 
     fn check_net(&mut self, mut net: Net) -> Option<Net> {
         Some(net)
+    }
+
+    fn verify_rel_return_type(&mut self, return_type: &Type, expr_type: &Type, rel_span: &Span) -> Option<Type> {
+        match (return_type, expr_type) {
+            (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
+
+            (Type::Bool, Type::Impulse) => Some(Type::Bool), // Keep?
+            (Type::Bool, Type::Bool) => Some(Type::Bool),
+
+            (Type::Mod(val_l), Type::Mod(val_r)) => {
+                if val_l == val_r {
+                    Some(Type::Mod(*val_l))
+                }
+                else {
+                    self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                        return_type: return_type.clone(),
+                        expr_type: expr_type.clone(),
+                        rel_span: rel_span.clone(),
+                    });
+
+                    None
+                }
+            }
+            (Type::Int,  Type::Mod(_)) => Some(Type::Int),
+            (Type::Int,  Type::Int   ) => Some(Type::Int),
+            (Type::Real, Type::Mod(_)) => Some(Type::Real),
+            (Type::Real, Type::Int   ) => Some(Type::Real),
+            (Type::Real, Type::Real  ) => Some(Type::Real),
+
+            (Type::Custom(ident_l), Type::Custom(ident_r)) => {
+                let (parent_l, parent_r) = match (ident_l, ident_r) {
+                    (Ident::Symbol(id_l), Ident::Symbol(id_r)) => (*id_l, *id_r),
+                    
+                    _ => return None, // Unreachable after name resolution
+                };
+
+                if parent_l == parent_r {
+                    Some(Type::Custom(Ident::Symbol(parent_l)))
+                }
+                else {
+                    self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                        return_type: return_type.clone(),
+                        expr_type: expr_type.clone(),
+                        rel_span: rel_span.clone(),
+                    });
+
+                    None
+                }
+            }
+
+            _ => {
+                self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                    return_type: return_type.clone(),
+                    expr_type: expr_type.clone(),
+                    rel_span: rel_span.clone(),
+                });
+
+                None
+            }
+        }
     }
 
     // fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
@@ -220,7 +289,7 @@ mod tests {
                 name: Ident::Symbol(1),
                 param_type: Type::Real,
             }],
-            return_type: Type::Unknown,
+            return_type: Type::Real,
             body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Int(1))),
@@ -259,6 +328,252 @@ mod tests {
                 id: 1,
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Real),
+                span: Span{line: 0, col: 5},
+            },
+        ]);
+    }
+
+    #[test]
+    fn check_rel_2() {
+        // rel_t EX : () -> PARENT = CHILD;
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "PARENT".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "CHILD".to_string(),
+                    kind: SymbolKind::EntMember(0),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    id: 2,
+                    name: "EX".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: Vec::new(),
+                        return_type: Type::Unknown,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("PARENT".to_string(), 0),
+                        ("CHILD".to_string(), 1),
+                        ("EX".to_string(), 1),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_rel(RelType {
+            name: Ident::Symbol(2),
+            params: vec![],
+            return_type: Type::Custom(Ident::Symbol(0)),
+            body: Expr::Ident(Ident::Symbol(1)),
+        });
+
+        assert_eq!(result, Some(RelType {
+            name: Ident::Symbol(2),
+            params: vec![],
+            return_type: Type::Custom(Ident::Symbol(0)),
+            body: Expr::Ident(Ident::Symbol(1)),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "PARENT".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span {line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "CHILD".to_string(),
+                kind: SymbolKind::EntMember(0),
+                span: Span {line: 0, col: 0},
+            },
+            Symbol {
+                id: 2,
+                name: "EX".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: Vec::new(),
+                    return_type: Type::Custom(Ident::Symbol(0)),
+                },
+                span: Span{line: 0, col: 0},
+            },
+        ]);
+    }
+
+    #[test]
+    fn check_rel_3() {
+        // rel_t ADD : (a: Int) -> Int = a + 1.0; //  incompatible return type
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: Vec::new(),
+                        return_type: Type::Unknown,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 5},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("ADD".to_string(), 0),
+                        ("a".to_string(), 1),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_rel(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Int,
+            }],
+            return_type: Type::Int,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Real(1.0))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 10},
+                expr_type: Type::Unknown,
+            }),
+        });
+
+        assert_eq!(result, Some(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Int,
+            }],
+            return_type: Type::Error,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Real(1.0))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 10},
+                expr_type: Type::Real,
+            }),
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "ADD".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int],
+                    return_type: Type::Error,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 5},
+            },
+        ]);
+        
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_rel_4() {
+        // rel_t ADD : (a: Bool) -> Real = a + 1; // incompatible types
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    id: 0,
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: Vec::new(),
+                        return_type: Type::Unknown,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    id: 1,
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 5},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("ADD".to_string(), 0),
+                        ("a".to_string(), 1),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_rel(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Bool,
+            }],
+            return_type: Type::Real,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 10},
+                expr_type: Type::Unknown,
+            }),
+        });
+
+        assert_eq!(result, Some(RelType {
+            name: Ident::Symbol(0),
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Bool,
+            }],
+            return_type: Type::Error,
+            body: Expr::Error,
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                id: 0,
+                name: "ADD".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Bool],
+                    return_type: Type::Error,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                id: 1,
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Bool),
                 span: Span{line: 0, col: 5},
             },
         ]);

@@ -142,6 +142,12 @@ pub enum CompilerError {
         found: ExprType,
         cases_span: Span,
     },
+
+    IncmmpatibleReturnType {
+        return_type: Type,
+        expr_type: Type,
+        rel_span: Span,
+    },
 }
 
 #[derive(Debug, PartialEq)]
