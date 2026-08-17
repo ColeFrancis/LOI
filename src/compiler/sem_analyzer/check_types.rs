@@ -247,7 +247,9 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             NetItem::NetInst(net_inst) => {
-
+                // We already verified symbolkind was net inst in resolving names
+                // check types for connections.
+                
                 // TODO!
                 Some(NetItem::NetInst(net_inst))
             }
