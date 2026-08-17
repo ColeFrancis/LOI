@@ -109,6 +109,12 @@ pub enum CompilerError {
         name: String,
         span: Span,
     },
+
+    // When resolving names of NetInst
+    DuplicatePort {
+        name: String,
+        span: Span,
+    },
     
     // When processing instantiations
     UnexpectedIdent {

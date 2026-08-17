@@ -23,7 +23,7 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use super::SemAnalyzer;
 use super::symbol::{Symbol, SymbolKind, SymbolId, NetPort};
@@ -254,11 +254,23 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(net_inst.net)?;
                 let inst_net_id = self.find_symbol(&name, span)?;
                 
-                // TODO: Verify the same net inst port is not connected to twice
+                let mut used_ports = HashSet::new(); 
+
                 for connection in &mut net_inst.connections {
                     // Port symbols have to be checked specialy
                     let (name, span) = self.extract_ident_str(connection.port.clone())?; // TODO: make more efficient without clone
-                    connection.port = Ident::Symbol(self.find_net_port(inst_net_id, &name, span)?);
+                    let port_id = self.find_net_port(inst_net_id, &name, span)?;
+
+                    // Verify port hasn't been used already
+                    if !used_ports.insert(port_id) {
+                        self.diagnostics.error(CompilerError::DuplicatePort {
+                            name: name.to_string(),
+                            span: span,
+                        });
+                        return None;
+                    }
+                    
+                    connection.port = Ident::Symbol(port_id);
 
                     let (name, span) = self.extract_ident_str(connection.net.clone())?; // TODO: make more efficient without clone
                     connection.net = Ident::Symbol(self.find_or_define_symbol(
@@ -1421,8 +1433,106 @@ mod tests {
         //         A := b, // Connected to same port twice
         //     };
         // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "B".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("A".to_string(), NetPort {
+                                symbol: 1,
+                                input: true, // Dont care yet about directions
+                            }),
+                        ])
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "A".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("B".to_string(), 0),
+                    ])
+                },
+            ],
 
-        assert!(false);
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_net(Net {
+            name: Ident::Str {
+                val: "A".to_string(),
+                span: Span {line: 0, col: 0},
+            },
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Str {
+                        val: "a".to_string(),
+                        span: Span {line: 0, col: 0},
+                    },
+                    param_type: Type::Bool,
+                }),
+                NetItem::Output(Param {
+                    name: Ident::Str {
+                        val: "b".to_string(),
+                        span: Span {line: 0, col: 0},
+                    },
+                    param_type: Type::Bool,
+                }),
+                NetItem::NetInst(NetInst {
+                    net: Ident::Str {
+                        val: "B".to_string(),
+                        span: Span {line: 0, col: 0},
+                    },
+                    connections: vec![
+                        Connection {
+                            port: Ident::Str {
+                                val: "A".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                            net: Ident::Str {
+                                val: "a".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                        },
+                        Connection {
+                            port: Ident::Str {
+                                val: "A".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                            net: Ident::Str {
+                                val: "b".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                        },
+                    ],
+                }),
+            ],
+        });
+
+        assert_eq!(result, Some(Net {
+            name: Ident::Symbol(2),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(3),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Output(Param {
+                    name: Ident::Symbol(4),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+            ],
+        }));
+
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
