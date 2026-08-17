@@ -54,6 +54,8 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     pub(super) fn resolve_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
+        stmt.expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
+
         let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
         
         stmt.name = Ident::Symbol(self.define_symbol(
@@ -61,8 +63,6 @@ impl <'a> SemAnalyzer<'a> {
             SymbolKind::Variable(Type::Unknown), 
             span,
         )?);
-
-        stmt.expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
 
         Some(stmt)
     }
@@ -661,7 +661,7 @@ mod tests {
     }
 
     #[test]
-    fn resolve_let() {
+    fn resolve_let_1() {
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer::new(
             Program{items: vec![]},
@@ -687,6 +687,83 @@ mod tests {
                 span: Span{line: 1, col: 2},
             },
         ]);
+    }
+
+    #[test]
+    fn resolve_let_2() {
+        // let n = 1;
+        // let a = {
+        //     let n = n + 1; shadow existing n after using it in expression
+        //     n
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_let(LetStatement {
+            name: Ident::Str {
+                val: "a".to_string(),
+                span: Span{line: 0, col: 0},
+            },
+            expr: Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
+                    name: Ident::Str {
+                        val: "n".to_string(),
+                        span: Span{line: 0, col: 0},
+                    },
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Str {
+                            val: "n".to_string(),
+                            span: Span{line: 0, col: 0},
+                        })),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                })],
+                expr: Box::new(Expr::Ident(Ident::Str {
+                    val: "n".to_string(),
+                    span: Span{line: 0, col: 0},
+                })),
+                expr_type: Type::Unknown,
+            }),
+        });
+
+        assert_eq!(result, Some(LetStatement {
+            name: Ident::Symbol(2),
+            expr: Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
+                    name: Ident::Symbol(1),
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                })],
+                expr: Box::new(Expr::Ident(Ident::Symbol(1))),
+                expr_type: Type::Unknown,
+            }),
+        }));
     }
 
     #[test]
@@ -1372,14 +1449,14 @@ net SECOND {
 
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
-                name: "n".to_string(),
-                kind: SymbolKind::Variable(Type::Unknown),
-                span: Span {line: 2, col: 5},
-            },
-            Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
                 span: Span {line: 3, col: 9},
+            },
+            Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 2, col: 5},
             },
             Symbol {
                 name: "SINGLE".to_string(),
@@ -1459,16 +1536,16 @@ net SECOND {
         ]);
         assert_eq!(sem_analyzer.ast, Program {items: vec![
             Item::Let(LetStatement {
-                name: Ident::Symbol(0),
+                name: Ident::Symbol(1),
                 expr: Expr::Block(BlockExpr {
                     statements: vec![
                         Statement::Let(LetStatement {
-                            name: Ident::Symbol(1),
+                            name: Ident::Symbol(0),
                             expr: Expr::Literal(Literal::Int(1)),
                         })
                     ],
                     expr: Box::new(Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                        left: Box::new(Expr::Ident(Ident::Symbol(0))),
                         op: BinaryOp::Add,
                         right: Box::new(Expr::Literal(Literal::Int(1))),
                         op_span: Span {line: 4, col: 6},
@@ -1493,7 +1570,7 @@ net SECOND {
                 ],
                 return_type: Type::Int,
                 body: Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(Ident::Symbol(5))),
                     op_span: Span {line: 9, col: 33},

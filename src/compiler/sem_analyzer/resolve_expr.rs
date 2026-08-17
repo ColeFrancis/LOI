@@ -470,38 +470,38 @@ mod tests {
         assert_eq!(result, Some(Expr::Block(BlockExpr {
             statements: vec![
                 Statement::Let(LetStatement {
-                    name: Ident::Symbol(0),
+                    name: Ident::Symbol(3),
                     expr: Expr::Block(BlockExpr {
                         statements: vec![
                             Statement::Let(LetStatement {
-                                name: Ident::Symbol(1),
+                                name: Ident::Symbol(2),
                                 expr: Expr::Block(BlockExpr {
                                     statements: vec![
                                         Statement::Let(LetStatement {
-                                            name: Ident::Symbol(2),
+                                            name: Ident::Symbol(1),
                                             expr: Expr::Block(BlockExpr {
                                                 statements: vec![
                                                     Statement::Let(LetStatement {
-                                                        name: Ident::Symbol(3),
+                                                        name: Ident::Symbol(0),
                                                         expr: Expr::Literal(Literal::Int(1)),
                                                     }),
                                                 ],
-                                                expr: Box::new(Expr::Ident(Ident::Symbol(3))),
+                                                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
                                                 expr_type: Type::Unknown,
                                             }),
                                         }),
                                     ],
-                                    expr: Box::new(Expr::Ident(Ident::Symbol(2))),
+                                    expr: Box::new(Expr::Ident(Ident::Symbol(1))),
                                     expr_type: Type::Unknown,
                                 }),
                             }),
                         ],
-                        expr: Box::new(Expr::Ident(Ident::Symbol(1))),
+                        expr: Box::new(Expr::Ident(Ident::Symbol(2))),
                         expr_type: Type::Unknown,
                     }),
                 }),
             ],
-            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            expr: Box::new(Expr::Ident(Ident::Symbol(3))),
             expr_type: Type::Unknown,
         })));
         assert_eq!(sem_analyzer.scopes, vec![
