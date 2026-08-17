@@ -382,7 +382,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::Symbol;
+    use crate::compiler::sem_analyzer::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::Diagnostics;
 
     #[test]
@@ -738,7 +738,247 @@ mod tests {
 
     #[test]
     fn check_net_1() {
-        // TODO
+        // net TEST {
+        //     input a: Bool;
+        //     init a: Bool = true;
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {ports: HashMap::from([
+                        ("a".to_string(), NetPort {
+                            symbol: 1,
+                            input: true,
+                        }),
+                    ])},
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Bool,
+                    },
+                    val: Expr::Literal(Literal::Bool(true)),
+                }),
+            ],
+        });
+
+        assert_eq!(result, Some(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Bool,
+                    },
+                    val: Expr::Literal(Literal::Bool(true)),
+                }),
+            ],
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "TEST".to_string(),
+                kind: SymbolKind::Net {ports: HashMap::from([
+                    ("a".to_string(), NetPort {
+                        symbol: 1,
+                        input: true,
+                    }),
+                ])},
+                span: Span {line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Ent(Type::Bool),
+                span: Span {line: 0, col: 0},
+            },
+        ]);
+        assert_eq!(diagnostics.num_errors(), 0);
+    }
+
+    #[test]
+    fn check_net_2() {
+        // net TEST {
+        //     input a: Bool;
+        //     init a: Bool = 1; // Incorrect type
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {ports: HashMap::from([
+                        ("a".to_string(), NetPort {
+                            symbol: 1,
+                            input: true,
+                        }),
+                    ])},
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Bool,
+                    },
+                    val: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+        });
+
+        assert_eq!(result, Some(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "TEST".to_string(),
+                kind: SymbolKind::Net {ports: HashMap::from([
+                    ("a".to_string(), NetPort {
+                        symbol: 1,
+                        input: true,
+                    }),
+                ])},
+                span: Span {line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Ent(Type::Bool),
+                span: Span {line: 0, col: 0},
+            },
+        ]);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_3() {
+        // net TEST {
+        //     input a: Bool;
+        //     init a: Int = 1; // Different type
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {ports: HashMap::from([
+                        ("a".to_string(), NetPort {
+                            symbol: 1,
+                            input: true,
+                        }),
+                    ])},
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Literal(Literal::Int(1)),
+                }),
+            ],
+        });
+
+        assert_eq!(result, Some(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }),
+                NetItem::Error,
+            ],
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "TEST".to_string(),
+                kind: SymbolKind::Net {ports: HashMap::from([
+                    ("a".to_string(), NetPort {
+                        symbol: 1,
+                        input: true,
+                    }),
+                ])},
+                span: Span {line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Ent(Type::Bool),
+                span: Span {line: 0, col: 0},
+            },
+        ]);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_4() {
+        // TODO: Check rel and net inst
         assert!(false);
     }
 }
