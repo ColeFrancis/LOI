@@ -143,11 +143,23 @@ pub enum CompilerError {
         cases_span: Span,
     },
 
-    IncmmpatibleReturnType {
+    IncompatibleReturnType {
         return_type: Type,
         expr_type: Type,
         rel_span: Span,
     },
+
+    MismatchedEntType {
+        expected: Type,
+        found: Type,
+        span: Span
+    },
+
+    IncorrectNumberOfArgs {
+        expected_len: usize,
+        actual_len: usize,
+        rel_span: Span,
+    }
 }
 
 #[derive(Debug, PartialEq)]

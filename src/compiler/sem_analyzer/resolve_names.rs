@@ -172,7 +172,7 @@ impl <'a> SemAnalyzer<'a> {
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
                     ports.insert(name, NetPort {
                         symbol: symbol_id,
-                        ty: Type::Unknown,
+                        input: true,
                     });
                 }
 
@@ -196,7 +196,7 @@ impl <'a> SemAnalyzer<'a> {
                 if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
                     ports.insert(name, NetPort {
                         symbol: symbol_id,
-                        ty: Type::Unknown,
+                        input: false,
                     });
                 }
 
@@ -1031,11 +1031,11 @@ mod tests {
                         ports: HashMap::from([
                             ("A".to_string(), NetPort {
                                 symbol: 2,
-                                ty: Type::Unknown,
+                                input: true, // Dont care yet about directions
                             }),
                             ("B".to_string(), NetPort {
                                 symbol: 3,
-                                ty: Type::Unknown,
+                                input: true,
                             }),
                         ])
                     },
@@ -1201,11 +1201,11 @@ mod tests {
                     ports: HashMap::from([
                         ("A".to_string(), NetPort {
                             symbol: 2,
-                            ty: Type::Unknown,
+                            input: true,
                         }),
                         ("B".to_string(), NetPort {
                             symbol: 3,
-                            ty: Type::Unknown,
+                            input: true,
                         }),
                     ])
                 },
@@ -1227,11 +1227,11 @@ mod tests {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 5,
-                            ty: Type::Unknown,
+                            input: true,
                         }),
                         ("b".to_string(), NetPort {
                             symbol: 6,
-                            ty: Type::Unknown,
+                            input: false,
                         }),
                     ])
                 },
@@ -1293,7 +1293,7 @@ mod tests {
                         ports: HashMap::from([
                             ("A".to_string(), NetPort {
                                 symbol: 1,
-                                ty: Type::Unknown,
+                                input: true,
                             }),
                         ])
                     },
@@ -1487,11 +1487,11 @@ net SECOND {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 7,
-                            ty: Type::Unknown,
+                            input: true,
                         }),
                         ("q".to_string(), NetPort {
                             symbol: 8,
-                            ty: Type::Unknown,
+                            input: false,
                         }),
                     ])
                 },
@@ -1513,11 +1513,11 @@ net SECOND {
                     ports: HashMap::from([
                         ("a".to_string(), NetPort {
                             symbol: 10,
-                            ty: Type::Unknown,
+                            input: true,
                         }),
                         ("c".to_string(), NetPort {
                             symbol: 11,
-                            ty: Type::Unknown,
+                            input: false,
                         }),
                     ])
                 },

@@ -58,5 +58,5 @@ pub enum SymbolKind {
 #[derive(PartialEq, Debug, Clone)]
 pub struct NetPort {
     pub symbol: SymbolId,
-    pub ty: Type,
+    pub input: bool,
 }

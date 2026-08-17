@@ -97,7 +97,7 @@ impl <'a> SemAnalyzer<'a> {
             Ident::Symbol(id) => self.symbols[*id].span.clone(),
         };
 
-        rel_t.return_type = self.verify_rel_return_type(
+        rel_t.return_type = self.verify_return_type(
             &rel_t.return_type, 
             &expr_type,
             &span
@@ -117,10 +117,146 @@ impl <'a> SemAnalyzer<'a> {
         // Verify type for init
         // Verify type and number of parameters of rel inst
         // Verify types for connections in net inst
+
+        for item in &mut net.items {
+            let owned_item = std::mem::replace(item, NetItem::Error);
+
+            *item = self.check_net_item(owned_item).unwrap_or(NetItem::Error);
+        }
+
         Some(net)
     }
 
-    fn verify_rel_return_type(&mut self, return_type: &Type, expr_type: &Type, rel_span: &Span) -> Option<Type> {
+    fn check_net_item(&mut self, item: NetItem) -> Option<NetItem> {
+        match item {
+            NetItem::Input(param) => {
+                let Ident::Symbol(id) = param.name else {
+                    return None; // Not reachable
+                };
+
+                let (symbol_type, span) = match &self.symbols[id].kind {
+                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
+                    _ => return None, // Not reachable
+                };
+
+                let new_type = self.compare_ent_types(&symbol_type, &param.param_type, &span)?;
+
+                if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
+                    *ty = new_type;
+                }
+
+                Some(NetItem::Input(param))
+            }
+
+            NetItem::Output(param) => {
+                let Ident::Symbol(id) = param.name else {
+                    return None; // Not reachable
+                };
+
+                let (symbol_type, span) = match &self.symbols[id].kind {
+                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
+                    _ => return None, // Not reachable
+                };
+
+                let new_type = self.compare_ent_types(&symbol_type, &param.param_type, &span)?;
+
+                if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
+                    *ty = new_type;
+                }
+
+                Some(NetItem::Output(param))
+            }
+
+            NetItem::Init(ent_init) => {
+                let Ident::Symbol(id) = ent_init.param.name else {
+                    return None; // Not reachable
+                };
+
+                let (symbol_type, span) = match &self.symbols[id].kind {
+                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
+                    _ => return None, // Not reachable
+                };
+
+                let new_type = self.compare_ent_types(&symbol_type, &ent_init.param.param_type, &span)?;
+
+                let expr_type = self.get_expr_type(&ent_init.val);
+
+                let new_type = self.verify_return_type(&new_type, &expr_type, &span)?;
+
+                if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
+                    *ty = new_type;
+                }
+
+                Some(NetItem::Init(ent_init))
+            }
+
+            NetItem::RelInst(rel_inst) => {
+                let Ident::Symbol(rel_id) = rel_inst.rel else {
+                    return None; // not reachable
+                };
+
+                let (input_types, return_type) = match &self.symbols[rel_id].kind {
+                    SymbolKind::Rel_t {input_types, return_type} => (input_types.clone(), return_type.clone()),
+
+                    other => {
+                        self.diagnostics.error(CompilerError::UnexpectedIdent {
+                            expected: vec![SymbolKind::Rel_t{input_types: Vec::new(), return_type: Type::Unknown}],
+                            found: other.clone(),
+                            span: self.symbols[rel_id].span.clone(),
+                        });
+
+                        return None
+                    }
+                };
+
+                if rel_inst.args.len() != input_types.len() {
+                    self.diagnostics.error(CompilerError::IncorrectNumberOfArgs {
+                        expected_len: input_types.len(),
+                        actual_len: rel_inst.args.len(),
+                        rel_span: self.symbols[rel_id].span.clone(),
+                    });
+
+                    return None;
+                }
+
+                // Check argument types
+                for (arg, expected_type) in rel_inst.args.iter().zip(&input_types) {
+                    let Ident::Symbol(arg_id) = arg else {
+                        return None; // Not reachable
+                    };
+
+                    let (actual_type, span) = match &self.symbols[*arg_id].kind {
+                        SymbolKind::Ent(ty) => (ty.clone(), self.symbols[*arg_id].span.clone()),
+                        _ => return None, // Not reachable
+                    };
+
+                    self.compare_ent_types(&actual_type, &expected_type, &span)?;
+                }
+
+                let Ident::Symbol(asignee_id) = rel_inst.asignee else {
+                    return None; // not reachable
+                };
+                let (asignee_type, span) = match &self.symbols[asignee_id].kind {
+                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[asignee_id].span.clone()),
+                    _ => return None, // Not reachable
+                };
+
+                self.compare_ent_types(&asignee_type, &return_type, &span)?;
+
+                Some(NetItem::RelInst(rel_inst))
+            }
+
+            NetItem::NetInst(net_inst) => {
+
+                // TODO!
+                Some(NetItem::NetInst(net_inst))
+            }
+
+            NetItem::Error => Some(NetItem::Error),
+        }
+    }
+
+    fn verify_return_type(&mut self, return_type: &Type, expr_type: &Type, rel_span: &Span) -> Option<Type> {
         match (return_type, expr_type) {
             (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
 
@@ -132,7 +268,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(Type::Mod(*val_l))
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                    self.diagnostics.error(CompilerError::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
                         rel_span: rel_span.clone(),
@@ -158,7 +294,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(Type::Custom(Ident::Symbol(parent_l)))
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                    self.diagnostics.error(CompilerError::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
                         rel_span: rel_span.clone(),
@@ -169,7 +305,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             _ => {
-                self.diagnostics.error(CompilerError::IncmmpatibleReturnType {
+                self.diagnostics.error(CompilerError::IncompatibleReturnType {
                     return_type: return_type.clone(),
                     expr_type: expr_type.clone(),
                     rel_span: rel_span.clone(),
@@ -180,27 +316,27 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // fn compare_types(&mut self, symbol_type: Type, object_type: Type, symbol_span: Span) -> Option<Type> {
-    //     if symbol_type == object_type {
-    //         return Some(symbol_type)
-    //     }
+    fn compare_ent_types(&mut self, symbol_type: &Type, object_type: &Type, symbol_span: &Span) -> Option<Type> {
+        if symbol_type == object_type {
+            return Some(object_type.clone())
+        }
 
-    //     match symbol_type {
-    //         Type::Unknown => {
-    //             Some(object_type)
-    //         }
+        match symbol_type {
+            Type::Unknown => {
+                Some(object_type.clone())
+            }
 
-    //         _ => {
-    //             self.diagnostics.error(CompilerError::UnexpectedType {
-    //                 expected: object_type,
-    //                 found: symbol_type,
-    //                 span: symbol_span,
-    //             });
+            _ => {
+                self.diagnostics.error(CompilerError::MismatchedEntType {
+                    expected: object_type.clone(),
+                    found: symbol_type.clone(),
+                    span: symbol_span.clone(),
+                });
 
-    //             None
-    //         }
-    //     }
-    // }
+                None
+            }
+        }
+    }
 }
 
 #[cfg(test)]
