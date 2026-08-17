@@ -24,9 +24,9 @@
 
 use super::SemAnalyzer;
 use super::types::Type;
-use super::symbol::SymbolKind;
+use super::symbol::{SymbolId, SymbolKind};
 use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Span};
+use crate::compiler::diagnostics::{Diagnostics, CompilerError, Span};
 
 impl <'a> SemAnalyzer<'a> {
     // Add type info to symbols
@@ -134,12 +134,9 @@ impl <'a> SemAnalyzer<'a> {
                     return None; // Not reachable
                 };
 
-                let (symbol_type, span) = match &self.symbols[id].kind {
-                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
-                    _ => return None, // Not reachable
-                };
+                let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(&symbol_type, &param.param_type, &span)?;
+                let new_type = self.compare_ent_types(symbol_type, param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -153,12 +150,9 @@ impl <'a> SemAnalyzer<'a> {
                     return None; // Not reachable
                 };
 
-                let (symbol_type, span) = match &self.symbols[id].kind {
-                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
-                    _ => return None, // Not reachable
-                };
+                let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(&symbol_type, &param.param_type, &span)?;
+                let new_type = self.compare_ent_types(symbol_type, param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -172,12 +166,9 @@ impl <'a> SemAnalyzer<'a> {
                     return None; // Not reachable
                 };
 
-                let (symbol_type, span) = match &self.symbols[id].kind {
-                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[id].span.clone()),
-                    _ => return None, // Not reachable
-                };
+                let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(&symbol_type, &ent_init.param.param_type, &span)?;
+                let new_type = self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), span)?;
 
                 let expr_type = self.get_expr_type(&ent_init.val);
 
@@ -219,38 +210,73 @@ impl <'a> SemAnalyzer<'a> {
                     return None;
                 }
 
-                // Check argument types
-                for (arg, expected_type) in rel_inst.args.iter().zip(&input_types) {
+                for (arg, expected_type) in rel_inst.args.iter().zip(input_types) {
                     let Ident::Symbol(arg_id) = arg else {
                         return None; // Not reachable
                     };
+                    let (actual_type, span) = self.get_ent_type(*arg_id)?;
 
-                    let (actual_type, span) = match &self.symbols[*arg_id].kind {
-                        SymbolKind::Ent(ty) => (ty.clone(), self.symbols[*arg_id].span.clone()),
-                        _ => return None, // Not reachable
-                    };
-
-                    self.compare_ent_types(&actual_type, &expected_type, &span)?;
+                    self.compare_ent_types(actual_type, expected_type, span)?;
                 }
 
                 let Ident::Symbol(asignee_id) = rel_inst.asignee else {
                     return None; // not reachable
                 };
-                let (asignee_type, span) = match &self.symbols[asignee_id].kind {
-                    SymbolKind::Ent(ty) => (ty.clone(), self.symbols[asignee_id].span.clone()),
-                    _ => return None, // Not reachable
-                };
+                let (asignee_type, span) = self.get_ent_type(asignee_id)?;
 
-                self.compare_ent_types(&asignee_type, &return_type, &span)?;
+                self.compare_ent_types(asignee_type, return_type, span)?;
 
                 Some(NetItem::RelInst(rel_inst))
             }
 
             NetItem::NetInst(net_inst) => {
                 // We already verified symbolkind was net inst in resolving names
-                // check types for connections.
-                
-                // TODO!
+                let Ident::Symbol(net_id) = net_inst.net else {
+                    return None; // not reachable
+                };
+
+                let ports = match &self.symbols[net_id].kind {
+                    SymbolKind::Net {ports} => ports,
+                    _ => return None, // Do not need to check this condition as find_net_port in resolve_net already does.
+                };
+
+                for connection in &net_inst.connections {
+                    let connection_net_id = match connection.net {
+                        Ident::Symbol(id) => id,
+                        _ => return None, // Unreachable
+                    };
+
+                    let (connection_port_name, connection_port_span) = match connection.port {
+                        Ident::Symbol(id) => (&self.symbols[id].name, &self.symbols[id].span),
+                        _ => return None, // Unreachable
+                    };
+                    match ports.get(connection_port_name) {
+                        Some(inst_port) => {
+                            let (inst_port_type, inst_port_span) = self.get_ent_type(inst_port.symbol)?;
+
+                            let (connection_net_type, _connection_net_span) = self.get_ent_type(connection_net_id)?;
+
+                            if inst_port_type != connection_net_type {
+                                self.diagnostics.error(CompilerError::MismatchedEntType {
+                                    expected: connection_net_type,
+                                    found: inst_port_type,
+                                    span: inst_port_span,
+                                });
+
+                                return None;
+                            }
+                        }
+                        _ => {
+                            self.diagnostics.error(CompilerError::NonexistantNetPort {
+                                name: connection_port_name.to_string(),
+                                span: connection_port_span.clone(),
+                            });
+
+                            return None
+                        }
+                    }
+                }
+
                 Some(NetItem::NetInst(net_inst))
             }
 
@@ -318,21 +344,30 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn compare_ent_types(&mut self, symbol_type: &Type, object_type: &Type, symbol_span: &Span) -> Option<Type> {
+    fn get_ent_type(&self, id: SymbolId) -> Option<(Type, Span)> {
+        match &self.symbols[id].kind {
+            SymbolKind::Ent(ty) => {
+                Some((ty.clone(), self.symbols[id].span.clone()))
+            }
+            _ => None,
+        }
+    }
+
+    fn compare_ent_types(&mut self, symbol_type: Type, object_type: Type, span: Span) -> Option<Type> {
         if symbol_type == object_type {
-            return Some(object_type.clone())
+            return Some(object_type)
         }
 
         match symbol_type {
             Type::Unknown => {
-                Some(object_type.clone())
+                Some(object_type)
             }
 
             _ => {
                 self.diagnostics.error(CompilerError::MismatchedEntType {
-                    expected: object_type.clone(),
-                    found: symbol_type.clone(),
-                    span: symbol_span.clone(),
+                    expected: object_type,
+                    found: symbol_type,
+                    span,
                 });
 
                 None
@@ -699,5 +734,11 @@ mod tests {
                 span: Span{line: 0, col: 5},
             },
         ]);
+    }
+
+    #[test]
+    fn check_net_1() {
+        // TODO
+        assert!(false);
     }
 }

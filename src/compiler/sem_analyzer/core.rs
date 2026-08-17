@@ -53,6 +53,7 @@ impl <'a> SemAnalyzer<'a> {
             // at most 1 default branch in cases and sample
             // inputs only assigned to outputs and vice versa of rel inst ad net inst in nets 
             // ents only driven once (not used as output multiple times)
+            // net_inst port not connected to twice
 
         (self.ast, self.symbols)
     }

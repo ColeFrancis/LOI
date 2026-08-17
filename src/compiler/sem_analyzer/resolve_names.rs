@@ -254,6 +254,7 @@ impl <'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(net_inst.net)?;
                 let inst_net_id = self.find_symbol(&name, span)?;
                 
+                // TODO: Verify the same net inst port is not connected to twice
                 for connection in &mut net_inst.connections {
                     // Port symbols have to be checked specialy
                     let (name, span) = self.extract_ident_str(connection.port.clone())?; // TODO: make more efficient without clone
@@ -1407,6 +1408,21 @@ mod tests {
 
         diagnostics.debug_print();
         assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn bad_net_2() {
+        // net A {
+        //     input a: Bool;
+        //     input b: Bool;
+
+        //     B {
+        //         A := a,
+        //         A := b, // Connected to same port twice
+        //     };
+        // }
+
+        assert!(false);
     }
 
     #[test]

@@ -149,17 +149,24 @@ pub enum CompilerError {
         rel_span: Span,
     },
 
+    // For re_inst and net_inst
     MismatchedEntType {
         expected: Type,
         found: Type,
         span: Span
     },
 
-    IncorrectNumberOfArgs {
+    // for rel_inst
+    IncorrectNumberOfArgs { 
         expected_len: usize,
         actual_len: usize,
         rel_span: Span,
-    }
+    },
+
+    NonexistantNetPort {
+        name: String,
+        span: Span,
+    },
 }
 
 #[derive(Debug, PartialEq)]
