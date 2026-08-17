@@ -272,8 +272,8 @@ impl <'a> SemAnalyzer<'a> {
                     
                     connection.port = Ident::Symbol(port_id);
 
-                    let (name, span) = self.extract_ident_str(connection.net.clone())?; // TODO: make more efficient without clone
-                    connection.net = Ident::Symbol(self.find_or_define_symbol(
+                    let (name, span) = self.extract_ident_str(connection.ent.clone())?; // TODO: make more efficient without clone
+                    connection.ent = Ident::Symbol(self.find_or_define_symbol(
                         &name, 
                         SymbolKind::Ent(Type::Unknown), 
                         span,
@@ -1138,7 +1138,7 @@ mod tests {
                                 val: "A".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "d".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1148,7 +1148,7 @@ mod tests {
                                 val: "B".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1189,11 +1189,11 @@ mod tests {
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(2),
-                            net: Ident::Symbol(8),
+                            ent: Ident::Symbol(8),
                         },
                         Connection {
                             port: Ident::Symbol(3),
-                            net: Ident::Symbol(6),
+                            ent: Ident::Symbol(6),
                         },
                     ],
                 }),
@@ -1381,7 +1381,7 @@ mod tests {
                                 val: "A".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "d".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1391,7 +1391,7 @@ mod tests {
                                 val: "B".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1497,7 +1497,7 @@ mod tests {
                                 val: "A".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "a".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1507,7 +1507,7 @@ mod tests {
                                 val: "A".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
-                            net: Ident::Str {
+                            ent: Ident::Str {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
@@ -1739,11 +1739,11 @@ net SECOND {
                         connections: vec![
                             Connection {
                                 port: Ident::Symbol(7),
-                                net: Ident::Symbol(10),
+                                ent: Ident::Symbol(10),
                             },
                             Connection {
                                 port: Ident::Symbol(8),
-                                net: Ident::Symbol(11),
+                                ent: Ident::Symbol(11),
                             },
                         ],
                     }),

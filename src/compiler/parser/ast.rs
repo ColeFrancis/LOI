@@ -269,5 +269,5 @@ pub struct NetInst {
 #[derive(PartialEq, Debug)]
 pub struct Connection {
     pub port: Ident,
-    pub net: Ident,
+    pub ent: Ident,
 }

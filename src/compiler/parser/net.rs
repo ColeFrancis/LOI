@@ -189,11 +189,11 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 1})?;
 
-        let net = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
+        let ent = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
 
         Some(Connection {
             port,
-            net,
+            ent,
         })
     }
 }
@@ -314,19 +314,19 @@ mod tests {
                     connections: vec![
                         Connection {
                             port: build_ident_str("a"),
-                            net: build_ident_str("a"),
+                            ent: build_ident_str("a"),
                         },
                         Connection {
                             port: build_ident_str("b"),
-                            net: build_ident_str("b"),
+                            ent: build_ident_str("b"),
                         },
                         Connection {
                             port: build_ident_str("sum"),
-                            net: build_ident_str("h1_sum"),
+                            ent: build_ident_str("h1_sum"),
                         },
                         Connection {
                             port: build_ident_str("cout"),
-                            net: build_ident_str("h1_carry"),
+                            ent: build_ident_str("h1_carry"),
                         },
                     ],
                 }),
@@ -335,19 +335,19 @@ mod tests {
                     connections: vec![
                         Connection {
                             port: build_ident_str("a"),
-                            net: build_ident_str("h1_sum"),
+                            ent: build_ident_str("h1_sum"),
                         },
                         Connection {
                             port: build_ident_str("b"),
-                            net: build_ident_str("cin"),
+                            ent: build_ident_str("cin"),
                         },
                         Connection {
                             port: build_ident_str("sum"),
-                            net: build_ident_str("sum"),
+                            ent: build_ident_str("sum"),
                         },
                         Connection {
                             port: build_ident_str("cout"),
-                            net: build_ident_str("h2_carry"),
+                            ent: build_ident_str("h2_carry"),
                         },
                     ],
                 }),
