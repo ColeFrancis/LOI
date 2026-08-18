@@ -61,10 +61,12 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn fold_rel(&mut self, mut rel_t: RelType) -> RelType {
+        // Fold expressions here. The expression likely won't be fully folded but this will at least do some work as well as verifying cases and sample stuff
         rel_t
     }
 
     fn fold_net(&mut self, mut net_t: Net) -> Net {
+        // Dont fold expressions inside nets here, as samples must be evaluated for each instantiation
         net_t
     }
 }
