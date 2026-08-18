@@ -14,7 +14,9 @@
 
 //! # fold_expr
 //!
-//! Handles folding of compile-time constants in expressions
+//! Handles folding of compile-time constants in expressions. 
+//! Verifies there are no duplicate patterns (including defaults) in cases arms
+//! Verifies there are no more than one default arms in samples and that literals in probabilities do not sum to greater than 1
 //!
 //! ## Invariants:
 //!
@@ -118,7 +120,8 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Sample(mut sample_expr) => {
-                // Verify there is at most 1 default arm and that probabilites add up to 1.
+                // Verify there is at most 1 default arm 
+                // Verify that probabilites add up to 1. (For literals at least. There may be unknown idents in rel_t for example)
 
                 Expr::Sample(sample_expr)
             }
