@@ -16,35 +16,39 @@
 //!
 //! Handles folding of compile-time constants in expressions
 //!
+//! ## Invariants:
+//!
+//! - If an expression is folded into a literal, its type must match the original expr_type
+//!
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
+use super::symbol::SymbolKind;
+use super::types::Type;
+use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 
 use crate::compiler::parser::ast::*;
 
 impl <'a> SemAnalyzer<'a> {
-    pub fold_expr (&mut self, expr: Expr) -> Expr {
+    pub(super) fn fold_expr (&mut self, expr: Expr) -> Expr {
         match expr {
             Expr::Literal(literal) => Expr::Literal(literal),
 
-            Expr::Ident(ident) => {
-                if let Ident::Symbol(id) = ident {
-                    match &self.symbols[id].kind {
-                        SymblKind::Const(literal) => Expr::Literal(literal),
-
-                        _ => Expr::Ident(ident),
-                    }
-                }
+            Expr::Ident(Ident::Symbol(id)) => match &self.symbols[id].kind {
+                SymbolKind::Const(literal) => Expr::Literal(literal.clone()),
+                _ => Expr::Ident(Ident::Symbol(id)),
             }
 
             Expr::Unary(mut unary) => {
                 unary.expr = Box::new(self.fold_expr(*unary.expr));
 
                 if let Expr::Literal(literal) = &*unary.expr {
-                    if let Some(result) = self.eval_unary(unary.op, literal) {
+                    if let Some(result) = self.eval_unary(&unary.op, literal) {
                         return Expr::Literal(result);
                     }
                 }
+
+                Expr::Unary(unary)
             }
 
             Expr::Binary(mut binary) => {
@@ -54,11 +58,11 @@ impl <'a> SemAnalyzer<'a> {
                 // if you have int + real convert to real + real to simplify eval_binary
                 if binary.expr_type == Type::Real {
                     if let Expr::Literal(Literal::Int(val)) = expr_left {
-                        expr_left = Expr::Literal(Literal::Real(val));
+                        expr_left = Expr::Literal(Literal::Real(val as f64));
                     }
 
-                    if let Expr::Literal(Literal::Int(val)) = expr_left {
-                        expr_left = Expr::Literal(Literal::Real(val));
+                    if let Expr::Literal(Literal::Int(val)) = expr_right {
+                        expr_right = Expr::Literal(Literal::Real(val as f64));
                     }
                 }
 
@@ -66,7 +70,7 @@ impl <'a> SemAnalyzer<'a> {
                 binary.right = Box::new(expr_right);
 
                 if let (Expr::Literal(left), Expr::Literal(right)) = (&*binary.left, &*binary.right) {
-                    if let Some(result) = self.eval_binary(binary.op, left, right) {
+                    if let Some(result) = self.eval_binary(&binary.op, left, right,binary.op_span) {
                         return Expr::Literal(result);
                     }
                 }
@@ -74,11 +78,43 @@ impl <'a> SemAnalyzer<'a> {
                 Expr::Binary(binary)
             }
 
+            Expr::Tuple(mut exprs) => {
+                for expr in &mut exprs {
+                    let owned_expr = std::mem::replace(expr, Expr::Error);
+
+                    *expr = self.fold_expr(owned_expr);
+                }
+
+                Expr::Tuple(exprs)
+            }
+
+            Expr::Block(mut block_expr) => {
+                let owned_statements = std::mem::take(&mut block_expr.statements);
+
+                for statement in owned_statements {
+                    if let Statement::Let(let_statement) = statement {
+                        if let Some(folded_let_statement) = self.fold_let(let_statement) {
+                            block_expr.statements.push(Statement::Let(folded_let_statement));
+                        }
+                    }
+                }
+
+                match self.fold_expr(*block_expr.expr) {
+                    Expr::Literal(literal) => Expr::Literal(literal),
+
+                    other => {
+                        block_expr.expr = Box::new(other);
+
+                        Expr::Block(block_expr)
+                    }
+                }
+            }
+
             _ => Expr::Error,
         }
     }
 
-    fn eval_unary(&self, op: UnaryOp, literal: &Literal) -> Option<Literal> {
+    fn eval_unary(&self, op: &UnaryOp, literal: &Literal) -> Option<Literal> {
         match (op, literal) {
             (UnaryOp::BitNot, Literal::Bool(x)) => Some(Literal::Bool(!x)),
 
@@ -90,7 +126,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn eval_binary(&self, op: BinaryOp, left: &Literal, right: &Literal) -> Option<Literal> {
+    fn eval_binary(&mut self, op: &BinaryOp, left: &Literal, right: &Literal, op_span: Span) -> Option<Literal> {
         match (op, left, right) {
             (BinaryOp::Or, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a || *b)),
             (BinaryOp::And, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a && *b)),
@@ -106,14 +142,20 @@ impl <'a> SemAnalyzer<'a> {
                 if *b != 0 {
                     Some(Literal::Int(a / b))
                 } else {
-                    // TODO: report divide by zero?
+                    self.diagnostics.error(CompilerError::DivideByZero {
+                        op_span, 
+                    });
+
                     None
                 },
             (BinaryOp::Pow, Literal::Int(a), Literal::Int(b)) => 
                 if *b >= 0 {
                     Some(Literal::Int(a.pow(*b as u32)))
                 } else { // negative exponent not allowed for ints
-                    // TODO, report error
+                    self.diagnostics.error(CompilerError::NegExpOnInt {
+                        op_span,
+                    });
+
                     None
                 },
 
@@ -125,13 +167,16 @@ impl <'a> SemAnalyzer<'a> {
             (BinaryOp::Sub, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a-b)),
             (BinaryOp::Mul, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a*b)),
             (BinaryOp::Div, Literal::Real(a), Literal::Real(b)) => 
-                if *b != 0 {
+                if *b != 0.0 {
                     Some(Literal::Real(a / b))
                 } else {
-                    // TODO: report divide by zero?
+                    self.diagnostics.error(CompilerError::DivideByZero {
+                        op_span, 
+                    });
+
                     None
                 },
-            (BinaryOp::Pow, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a.powf(*b)))
+            (BinaryOp::Pow, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a.powf(*b))),
 
             _ => None,
         }
@@ -140,7 +185,11 @@ impl <'a> SemAnalyzer<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use super::*;
+    use crate::compiler::sem_analyzer::scope::Scope;
+    use crate::compiler::sem_analyzer::symbol::Symbol;
 
     #[test]
     fn test_const () {
@@ -164,16 +213,17 @@ mod tests {
             diagnostics: &mut Diagnostics::new(),
         };
 
-        let result = self.fold_expr(Expr::Ident(Ident::Symbol(0)));
+        let result = sem_analyzer.fold_expr(Expr::Ident(Ident::Symbol(0)));
 
         assert_eq!(result, Expr::Literal(Literal::Int(1)));
     }
 
     #[test]
     fn test_unary_1() {
-        let sem_analyzer = SemAnalyzer::new(
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
             Program {items: Vec::new()},
-            &mut Diagnostics::new()
+            &mut diagnostics
         );
 
         let result = sem_analyzer.fold_expr(Expr::Unary(UnaryExpr {
@@ -216,5 +266,257 @@ mod tests {
         }));
 
         assert_eq!(result, Expr::Literal(Literal::Real(-1.0)));
+    }
+
+    #[test]
+    fn test_binary_1() {
+        // 1.0 + 2^3
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics
+        );
+
+        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Real(1.0))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(2))),
+                right: Box::new(Expr::Literal(Literal::Int(3))),
+                op: BinaryOp::Pow,
+                op_span: Span{line: 0, col: 1},
+                expr_type: Type::Int,
+            })),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Real,
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Real(9.0)));
+    }
+
+    #[test]
+    fn test_binary_2() {
+        // 1.0 + 2^(-3) // Neg exp on integer error
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics
+        );
+
+        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Real(1.0))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(2))),
+                right: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Literal(Literal::Int(3))),
+                    op: UnaryOp::Neg,
+                    op_span: Span{line: 0, col:2},
+                    expr_type: Type::Int,
+                })),
+                op: BinaryOp::Pow,
+                op_span: Span{line: 0, col: 1},
+                expr_type: Type::Int,
+            })),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Real,
+        }));
+
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn test_binary_3() {
+        // 1.0 + 2.0^(-3)
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics
+        );
+
+        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Real(1.0))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Real(2.0))),
+                right: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Literal(Literal::Int(3))),
+                    op: UnaryOp::Neg,
+                    op_span: Span{line: 0, col:2},
+                    expr_type: Type::Int,
+                })),
+                op: BinaryOp::Pow,
+                op_span: Span{line: 0, col: 1},
+                expr_type: Type::Real,
+            })),
+            op: BinaryOp::Add,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Real,
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Real(1.125)));
+    }
+
+    #[test]
+    fn test_block_1() {
+        // {
+        //     let n = 2;
+        //     n-1
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(2)),
+                }),
+            ],
+            expr: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Sub,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            expr_type: Type::Int
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Int(1)));
+    }
+
+    #[test]
+    fn test_block_2() {
+        // {
+        //     let n = 1 + bool; // wrong types result in Expr::Error
+        //     n-1
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Error,
+                }),
+            ],
+            expr: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Sub,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            expr_type: Type::Int
+        }));
+
+        assert_eq!(result, Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Error,
+                }),
+            ],
+            expr: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Sub,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            expr_type: Type::Int
+        }));
+    }
+
+    #[test]
+    fn test_block_3() {
+        // {
+        //     let n =  bool; 
+        //     n-1 // Expr error
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                }),
+            ],
+            expr: Box::new(Expr::Error),
+            expr_type: Type::Int
+        }));
+
+        assert_eq!(result, Expr::Block(BlockExpr {
+            statements: vec![],
+            expr: Box::new(Expr::Error),
+            expr_type: Type::Int
+        }));
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Const(Literal::Bool(true)),
+                span: Span{line: 0, col: 0},
+            },
+        ]);
     }
 }

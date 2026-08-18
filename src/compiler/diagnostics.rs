@@ -173,6 +173,14 @@ pub enum CompilerError {
         name: String,
         span: Span,
     },
+
+    DivideByZero {
+        op_span: Span,
+    },
+
+    NegExpOnInt {
+        op_span: Span,
+    },
 }
 
 #[derive(Debug, PartialEq)]
