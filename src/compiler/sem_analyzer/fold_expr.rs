@@ -110,6 +110,19 @@ impl <'a> SemAnalyzer<'a> {
                 }
             }
 
+            Expr::Cases(mut cases_expr) => {
+                // Verify case statements dont have duplicate patterns (including defaults).
+                // let scrutinee = self.fold_expr(*cases_expr.scrutinee);
+
+                Expr::Cases(cases_expr)
+            }
+
+            Expr::Sample(mut sample_expr) => {
+                // Verify there is at most 1 default arm and that probabilites add up to 1.
+
+                Expr::Sample(sample_expr)
+            }
+
             _ => Expr::Error,
         }
     }
@@ -238,6 +251,7 @@ mod tests {
 
     #[test]
     fn test_unary_2() {
+        // -a
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {items: Vec::new()},
             symbols: vec![
@@ -354,6 +368,79 @@ mod tests {
         }));
 
         assert_eq!(result, Expr::Literal(Literal::Real(1.125)));
+    }
+
+    #[test]
+    fn test_binary_4() {
+        // n + (a + 1) where n is an unknown variable and a is a folded constant
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                        ("a".to_string(), 1),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Add,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            op: BinaryOp::Add,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(result, Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Literal(Literal::Int(2))),
+            op: BinaryOp::Add,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        }));
+    }
+
+    #[test]
+    fn test_binary_5() {
+        // 1 < 2
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(
+            Program {items: Vec::new()},
+            &mut diagnostics
+        );
+
+        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Literal(Literal::Int(2))),
+            op: BinaryOp::Lt,
+            op_span: Span {line: 0, col: 0},
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
 
     #[test]
