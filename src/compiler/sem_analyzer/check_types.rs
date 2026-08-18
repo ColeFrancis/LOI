@@ -305,6 +305,8 @@ impl <'a> SemAnalyzer<'a> {
                     None
                 }
             }
+            (Type::Mod(val), Type::Int) => Some(Type::Mod(*val)),
+
             (Type::Int,  Type::Mod(_)) => Some(Type::Int),
             (Type::Int,  Type::Int   ) => Some(Type::Int),
             (Type::Real, Type::Mod(_)) => Some(Type::Real),
