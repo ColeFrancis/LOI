@@ -839,4 +839,11 @@ mod tests {
     //         scrutinee: Box::new(),
     //     }));
     // }
+
+    /*
+    Other tests:
+        a or c are SymbolKind::Variable so they cant fold (but arm expressons should each fold)
+        duplicate branches to get Expr::Error
+        (1, 1) | (2, 2) type patterns
+    */
 }
