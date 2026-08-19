@@ -135,41 +135,23 @@ impl <'a> SemAnalyzer<'a> {
                     return Expr::Error;
                 }
 
-                /*
-                    fold scrutinee in place
-                    loop through arms
-                        fold arm return expression
+                cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee));
 
-                        if scrutinee is literal and matches arm then
-                            set whole expression to this arm's expression
-                            break
-                        endif
-                    end loop
-                */
+                for arm in &mut cases_expr.arms {
+                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+                    arm.expr = self.fold_expr(owned_expr);
 
-                // cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee));
-                // for arm in &mut cases_expr.arms {
-                //     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                //     arm.expr = self.fold_expr(owned_expr);
+                    let matches = arm.pattern.iter_mut().any(|pattern| {
+                        let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
+                        *pattern = self.fold_pattern(owned_pattern);
 
-                //     if let Expr::Literal(scrutinee_literal) = *cases_expr.scrutinee {
-                //         for simple_pattern in &mut arm.pattern {
-                //             match simple_pattern {
-                //                 SimplePattern::Literal(pattern_literal) => {}
+                        Self::expr_matches_pattern(&cases_expr.scrutinee, pattern)
+                    });
 
-                //                 SimplePattern::Ident(pattern_ident) => {}
-
-                //                 SimplePattern::Tuple(pattern_tuple) => {}
-
-                //                 SimplePattern::Comparison(pattern_comparison) => {}
-
-                //                 SimplePattern::Default => {}
-
-                //                 SimplePattern::Error => {}
-                //             }
-                //         }
-                //     }
-                // }
+                    if matches {
+                        return std::mem::replace(&mut arm.expr, Expr::Error);
+                    }
+                }
 
                 Expr::Cases(cases_expr)
             }
@@ -232,31 +214,6 @@ impl <'a> SemAnalyzer<'a> {
                         endif
                     end loop
                 */
-                let mut has_errors = false;
-                let mut has_default = false;
-                let mut running_prob = 0.0;
-                for arm in &mut sample_expr.arms {
-                    match &arm.prob {
-                        Prob::Expr(expr) => {
-                            // fold expr then if its literal, add to running_prob.
-                        }
-
-                        Prob::Default => {
-                            if has_default {
-                                self.diagnostics.error(CompilerError::DuplicatePattern {
-                                    span: arm.arm_span,
-                                });
-                                has_errors = true;
-                            }
-                            else {
-                                has_default = true;
-                            }
-                        }
-                    }
-                }
-                if has_errors {
-                    return Expr::Error;
-                }
 
                 Expr::Sample(sample_expr)
             }
@@ -330,6 +287,99 @@ impl <'a> SemAnalyzer<'a> {
             (BinaryOp::Pow, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a.powf(*b))),
 
             _ => None,
+        }
+    }
+
+    fn fold_pattern(&mut self, pattern: SimplePattern) -> SimplePattern {
+        match pattern {
+            SimplePattern::Default => SimplePattern::Default,
+
+            SimplePattern::Literal(literal) => SimplePattern::Literal(literal),
+
+            SimplePattern::Ident(Ident::Symbol(id)) => match &self.symbols[id].kind {
+                SymbolKind::Const(literal) => SimplePattern::Literal(literal.clone()),
+                _ => SimplePattern::Ident(Ident::Symbol(id)),
+            }
+
+            SimplePattern::Tuple(mut patterns) => {
+                for pattern in &mut patterns {
+                    let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
+
+                    *pattern = self.fold_pattern(owned_pattern);
+                }
+
+                SimplePattern::Tuple(patterns)
+            }
+
+            SimplePattern::Comparison(mut comp_pattern) => {
+                comp_pattern.expr = Box::new(self.fold_expr(*comp_pattern.expr));
+
+                SimplePattern::Comparison(comp_pattern)
+            }
+
+            SimplePattern::Error => SimplePattern::Error,
+
+            _ => SimplePattern::Error, // Ident::Str unreachable
+        }
+    }
+
+    // expr and pattern already folded
+    fn expr_matches_pattern(expr: &Expr, pattern: &SimplePattern) -> bool {
+        match expr {
+            Expr::Literal(expr_literal) => match pattern {
+                SimplePattern::Default => true,
+
+                SimplePattern::Literal(pattern_literal) => expr_literal == pattern_literal, 
+
+                SimplePattern::Comparison(comp_pattern) => {
+                    if let Expr::Literal(pattern_literal) = *comp_pattern.expr {
+                        match comp_pattern.op {
+                            CompOp::Lt => *expr_literal < pattern_literal,
+
+                            CompOp::Gt => *expr_literal > pattern_literal,
+
+                            CompOp::Le => *expr_literal <= pattern_literal,
+
+                            CompOp::Ge => *expr_literal >= pattern_literal,
+                        } 
+                    }
+                    else {
+                        false
+                    }
+                }
+                
+
+                _ => false,
+            }
+
+            Expr::Tuple(expr_tuple) => match pattern {
+                SimplePattern::Tuple(pattern_tuple) => {
+                    expr_tuple.iter().zip(pattern_tuple.iter()).all(|(expr,pattern)| {
+                        Self::expr_matches_pattern(expr, pattern)
+                    })
+                }
+
+                _ => false,
+            }
+
+            _ => false // only literals can match
+        }
+    }
+
+    fn pattern_matches_literal(pattern: &SimplePattern, literal: &Literal) -> bool {
+        match pattern {
+            SimplePattern::Literal(pattern_literal) => 
+                literal == pattern_literal,
+
+            SimplePattern::Ident(pattern_ident) => false,
+
+            SimplePattern::Tuple(pattern_tuple) => false,
+
+            SimplePattern::Comparison(pattern_comparison) => false,
+
+            SimplePattern::Default => true,
+
+            SimplePattern::Error => false,
         }
     }
 }
@@ -744,4 +794,49 @@ mod tests {
             },
         ]);
     }
+
+    // #[test]
+    // fn test_cases_1() {
+    //     // cases (a, b) {
+    //     //     (c, 1) : 1+1,
+    //     //     _ : 2*3,
+    //     // }
+
+    //     let mut diagnostics = Diagnostics::new();
+    //     let mut sem_analyzer = SemAnalyzer {
+    //         ast: Program {items: Vec::new()},
+    //         symbols: vec![
+    //             Symbol {
+    //                 name: "a".to_string(),
+    //                 kind: SymbolKind::Const(Literal::Int(1)),
+    //                 span: Span{line: 0, col: 0},
+    //             },
+    //             Symbol {
+    //                 name: "a".to_string(),
+    //                 kind: SymbolKind::Const(Literal::Int(1)),
+    //                 span: Span{line: 0, col: 0},
+    //             },
+    //             Symbol {
+    //                 name: "c".to_string(),
+    //                 kind: SymbolKind::Const(Literal::Int(1)),
+    //                 span: Span{line: 0, col: 0},
+    //             },
+    //         ],
+    //         scopes: vec![
+    //             Scope {
+    //                 symbols: HashMap::from([
+    //                     ("a".to_string(), 0),
+    //                     ("b".to_string(), 1),
+    //                     ("c".to_string(), 2),
+    //                 ])
+    //             },
+    //         ],
+
+    //         diagnostics: &mut diagnostics,
+    //     };
+
+    //     let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+    //         scrutinee: Box::new(),
+    //     }));
+    // }
 }

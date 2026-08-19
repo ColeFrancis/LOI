@@ -66,7 +66,7 @@ pub enum Expr {
     Error,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy, PartialOrd)]
 pub enum Literal {
     Bool(bool),
     Int(i64),
