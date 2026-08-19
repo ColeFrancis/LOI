@@ -24,6 +24,8 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashSet;
+
 use super::SemAnalyzer;
 use super::symbol::SymbolKind;
 use super::types::Type;
@@ -113,13 +115,58 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Cases(mut cases_expr) => {
-                // Verify case statements dont have duplicate patterns (including defaults).
+                // Check for duplicate arms
+                let mut has_errors = false;
+                let mut seen_patterns = Vec::new();
+                for arm in &cases_expr.arms {
+                    for pattern in &arm.pattern {
+                        if seen_patterns.iter().any(|p| *p == pattern) {
+                            self.diagnostics.error(CompilerError::DuplicatePattern {
+                                span: arm.arm_span,
+                            });
+
+                            has_errors = true;
+                        }
+
+                        seen_patterns.push(pattern);
+                    }
+                }
+                if has_errors {
+                    return Expr::Error;
+                }
+
                 // let scrutinee = self.fold_expr(*cases_expr.scrutinee);
 
                 Expr::Cases(cases_expr)
             }
 
             Expr::Sample(mut sample_expr) => {
+                let mut has_errors = false;
+                let mut has_default = false;
+                let mut running_prob = 0.0;
+                for arm in &mut sample_expr.arms {
+                    match &arm.prob {
+                        Prob::Default => {
+                            if has_default {
+                                self.diagnostics.error(CompilerError::DuplicatePattern {
+                                    span: arm.arm_span,
+                                });
+                                has_errors = true;
+                            }
+                            else {
+                                has_default = true;
+                            }
+                        }
+
+                        Prob::Expr(expr) => {
+                            // fold expr then if its literal, add to running_prob.
+                        }
+                    }
+                }
+                if has_errors {
+                    return Expr::Error;
+                }
+
                 // Verify there is at most 1 default arm 
                 // Verify that probabilites add up to 1. (For literals at least. There may be unknown idents in rel_t for example)
 

@@ -174,12 +174,19 @@ pub enum CompilerError {
         span: Span,
     },
 
+    // When folding expressions
     DivideByZero {
         op_span: Span,
     },
 
+    // When folding expressions
     NegExpOnInt {
         op_span: Span,
+    },
+
+    // when folding cases expression
+    DuplicatePattern {
+        span: Span,
     },
 }
 
