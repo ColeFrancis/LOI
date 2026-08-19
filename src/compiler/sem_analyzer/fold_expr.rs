@@ -135,17 +135,112 @@ impl <'a> SemAnalyzer<'a> {
                     return Expr::Error;
                 }
 
-                // let scrutinee = self.fold_expr(*cases_expr.scrutinee);
+                /*
+                    fold scrutinee in place
+                    loop through arms
+                        fold arm return expression
+
+                        if scrutinee is literal and matches arm then
+                            set whole expression to this arm's expression
+                            break
+                        endif
+                    end loop
+                */
+
+                // cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee));
+                // for arm in &mut cases_expr.arms {
+                //     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+                //     arm.expr = self.fold_expr(owned_expr);
+
+                //     if let Expr::Literal(scrutinee_literal) = *cases_expr.scrutinee {
+                //         for simple_pattern in &mut arm.pattern {
+                //             match simple_pattern {
+                //                 SimplePattern::Literal(pattern_literal) => {}
+
+                //                 SimplePattern::Ident(pattern_ident) => {}
+
+                //                 SimplePattern::Tuple(pattern_tuple) => {}
+
+                //                 SimplePattern::Comparison(pattern_comparison) => {}
+
+                //                 SimplePattern::Default => {}
+
+                //                 SimplePattern::Error => {}
+                //             }
+                //         }
+                //     }
+                // }
 
                 Expr::Cases(cases_expr)
             }
 
             Expr::Sample(mut sample_expr) => {
+                /*
+                    set has_errors to false
+                    set has_default to false
+                    set foldable to true
+                    set running_prob to 0.0
+
+                    loop for arm in arms
+                        fold arm return expression
+
+                        if arm prb is an expression then
+                            fold prob expression (mutate prob in place)
+
+                            if expression is literal then
+                                if literal is outside [0,1] then
+                                    report error
+                                    set has_errors to true
+                                else then
+                                    add literal to running_prob
+                                    if running_prob is greater than 1 then
+                                        report error
+                                        set has_errors to true
+                                    endif
+                                endif
+                            else then
+                                set foldable to false
+                            endif
+                        else if arm prob is default then
+                            if has_default then
+                                report error
+                                set has_errors to true
+                            else then
+                                set running_prob to 1.0
+                                set has_default to true
+                            endif
+                        end if
+                    end loop
+                    if running_prob is less than 1.0 then
+                        report error
+                        set has_errors to true
+                    endif
+                    if has_errors then
+                        return Expr::Error
+                    endif
+                    if not foldable then
+                        return Expr::Sample
+                    endif
+
+                    set random to random number in [0,1]
+                    set running_prob to 0.0
+                    loop for arm in arms
+                        add arm prob literal to running_prob
+                        if random is less than running prob then
+                            set whole expression to this arms expression
+                            break
+                        endif
+                    end loop
+                */
                 let mut has_errors = false;
                 let mut has_default = false;
                 let mut running_prob = 0.0;
                 for arm in &mut sample_expr.arms {
                     match &arm.prob {
+                        Prob::Expr(expr) => {
+                            // fold expr then if its literal, add to running_prob.
+                        }
+
                         Prob::Default => {
                             if has_default {
                                 self.diagnostics.error(CompilerError::DuplicatePattern {
@@ -157,18 +252,11 @@ impl <'a> SemAnalyzer<'a> {
                                 has_default = true;
                             }
                         }
-
-                        Prob::Expr(expr) => {
-                            // fold expr then if its literal, add to running_prob.
-                        }
                     }
                 }
                 if has_errors {
                     return Expr::Error;
                 }
-
-                // Verify there is at most 1 default arm 
-                // Verify that probabilites add up to 1. (For literals at least. There may be unknown idents in rel_t for example)
 
                 Expr::Sample(sample_expr)
             }
