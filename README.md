@@ -19,7 +19,7 @@ Language Of Interaction (LOI). Research platform for the purpose of understandin
 
 ## AI Development
 
-This project was developed by me. AI tools were used as an advisory resource in debugging and discussing implementation details. All source code was written by me.
+This project, its vision, and architecture were developed by me. AI tools were used as an advisory resource in debugging, discussing implementation details, and drafting simple methods and function. ~10% of the code was written by ChatGPT under strict supervision, the rest was written by me.
 
 ## License
 
