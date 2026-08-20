@@ -216,8 +216,7 @@ impl <'a> SemAnalyzer<'a> {
                     loop for arm in arms
                         add arm prob literal to running_prob
                         if random is less than running prob then
-                            set whole expression to this arms expression
-                            break
+                            return arm expression
                         endif
                     end loop
                 */
