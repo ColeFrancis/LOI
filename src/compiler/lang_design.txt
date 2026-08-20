@@ -1,12 +1,11 @@
-hi I'm designing a programming language and simulator that sits somewhere between a hardware description language, a graph computation system, and a mathematical modeling language.
+I'm designing a programming language for the research platform that sits somewhere between a hardware description language, a graph computation system, and a mathematical modeling language.
 
 The core idea is that everything is built from entities and relations.
 
 An entity defines a set of possible values. it could be a logic symbol, or a number, or a hair color.
 A relation maps inputs to a single output. It could be a logic gate, a multiplier, or the update rule of a cellular atomata.
 
-
-Relations can be deterministic, probabilistic, arithmetic, logical, etc. The simulator executes networks of 
+Relations can be deterministic or probabilistic, arithmetic or logical, etc. The simulator executes networks of 
 interconnected relations, so the same framework can represent things like logic circuits, DSP systems, 
 cellular automata, stochastic processes, and potentially more general computational systems.
 In simulation, the current inputs to the relation are taken in, the output is generated and the output entities value is set to this at the next timestep. Sort of like F(n+1) = 2 * F(n)
@@ -24,46 +23,41 @@ Some other design constraints:
 - The simulator is event-driven, like Verilog
 - Arithmetic types such as Reals may have predefined operations like +, -, *, etc.
 - I'm trying to balance mathematical elegance, simplicity, and practical usability.
-
-I'd mainly like feedback on:
-
-- Whether the syntax feels natural and readable.
-- Whether the cases/pattern syntax is intuitive.
-- Whether the distinction between entities and relations makes sense.
-- Any syntax that feels awkward, inconsistent, or surprising.
+- All variables (declared through let statements) are immutable, all relations (act as functions) contain
+    no state. State is created through the structure of nets
 
 The goal is not to build another HDL, but to build a tool that allows me to investigate how computation emerges 
 in a variety of systems.
 
-
-# Later:
-
-support for probabilistically generating network entuties/relations
-support for dynamic networks (networks themselves change over time)
-support for arrays of entities in networks and generate block-type constructions
-user can specify the delay of relations (keep the same way of handling delays in a wheel though to allow future multithreading)
-
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Entities: edges of the network (graph). Contain state.
+Entities: Hold values in the network, act as the wires connecting relations.
 
 Syntax is inspired by sets in mathematics
 
-ent R = Real;
+
 ent COIN = {H, T};
 ent Bool = {0, 1};
 ent Z4 = Mod(4);
-ent spike = Impulse;
+
+several entity types are predefined:
+
+Bool (true or false)
+Impulse (think of it as a single spike, or a delta dirac function)
+Int (represented as u64)
+Real (represented as f64)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Relations: nodes of the network. Stateless. Define simple relations between states.
+Relations: Inspired by logic gates in a digital circuit. Implemented as mathematical functions. Like functions in 
+    functional programming languages, relations contain no state, and variables are immutable. 
     The point is to keep these simple so the computational power emerges out of the network's structure, not
     the relations themselves.
 
 Syntax is inspired by functions/maps in mathematics
 
+rel_t NAME : (param1: Type1, param2: Type2, ...) -> ReturnType = Expression; 
+
 // Simple adder
-rel ADD : (a: R, b: R) -> R = 
+rel_t ADD : (a: R, b: R) -> R = 
     a + b;
 
 // Simple nand gate
@@ -75,15 +69,8 @@ rel NAND : (a:Bool, b:Bool) -> Bool =
         (1, 1) : 0,
     };
 
-// Produces a random 0 or 1
-rel RAND : () -> Bool = 
-    sample {
-        0.5 : 0,
-        0.5 : 1,
-    };
-
-// Produces a random H or T, differing depending on input value
-rel COND_PROB : (x: COIN) -> COIN = 
+// Samples a conditional probability distribution, conditioned on the value of x
+rel_t COND_PROB : (x: COIN) -> COIN = 
     cases x {
         H : sample {
             0.9 : H,   // H with a 90% probability
@@ -97,20 +84,20 @@ rel COND_PROB : (x: COIN) -> COIN =
 
 
 // Returns a 1 if x is over some threshold
-rel THRESH : (x:R) -> Bool = 
+rel_t THRESH : (x:R) -> Bool = 
     cases x {
         >= 1 : true,
         _ : false
     };
 
-rel CUSTOM_BINOM : (p : Real) -> Bool = 
+rel_t CUSTOM_BINOM : (p : Real) -> Bool = 
     sample {
         p : true,
         _ : false
     };
 
-// Simulates the rule in the cellular atomata "conway's game of life"
-rel LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
+// Simulates the rule in the cellular atomata "conway's game of life". Each param is the value of a neighbor.
+rel_t LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
     let n = u+ur+r+rd+d+dl+l+ul;
     
     cases (c) {
@@ -126,9 +113,9 @@ rel LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-Network: graph, defined input and output entities as well as initialized values. think Hardware Description Language
+Network: Is like a circuit. Has structure, and its nets(wires) hold values. 
 
-Syntax is inspired by Verilog and VHDL
+Syntax is inspired by Hardware Description Languages such as Verilog or VHDL
 
 // Half adder
 net HALF_ADD {
@@ -138,7 +125,7 @@ net HALF_ADD {
     output sum : Bool;
     output carry : Bool;
 
-    sum := XOR(a,b);
+    sum := XOR(a,b); // Instantiate a rel_t
     carry := AND(a, b);
 };
 
@@ -151,7 +138,7 @@ net ADD {
     output sum: Bool;
     output cout: Bool;
 
-    HALF_ADD {
+    HALF_ADD { // Instantiate another net
         a := a,
         b := b,
         sum := h1_sum,
@@ -169,7 +156,7 @@ net ADD {
 }
 
 // Showcases initializing entity values
-net XOR_INV {
+net XOR_INVERTER {
     input a: Bool;
 
     output s: Bool;
@@ -211,16 +198,21 @@ net DLATCH {
     s := NAND(d, clk);
     r := NAND(d_not, clk);
 
-    // feedback loop not allowed in verilog but technically how a latch/flipflop is formed.
-    // Allowed in my simulator.
+    // feedback loop creates state.
     q := NAND(s, q_not);
     q_not := NAND(r, q);
 }
 
-~ : Bool not
-* : Bool and
-+ : Bool or
-^ : Exponent
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+Let statements allow you to define variables that make the language more readable and usable. 
+
+let n = 4
+
+rel_t EXAMPLE : (a: Int) -> Int = {
+    let m = n * a;
+
+    m + 4
+};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 Leaky integrate and fire neuron example
