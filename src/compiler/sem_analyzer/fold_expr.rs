@@ -25,6 +25,7 @@
 //! Author: Cole Francis
 
 use std::collections::HashSet;
+use rand::Rng;
 
 use super::SemAnalyzer;
 use super::symbol::SymbolKind;
@@ -34,7 +35,7 @@ use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 use crate::compiler::parser::ast::*;
 
 impl <'a> SemAnalyzer<'a> {
-    pub(super) fn fold_expr (&mut self, expr: Expr) -> Expr {
+    pub(super) fn fold_expr (&mut self, expr: Expr, fold_sample: bool) -> Expr {
         match expr {
             Expr::Literal(literal) => Expr::Literal(literal),
 
@@ -44,7 +45,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Unary(mut unary) => {
-                unary.expr = Box::new(self.fold_expr(*unary.expr));
+                unary.expr = Box::new(self.fold_expr(*unary.expr, fold_sample));
 
                 if let Expr::Literal(literal) = &*unary.expr {
                     if let Some(result) = self.eval_unary(&unary.op, literal) {
@@ -56,8 +57,8 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Binary(mut binary) => {
-                let mut expr_left = self.fold_expr(*binary.left);
-                let mut expr_right = self.fold_expr(*binary.right);
+                let mut expr_left = self.fold_expr(*binary.left, fold_sample);
+                let mut expr_right = self.fold_expr(*binary.right, fold_sample);
 
                 // if you have int + real convert to real + real to simplify eval_binary
                 if binary.expr_type == Type::Real {
@@ -86,7 +87,7 @@ impl <'a> SemAnalyzer<'a> {
                 for expr in &mut exprs {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
 
-                    *expr = self.fold_expr(owned_expr);
+                    *expr = self.fold_expr(owned_expr, fold_sample);
                 }
 
                 Expr::Tuple(exprs)
@@ -97,13 +98,13 @@ impl <'a> SemAnalyzer<'a> {
 
                 for statement in owned_statements {
                     if let Statement::Let(let_statement) = statement {
-                        if let Some(folded_let_statement) = self.fold_let(let_statement) {
+                        if let Some(folded_let_statement) = self.fold_let(let_statement, fold_sample) {
                             block_expr.statements.push(Statement::Let(folded_let_statement));
                         }
                     }
                 }
 
-                match self.fold_expr(*block_expr.expr) {
+                match self.fold_expr(*block_expr.expr, fold_sample) {
                     Expr::Literal(literal) => Expr::Literal(literal),
 
                     other => {
@@ -117,33 +118,34 @@ impl <'a> SemAnalyzer<'a> {
             Expr::Cases(mut cases_expr) => {
                 // Check for duplicate arms
                 let mut has_errors = false;
-                let mut seen_patterns = Vec::new();
+                let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
                 for arm in &mut cases_expr.arms {
                     for pattern in &mut arm.pattern {
                         let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
-                        *pattern = self.fold_pattern(owned_pattern);
+                        *pattern = self.fold_pattern(owned_pattern, fold_sample);
 
-                        if seen_patterns.iter().any(|p| *p == pattern) {
+                        if let Some((_, old_span)) = seen_patterns.iter().find(|(p, _)| *p == pattern) {
                             self.diagnostics.error(CompilerError::DuplicatePattern {
-                                span: arm.arm_span,
+                                old_arm_span: old_span.clone(),
+                                arm_span: arm.arm_span,
                             });
 
                             has_errors = true;
                         }
 
-                        seen_patterns.push(pattern);
+                        seen_patterns.push((pattern, arm.arm_span));
                     }
                 }
                 if has_errors {
                     return Expr::Error;
                 }
 
-                cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee));
+                cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee, fold_sample));
 
                 let mut foldable = true;
                 for arm in &mut cases_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                    arm.expr = self.fold_expr(owned_expr);
+                    arm.expr = self.fold_expr(owned_expr, fold_sample);
 
                     let matches = arm.pattern.iter_mut().any(|pattern| {
                         match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern){
@@ -164,64 +166,90 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Sample(mut sample_expr) => {
-                /*
-                    set has_errors to false
-                    set has_default to false
-                    set foldable to true
-                    set running_prob to 0.0
+                let mut has_errors = false;
+                let mut has_default = false;
+                let mut foldable = true;
+                let mut running_prob = 0.0;
+                for arm in &mut sample_expr.arms {
+                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+                    arm.expr = self.fold_expr(owned_expr, fold_sample);
 
-                    loop for arm in arms
-                        fold arm return expression
+                    match &mut arm.prob {
+                        Prob::Expr(expr) => {
+                            let owned_expr = std::mem::replace(expr, Expr::Error);
+                            let mut folded_expr = self.fold_expr(owned_expr, fold_sample);
+                            // Convert prob to real number 
+                            if let Expr::Literal(Literal::Int(int)) = folded_expr {
+                                println!("reached");
+                                folded_expr = Expr::Literal(Literal::Real(int as f64));
+                            }
+                            *expr = folded_expr;
 
-                        if arm prb is an expression then
-                            fold prob expression (mutate prob in place)
+                            match expr {
+                                Expr::Literal(Literal::Real(prob)) => {
+                                    if *prob < 0.0 || *prob > 1.0 {
+                                        self.diagnostics.error(CompilerError::ProbOutOfRange {
+                                            total_prob: false,
+                                            val: *prob,
+                                            span: arm.arm_span.clone(),
+                                        });
 
-                            if expression is literal then
-                                if literal is outside [0,1] then
-                                    report error
-                                    set has_errors to true
-                                else then
-                                    add literal to running_prob
-                                    if running_prob is greater than 1 then
-                                        report error
-                                        set has_errors to true
-                                    endif
-                                endif
-                            else then
-                                set foldable to false
-                            endif
-                        else if arm prob is default then
-                            if has_default then
-                                report error
-                                set has_errors to true
-                            else then
-                                set running_prob to 1.0
-                                set has_default to true
-                            endif
-                        end if
-                    end loop
-                    if running_prob is less than 1.0 then
-                        report error
-                        set has_errors to true
-                    endif
-                    if has_errors then
-                        return Expr::Error
-                    endif
-                    if not foldable then
-                        return Expr::Sample
-                    endif
+                                        has_errors = true;
+                                    }
 
-                    set random to random number in [0,1]
-                    set running_prob to 0.0
-                    loop for arm in arms
-                        add arm prob literal to running_prob
-                        if random is less than running prob then
-                            return arm expression
-                        endif
-                    end loop
-                */
+                                    running_prob += *prob;
+                                }
 
-                Expr::Sample(sample_expr)
+                                _ => foldable = false,
+                            }
+                        }
+
+                        Prob::Default => {
+                            if has_default {
+                                self.diagnostics.error(CompilerError::MultipleDefaultProb {
+                                    arm_span: arm.arm_span.clone(),
+                                });
+                                has_errors = true;
+                            }
+                            else {
+                                has_default = true;
+                            }
+                        }
+                    }
+                }
+                if running_prob < 0.0 || running_prob > 1.0 {
+                    self.diagnostics.error(CompilerError::ProbOutOfRange {
+                        total_prob: true,
+                        val: running_prob,
+                        span: sample_expr.span,
+                    });
+                    has_errors = true;
+                }
+
+                if has_errors {
+                    return Expr::Error;
+                }
+                if !foldable || !fold_sample {
+                    return Expr::Sample(sample_expr);
+                }
+                
+                let mut rng = rand::rng();
+                let random_val: f64 = rng.random();
+                running_prob = 0.0;
+                for arm in sample_expr.arms {
+                    if let Prob::Expr(Expr::Literal(Literal::Real(prob))) = arm.prob {
+                        running_prob += prob;
+                    
+                        if random_val < running_prob {
+                            return arm.expr;
+                        }
+                    }
+                    else if let Prob::Default = arm.prob {
+                        return arm.expr;
+                    }
+                }
+
+                Expr::Error // Not reachable
             }
 
             _ => Expr::Error,
@@ -296,7 +324,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn fold_pattern(&mut self, pattern: SimplePattern) -> SimplePattern {
+    fn fold_pattern(&mut self, pattern: SimplePattern, fold_sample: bool) -> SimplePattern {
         match pattern {
             SimplePattern::Default => SimplePattern::Default,
 
@@ -311,14 +339,14 @@ impl <'a> SemAnalyzer<'a> {
                 for pattern in &mut patterns {
                     let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
 
-                    *pattern = self.fold_pattern(owned_pattern);
+                    *pattern = self.fold_pattern(owned_pattern, fold_sample);
                 }
 
                 SimplePattern::Tuple(patterns)
             }
 
             SimplePattern::Comparison(mut comp_pattern) => {
-                comp_pattern.expr = Box::new(self.fold_expr(*comp_pattern.expr));
+                comp_pattern.expr = Box::new(self.fold_expr(*comp_pattern.expr, fold_sample));
 
                 SimplePattern::Comparison(comp_pattern)
             }
@@ -437,7 +465,7 @@ mod tests {
             diagnostics: &mut Diagnostics::new(),
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Ident(Ident::Symbol(0)));
+        let result = sem_analyzer.fold_expr(Expr::Ident(Ident::Symbol(0)), true);
 
         assert_eq!(result, Expr::Literal(Literal::Int(1)));
     }
@@ -455,7 +483,7 @@ mod tests {
             op: UnaryOp::BitNot,
             op_span: Span{line: 0, col: 0},
             expr_type: Type::Bool,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
@@ -488,7 +516,7 @@ mod tests {
             op: UnaryOp::Neg,
             op_span: Span{line: 0, col: 0},
             expr_type: Type::Real,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Real(-1.0)));
     }
@@ -514,7 +542,7 @@ mod tests {
             op: BinaryOp::Add,
             op_span: Span {line: 0, col: 0},
             expr_type: Type::Real,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Real(9.0)));
     }
@@ -545,7 +573,7 @@ mod tests {
             op: BinaryOp::Add,
             op_span: Span {line: 0, col: 0},
             expr_type: Type::Real,
-        }));
+        }), true);
 
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -576,7 +604,7 @@ mod tests {
             op: BinaryOp::Add,
             op_span: Span {line: 0, col: 0},
             expr_type: Type::Real,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Real(1.125)));
     }
@@ -623,7 +651,7 @@ mod tests {
             op: BinaryOp::Add,
             op_span: Span{line: 0, col: 0},
             expr_type: Type::Int,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -649,7 +677,7 @@ mod tests {
             op: BinaryOp::Lt,
             op_span: Span {line: 0, col: 0},
             expr_type: Type::Int,
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
@@ -697,7 +725,7 @@ mod tests {
                 expr_type: Type::Int,
             })),
             expr_type: Type::Int
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Int(1)));
     }
@@ -745,7 +773,7 @@ mod tests {
                 expr_type: Type::Int,
             })),
             expr_type: Type::Int
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Block(BlockExpr {
             statements: vec![
@@ -802,7 +830,7 @@ mod tests {
             ],
             expr: Box::new(Expr::Error),
             expr_type: Type::Int
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Block(BlockExpr {
             statements: vec![],
@@ -896,7 +924,7 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Int(2)));
     }
@@ -979,7 +1007,7 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Int(6)));
     }
@@ -1068,7 +1096,7 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Tuple(vec![
@@ -1183,7 +1211,7 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Tuple(vec![
@@ -1296,7 +1324,7 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Int(2)));
     }
@@ -1383,8 +1411,250 @@ mod tests {
             ],
             expr_type: Type::Int,
             span: Span{line: 0, col: 0},
-        }));
+        }), true);
 
         assert_eq!(result, Expr::Error);
+    }
+
+    #[test]
+    fn test_cases_7() {
+        // cases 3.5 {    
+        //     >= 3: true,
+        //     _ : false,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Literal(Literal::Real(3.5))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Comparison(ComparisonPattern {
+                            op: CompOp::Ge,
+                            expr: Box::new(Expr::Literal(Literal::Int(3))),
+                        }),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }), true);
+
+        assert_eq!(result, Expr::Literal(Literal::Bool(true)));
+    }
+
+    #[test]
+    fn test_sample_1() {
+        // sample {
+        //     0+0 => true,
+        //     _ => false,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(0))),
+                        right: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    })),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }), true);
+        
+        diagnostics.debug_print();
+
+        assert_eq!(result, Expr::Literal(Literal::Bool(false)));
+    }
+
+    #[test]
+    fn test_sample_2() {
+        // sample {    // fold_sample set to false
+        //     0+0 => true,
+        //     _ => false,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(0))),
+                        right: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    })),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }), false);
+
+        assert_eq!(result, Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }));
+    }
+
+    #[test]
+    fn test_sample_3() {
+        // sample {
+        //     1.2 => true, // prob greater than 1
+        //     -0.1 => true, // prob less than 0
+        //     _ => false, // total prob greater than 1
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(1.2))),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(-0.1))),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }), true);
+        
+        diagnostics.debug_print();
+
+        assert_eq!(result, Expr::Error);
+        assert_eq!(diagnostics.num_errors(), 3);
+    }
+
+    #[test]
+    fn test_sample_4() {
+        // sample {
+        //     0+0 => true,
+        //     _ => false,
+        //     _ => true,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(0))),
+                        right: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    })),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }), true);
+        
+        diagnostics.debug_print();
+
+        assert_eq!(result, Expr::Error);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }

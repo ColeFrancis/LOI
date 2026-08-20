@@ -137,6 +137,11 @@ pub enum CompilerError {
         op_span: Span,
     },
 
+    NonRealProb {
+        prob_type: Type,
+        arm_span: Span,
+    },
+
     UnequalTupleLength {
         left_len: usize,
         right_len: usize,
@@ -186,8 +191,20 @@ pub enum CompilerError {
 
     // when folding cases expression
     DuplicatePattern {
+        old_arm_span: Span,
+        arm_span: Span,
+    },
+
+    // For a single arm's probability
+    ProbOutOfRange {
+        total_prob: bool,
+        val: f64,
         span: Span,
     },
+
+    MultipleDefaultProb {
+        arm_span: Span,
+    }
 }
 
 #[derive(Debug, PartialEq)]

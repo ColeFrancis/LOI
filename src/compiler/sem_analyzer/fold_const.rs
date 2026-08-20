@@ -37,17 +37,18 @@ impl <'a> SemAnalyzer<'a> {
 
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt) => self.fold_let(stmt).map(Item::Let),
+            Item::Let(stmt) => self.fold_let(stmt, true).map(Item::Let),
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
-            Item::Net(net_type) => Some(Item::Net(self.fold_net(net_type))),
 
+            // ent_t have no expressions
+            // net expressions are evaluated during synthesis 
             other => Some(other),
         }
     }
 
     // returning None means the statement was sucessfully folded
-    pub(super) fn fold_let(&mut self, mut stmt: LetStatement) -> Option<LetStatement> {
-        stmt.expr = self.fold_expr(stmt.expr);
+    pub(super) fn fold_let(&mut self, mut stmt: LetStatement, fold_sample: bool) -> Option<LetStatement> {
+        stmt.expr = self.fold_expr(stmt.expr, fold_sample);
 
         if let Expr::Literal(literal) = stmt.expr {
             if let Ident::Symbol(id) = stmt.name {
@@ -61,7 +62,9 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn fold_rel(&mut self, mut rel_t: RelType) -> RelType {
-        // Fold expressions here. The expression likely won't be fully folded but this will at least do some work as well as verifying cases and sample stuff
+        // Do not fold samples as these are evaluated compile-time
+        rel_t.body = self.fold_expr(rel_t.body, false);
+        
         rel_t
     }
 
@@ -77,7 +80,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::Symbol;
+    use crate::compiler::sem_analyzer::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::{Diagnostics, Span};
     use crate::compiler::sem_analyzer::types::Type;
 
@@ -108,7 +111,7 @@ mod tests {
         let result = sem_analyzer.fold_let(LetStatement {
             name: Ident::Symbol(0),
             expr: Expr::Literal(Literal::Int(1)),
-        });
+        }, true);
 
         assert_eq!(result, None);
         assert_eq!(sem_analyzer.symbols, vec![
@@ -118,5 +121,162 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ]);
+    }
+
+    #[test]
+    fn fold_program() {
+        // let n = 1;
+
+        // rel_t ADD_N : (a:Int) -> Int = a + n;
+
+        // net NET {
+        //     input in: Int;
+        //     output out: Int;
+
+        //     out := ADD_N(in);
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: vec![
+                Item::Let(LetStatement {
+                    name: Ident::Symbol(0),
+                    expr: Expr::Literal(Literal::Int(1)),
+                }),
+                Item::Rel(RelType {
+                    name: Ident::Symbol(1),
+                    params: vec![
+                        Param {
+                            name: Ident::Symbol(2),
+                            param_type: Type::Int,
+                        }
+                    ],
+                    return_type: Type::Int,
+                    body: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Symbol(2))),
+                        right: Box::new(Expr::Ident(Ident::Symbol(0))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                }),
+                Item::Net(Net {
+                    name: Ident::Symbol(3),
+                    items: vec![
+                        NetItem::Input(Param {
+                            name: Ident::Symbol(4),
+                            param_type: Type::Int,
+                        }),
+                        NetItem::Output(Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Int,
+                        }),
+                        NetItem::RelInst(RelInst {
+                            asignee: Ident::Symbol(5),
+                            rel: Ident::Symbol(1),
+                            args: vec![
+                                Ident::Symbol(4),
+                            ],
+                        }),
+                    ],
+                }),
+            ]},
+            symbols: vec![
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "ADD_N".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Int],
+                        return_type: Type::Int,
+                    },
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "NET".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("in".to_string(), NetPort {
+                                symbol: 4,
+                                input: true,
+                            }),
+                            ("in".to_string(), NetPort {
+                                symbol: 5,
+                                input: false,
+                            }),
+                        ]),
+                    },
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "in".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span {line: 0, col: 0},
+                },
+                Symbol {
+                    name: "out".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("n".to_string(), 0),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        sem_analyzer.fold_const();
+
+        assert_eq!(sem_analyzer.ast, Program {items: vec![
+            Item::Rel(RelType {
+                name: Ident::Symbol(1),
+                params: vec![
+                    Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    }
+                ],
+                return_type: Type::Int,
+                body: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(2))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Int,
+                }),
+            }),
+            Item::Net(Net {
+                name: Ident::Symbol(3),
+                items: vec![
+                    NetItem::Input(Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::Output(Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Int,
+                    }),
+                    NetItem::RelInst(RelInst {
+                        asignee: Ident::Symbol(5),
+                        rel: Ident::Symbol(1),
+                        args: vec![
+                            Ident::Symbol(4),
+                        ],
+                    }),
+                ],
+            }),
+        ]});
     }
 }

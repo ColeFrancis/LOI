@@ -136,7 +136,20 @@ impl <'a> SemAnalyzer<'a> {
                             has_errors = true;
                             continue;
                         }
-                    }
+                    };
+
+                    if let Prob::Expr(expr) = &arm.prob {
+                        let prob_type = self.get_expr_type(&expr);
+
+                        if prob_type != Type::Int && prob_type != Type::Real {
+                            self.diagnostics.error(CompilerError::NonRealProb {
+                                prob_type,
+                                arm_span: arm.arm_span.clone(),
+                            });
+
+                            has_errors = true;
+                        }
+                    };
                 }
                 
                 sample_expr.expr_type = expr_type;
@@ -1810,5 +1823,40 @@ mod tests {
             expr_type: Type::Custom(Ident::Symbol(0)),
             span: Span {line: 0, col: 0},
         })));
+    }
+
+    #[test]
+    fn sample_expr_4() {
+        // sample {
+        //     true : true, // Non real probability
+        //     _ : false,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Bool(true))),
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
+        }));
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }
