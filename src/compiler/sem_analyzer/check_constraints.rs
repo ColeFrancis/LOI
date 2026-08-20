@@ -25,7 +25,9 @@
 use super::SemAnalyzer;
 
 impl <'a> SemAnalyzer<'a> {
-    pub check_constraints(&mut self) {
+    // inputs only assigned to outputs and vice versa of rel inst ad net inst in nets 
+    // ents only driven once (not used as output multiple times)
+    pub fn check_constraints(&mut self) {
         
     }
 }

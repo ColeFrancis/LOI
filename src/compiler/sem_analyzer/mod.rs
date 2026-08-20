@@ -21,6 +21,7 @@ mod check_types;
 mod check_expr;
 mod fold_const;
 mod fold_expr;
+mod check_constraints;
 
 use crate::compiler::symbol::Symbol;
 use crate::compiler::sem_analyzer::scope::Scope;

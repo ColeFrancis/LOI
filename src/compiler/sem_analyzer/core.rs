@@ -50,9 +50,7 @@ impl <'a> SemAnalyzer<'a> {
         self.resolve_names();
         self.check_types();
         self.fold_const();
-        // self.check_constraints();
-            // inputs only assigned to outputs and vice versa of rel inst ad net inst in nets 
-            // ents only driven once (not used as output multiple times)
+        self.check_constraints();
 
         (self.ast, self.symbols)
     }
