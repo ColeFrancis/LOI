@@ -23,7 +23,8 @@
 //! Author: Cole Francis
 
 use std::collections::HashMap;
-use super::symbol::SymbolId;
+
+use crate::compiler::symbol::SymbolId;
 
 #[derive(PartialEq, Debug)]
 pub struct Scope {

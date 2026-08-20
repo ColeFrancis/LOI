@@ -24,7 +24,7 @@
 
 use super::lexer::token::TokenKind;
 use super::sem_analyzer::types::Type;
-use super::sem_analyzer::symbol::SymbolKind;
+use super::symbol::SymbolKind;
 
 pub struct Diagnostics {
     errors: Vec<CompilerError>,

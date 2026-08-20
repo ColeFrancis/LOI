@@ -22,7 +22,7 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::parser::ast::Ident;
+use crate::compiler::ast::Ident;
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Type {

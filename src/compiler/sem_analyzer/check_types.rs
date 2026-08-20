@@ -24,9 +24,11 @@
 
 use super::SemAnalyzer;
 use super::types::Type;
-use super::symbol::{SymbolId, SymbolKind};
-use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::{Diagnostics, CompilerError, Span};
+use crate::compiler::{
+    symbol::{SymbolId, SymbolKind},
+    ast::*,
+    diagnostics::{Diagnostics, CompilerError, Span},
+};
 
 impl <'a> SemAnalyzer<'a> {
     // Add type info to symbols
@@ -384,7 +386,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::{Symbol, NetPort};
+    use crate::compiler::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::Diagnostics;
 
     #[test]

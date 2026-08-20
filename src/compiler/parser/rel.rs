@@ -24,9 +24,11 @@
 
 use super::Parser;
 use super::sync::SyncRule;
-use super::ast::*;
-use crate::compiler::lexer::token::TokenKind;
-use crate::compiler::diagnostics::Span;
+use crate::compiler::{
+    ast::*,
+    lexer::token::TokenKind,
+    diagnostics::Span,
+};
 
 impl<'a> Parser<'a> {
     // Rel_t token already consumed
@@ -78,7 +80,7 @@ mod tests {
     use super::*;
     use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::diagnostics::{Diagnostics, Span};
-    use crate::compiler::parser::ast;
+    use crate::compiler::ast;
     use crate::compiler::sem_analyzer::types::Type;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {

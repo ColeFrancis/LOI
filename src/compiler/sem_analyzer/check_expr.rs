@@ -25,9 +25,11 @@
 
 use super::SemAnalyzer;
 use super::types::Type;
-use super::symbol::SymbolKind;
-use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Operation, Span, ExprType};
+use crate::compiler::{
+    symbol::SymbolKind,
+    ast::*,
+    diagnostics::{CompilerError, Operation, Span, ExprType},
+};
 
 impl <'a> SemAnalyzer<'a> {
     // Verify typers/operators and set expr_types
@@ -568,7 +570,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::Symbol;
+    use crate::compiler::symbol::Symbol;
     use crate::compiler::diagnostics::Diagnostics;
 
     #[test]

@@ -28,11 +28,12 @@ use std::collections::HashSet;
 use rand::Rng;
 
 use super::SemAnalyzer;
-use super::symbol::SymbolKind;
 use super::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
-
-use crate::compiler::parser::ast::*;
+use crate::compiler::{
+    ast::*,
+    symbol::SymbolKind,
+    diagnostics::{Diagnostics, Span, CompilerError},
+};
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn fold_expr (&mut self, expr: Expr, fold_sample: bool) -> Expr {
@@ -441,7 +442,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::Symbol;
+    use crate::compiler::symbol::Symbol;
 
     #[test]
     fn test_const () {

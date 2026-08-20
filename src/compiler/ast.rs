@@ -22,9 +22,9 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::sem_analyzer::symbol::SymbolId;
+use super::symbol::SymbolId;
+use super::diagnostics::Span;
 use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::Span;
 
 #[derive(PartialEq, Debug)]
 pub struct Program {

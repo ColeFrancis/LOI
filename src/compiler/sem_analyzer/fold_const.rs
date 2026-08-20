@@ -19,9 +19,11 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use super::symbol::SymbolKind;
 
-use crate::compiler::parser::ast::*;
+use crate::compiler::{
+    ast::*,
+    symbol::SymbolKind,
+};
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn fold_const(&mut self) {
@@ -39,9 +41,9 @@ impl <'a> SemAnalyzer<'a> {
         match item {
             Item::Let(stmt) => self.fold_let(stmt, true).map(Item::Let),
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
+            Item::Net(net) => Some(Item::Net(self.fold_net(net))),
 
             // ent_t have no expressions
-            // net expressions are evaluated during synthesis 
             other => Some(other),
         }
     }
@@ -69,7 +71,17 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn fold_net(&mut self, mut net_t: Net) -> Net {
-        // Dont fold expressions inside nets here, as samples must be evaluated for each instantiation
+        for item in &mut net_t.items {
+            match item {
+                NetItem::Init(ent_init) => {
+                    let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
+                    // Do not fold samples as these are evaluated upon the instantiation of a net
+                    ent_init.val = self.fold_expr(owned_expr, false);
+                }
+
+                _ => {}
+            }
+        }
         net_t
     }
 }
@@ -80,7 +92,7 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::sem_analyzer::symbol::{Symbol, NetPort};
+    use crate::compiler::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::{Diagnostics, Span};
     use crate::compiler::sem_analyzer::types::Type;
 
@@ -133,6 +145,8 @@ mod tests {
         //     input in: Int;
         //     output out: Int;
 
+        //     init b: Int = 2+n;
+
         //     out := ADD_N(in);
         // }
         let mut diagnostics = Diagnostics::new();
@@ -169,6 +183,19 @@ mod tests {
                         NetItem::Output(Param {
                             name: Ident::Symbol(5),
                             param_type: Type::Int,
+                        }),
+                        NetItem::Init(EntInit {
+                            param: Param {
+                                name: Ident::Symbol(6),
+                                param_type: Type::Int,
+                            },
+                            val: Expr::Binary(BinaryExpr {
+                                left: Box::new(Expr::Literal(Literal::Int(2))),
+                                right: Box::new(Expr::Ident(Ident::Symbol(0))),
+                                op: BinaryOp::Add,
+                                op_span: Span{line: 0, col: 0},
+                                expr_type: Type::Int,
+                            }),
                         }),
                         NetItem::RelInst(RelInst {
                             asignee: Ident::Symbol(5),
@@ -225,6 +252,11 @@ mod tests {
                     kind: SymbolKind::Ent(Type::Int),
                     span: Span {line: 0, col: 0},
                 },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span {line: 0, col: 0},
+                },
             ],
             scopes: vec![
                 Scope {
@@ -267,6 +299,13 @@ mod tests {
                     NetItem::Output(Param {
                         name: Ident::Symbol(5),
                         param_type: Type::Int,
+                    }),
+                    NetItem::Init(EntInit {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Int,
+                        },
+                        val: Expr::Literal(Literal::Int(3)),
                     }),
                     NetItem::RelInst(RelInst {
                         asignee: Ident::Symbol(5),

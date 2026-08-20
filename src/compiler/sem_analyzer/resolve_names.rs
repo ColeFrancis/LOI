@@ -26,11 +26,13 @@
 use std::collections::{HashMap, HashSet};
 
 use super::SemAnalyzer;
-use super::symbol::{Symbol, SymbolKind, SymbolId, NetPort};
 use super::scope::Scope;
 use super::types::Type;
-use crate::compiler::parser::ast::*;
-use crate::compiler::diagnostics::{CompilerError, Span, Expected};
+use crate::compiler::{
+    ast::*,
+    symbol::{Symbol, SymbolKind, SymbolId, NetPort},
+    diagnostics::{CompilerError, Span, Expected},
+};
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn resolve_names(&mut self) {

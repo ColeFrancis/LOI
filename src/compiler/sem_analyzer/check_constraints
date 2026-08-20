@@ -12,10 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod lexer;
-mod parser;
-mod sem_analyzer;
-mod diagnostics;
+//! # check_constraints
+//!
+//! Handles final error checking before the compiler enters backend stages
+//!
+//! ## Invariants
+//!
+//! - After this point, all errors catchable by the front-end will be caught
+//!
+//! Author: Cole Francis
 
-mod ast;
-mod symbol;
+use super::SemAnalyzer;
+
+impl <'a> SemAnalyzer<'a> {
+    pub check_constraints(&mut self) {
+        
+    }
+}

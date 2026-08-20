@@ -24,9 +24,9 @@
 
 use std::collections::HashMap;
 
-use super::types::Type;
-use crate::compiler::parser::ast::Literal;
-use crate::compiler::diagnostics::Span;
+use super::diagnostics::Span;
+use crate::compiler::ast::Literal;
+use crate::compiler::sem_analyzer::types::Type;
 
 pub type SymbolId = usize;
 
