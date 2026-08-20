@@ -118,8 +118,11 @@ impl <'a> SemAnalyzer<'a> {
                 // Check for duplicate arms
                 let mut has_errors = false;
                 let mut seen_patterns = Vec::new();
-                for arm in &cases_expr.arms {
-                    for pattern in &arm.pattern {
+                for arm in &mut cases_expr.arms {
+                    for pattern in &mut arm.pattern {
+                        let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
+                        *pattern = self.fold_pattern(owned_pattern);
+
                         if seen_patterns.iter().any(|p| *p == pattern) {
                             self.diagnostics.error(CompilerError::DuplicatePattern {
                                 span: arm.arm_span,
@@ -137,18 +140,22 @@ impl <'a> SemAnalyzer<'a> {
 
                 cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee));
 
+                let mut foldable = true;
                 for arm in &mut cases_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
                     arm.expr = self.fold_expr(owned_expr);
 
                     let matches = arm.pattern.iter_mut().any(|pattern| {
-                        let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
-                        *pattern = self.fold_pattern(owned_pattern);
-
-                        Self::expr_matches_pattern(&cases_expr.scrutinee, pattern)
+                        match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern){
+                            Some(res) => res,
+                            None => {
+                                foldable = false;
+                                false
+                            }
+                        }
                     });
 
-                    if matches {
+                    if matches && foldable {
                         return std::mem::replace(&mut arm.expr, Expr::Error);
                     }
                 }
@@ -323,46 +330,63 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // expr and pattern already folded
-    fn expr_matches_pattern(expr: &Expr, pattern: &SimplePattern) -> bool {
+    // expr and pattern already folded. Returns none if there is an expr or pattern that prevents the outer cases expression from being folded
+    fn expr_matches_pattern(expr: &Expr, pattern: &SimplePattern) -> Option<bool> {
         match expr {
             Expr::Literal(expr_literal) => match pattern {
-                SimplePattern::Default => true,
+                SimplePattern::Default => Some(true),
 
-                SimplePattern::Literal(pattern_literal) => expr_literal == pattern_literal, 
+                SimplePattern::Literal(pattern_literal) => Some(expr_literal == pattern_literal), 
 
                 SimplePattern::Comparison(comp_pattern) => {
                     if let Expr::Literal(pattern_literal) = *comp_pattern.expr {
                         match comp_pattern.op {
-                            CompOp::Lt => *expr_literal < pattern_literal,
+                            CompOp::Lt => Some(*expr_literal < pattern_literal),
 
-                            CompOp::Gt => *expr_literal > pattern_literal,
+                            CompOp::Gt => Some(*expr_literal > pattern_literal),
 
-                            CompOp::Le => *expr_literal <= pattern_literal,
+                            CompOp::Le => Some(*expr_literal <= pattern_literal),
 
-                            CompOp::Ge => *expr_literal >= pattern_literal,
+                            CompOp::Ge => Some(*expr_literal >= pattern_literal),
                         } 
                     }
                     else {
-                        false
+                        None
                     }
                 }
                 
 
-                _ => false,
+                _ => None,
             }
 
             Expr::Tuple(expr_tuple) => match pattern {
-                SimplePattern::Tuple(pattern_tuple) => {
-                    expr_tuple.iter().zip(pattern_tuple.iter()).all(|(expr,pattern)| {
-                        Self::expr_matches_pattern(expr, pattern)
-                    })
+                // default is true on tuple if the tuple is matchable (all literals)
+                SimplePattern::Default => {
+                    for expr in expr_tuple {
+                        match expr {
+                            Expr::Literal(_) => {}
+                            _ => return None,
+                        }
+                    }
+
+                    Some(true)
                 }
 
-                _ => false,
+                SimplePattern::Tuple(pattern_tuple) => {
+                    for (expr, pattern) in expr_tuple.iter().zip(pattern_tuple.iter()) {
+                        match Self::expr_matches_pattern(expr, pattern) {
+                            Some(true) => {}
+                            Some(false) => return Some(false),
+                            None => return None, 
+                        }
+                    }
+                    Some(true)
+                }
+
+                _ => None,
             }
 
-            _ => false // only literals can match
+            _ => None // only literals can match
         }
     }
 
@@ -795,55 +819,573 @@ mod tests {
         ]);
     }
 
-    // #[test]
-    // fn test_cases_1() {
-    //     // cases (a, b) {
-    //     //     (c, 1) : 1+1,
-    //     //     _ : 2*3,
-    //     // }
+    #[test]
+    fn test_cases_1() {
+        // cases (a, b) {    // a=1, b=1 constants
+        //     (c, 1) : 1+1, // c=1 constant
+        //     _ : 2*3,
+        // }
 
-    //     let mut diagnostics = Diagnostics::new();
-    //     let mut sem_analyzer = SemAnalyzer {
-    //         ast: Program {items: Vec::new()},
-    //         symbols: vec![
-    //             Symbol {
-    //                 name: "a".to_string(),
-    //                 kind: SymbolKind::Const(Literal::Int(1)),
-    //                 span: Span{line: 0, col: 0},
-    //             },
-    //             Symbol {
-    //                 name: "a".to_string(),
-    //                 kind: SymbolKind::Const(Literal::Int(1)),
-    //                 span: Span{line: 0, col: 0},
-    //             },
-    //             Symbol {
-    //                 name: "c".to_string(),
-    //                 kind: SymbolKind::Const(Literal::Int(1)),
-    //                 span: Span{line: 0, col: 0},
-    //             },
-    //         ],
-    //         scopes: vec![
-    //             Scope {
-    //                 symbols: HashMap::from([
-    //                     ("a".to_string(), 0),
-    //                     ("b".to_string(), 1),
-    //                     ("c".to_string(), 2),
-    //                 ])
-    //             },
-    //         ],
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
 
-    //         diagnostics: &mut diagnostics,
-    //     };
+            diagnostics: &mut diagnostics,
+        };
 
-    //     let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-    //         scrutinee: Box::new(),
-    //     }));
-    // }
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
 
-    /*
-    Other tests:
-        a or c are SymbolKind::Variable so they cant fold (but arm expressons should each fold)
-        duplicate branches to get Expr::Error
-        (1, 1) | (2, 2) type patterns
-    */
+        assert_eq!(result, Expr::Literal(Literal::Int(2)));
+    }
+
+    #[test]
+    fn test_cases_2() {
+        // cases (a, b) {    // a=2, b=1 constants
+        //     (c, 1) : 1+1, // c=1 constant
+        //     _ : 2*3,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(2)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Int(6)));
+    }
+
+    #[test]
+    fn test_cases_3() {
+        // cases (a, b+1) {    // b=1 constant, a is unknown
+        //     (c, 1) : 1+1, // c=1 constant
+        //     _ : 2*3,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Int,
+                }),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Literal(Literal::Int(2)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Int(2)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Literal(Literal::Int(6)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+    }
+
+    #[test]
+    fn test_cases_4() {
+        // cases (a, b+1) {    // a=1, b=1 constants
+        //     (c, 1) : 1+1, // c is unknown
+        //     _ : 2*3,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Int,
+                }),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Literal(Literal::Int(1)),
+                Expr::Literal(Literal::Int(2)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Int(2)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Literal(Literal::Int(6)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+    }
+
+    #[test]
+    fn test_cases_5() {
+        // cases (a, b) {    // a=1, b=1 constants
+        //     (c, 2) | (1, 1) : 1+1, // c=1 constant
+        //     _ : 2*3,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(2)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Expr::Literal(Literal::Int(2)));
+    }
+
+    #[test]
+    fn test_cases_6() {
+        // cases (a, b) {   
+        //     (c, 1) | (1, 1) : 1+1, // duplicate patterns
+        //     _ : 2*3,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("a".to_string(), 0),
+                        ("b".to_string(), 1),
+                        ("c".to_string(), 2),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Add,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(2))),
+                        right: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Expr::Error);
+    }
 }
