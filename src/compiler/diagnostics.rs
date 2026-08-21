@@ -204,7 +204,13 @@ pub enum CompilerError {
 
     MultipleDefaultProb {
         arm_span: Span,
-    }
+    },
+
+    MultipleEntDrivers {
+        name: String,
+        first_span: Span,
+        last_span: Span
+    },
 }
 
 #[derive(Debug, PartialEq)]

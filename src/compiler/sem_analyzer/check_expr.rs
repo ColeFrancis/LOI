@@ -34,7 +34,7 @@ use crate::compiler::{
 impl <'a> SemAnalyzer<'a> {
     // Verify typers/operators and set expr_types
     // Recursively call to set all sub-expression types, then verify types with get_expr_type
-    pub(super) fn add_types_expr(&mut self, mut expr: Expr) -> Option<Expr> {
+    pub(super) fn add_types_expr(&mut self, expr: Expr) -> Option<Expr> {
         match expr {
             Expr::Literal(literal) => Some(Expr::Literal(literal)),
 

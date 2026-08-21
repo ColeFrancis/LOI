@@ -128,6 +128,7 @@ impl<'a> Parser<'a> {
     fn parse_rel_inst(&mut self) -> Option<RelInst> {
         let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
+        let span = self.peek().span.clone();
         self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
 
         let rel = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
@@ -154,6 +155,7 @@ impl<'a> Parser<'a> {
             asignee,
             rel,
             args,
+            span,
         })
     }
 
@@ -187,6 +189,7 @@ impl<'a> Parser<'a> {
     fn parse_connection(&mut self) -> Option<Connection> {
         let port = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
 
+        let span = self.peek().span.clone();
         self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 1})?;
 
         let ent = self.expect_ident(&SyncRule::NetItem {depth: 1})?;
@@ -194,6 +197,7 @@ impl<'a> Parser<'a> {
         Some(Connection {
             port,
             ent,
+            span,
         })
     }
 }
@@ -315,18 +319,22 @@ mod tests {
                         Connection {
                             port: build_ident_str("a"),
                             ent: build_ident_str("a"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("b"),
                             ent: build_ident_str("b"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("sum"),
                             ent: build_ident_str("h1_sum"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("cout"),
                             ent: build_ident_str("h1_carry"),
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -336,18 +344,22 @@ mod tests {
                         Connection {
                             port: build_ident_str("a"),
                             ent: build_ident_str("h1_sum"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("b"),
                             ent: build_ident_str("cin"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("sum"),
                             ent: build_ident_str("sum"),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: build_ident_str("cout"),
                             ent: build_ident_str("h2_carry"),
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -358,6 +370,7 @@ mod tests {
                         build_ident_str("h1_carry"),
                         build_ident_str("h2_carry"),
                     ],
+                    span: Span {line: 0, col: 0},
                 })
             ],
         }));

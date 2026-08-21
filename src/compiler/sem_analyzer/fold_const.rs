@@ -176,13 +176,18 @@ mod tests {
                 Item::Net(Net {
                     name: Ident::Symbol(3),
                     items: vec![
-                        NetItem::Input(Param {
-                            name: Ident::Symbol(4),
-                            param_type: Type::Int,
+                        NetItem::Input(InputEnt {
+                            param: Param {
+                                name: Ident::Symbol(4),
+                                param_type: Type::Int,
+                            },
+                            span: Span{line: 0, col: 0},
                         }),
-                        NetItem::Output(Param {
-                            name: Ident::Symbol(5),
-                            param_type: Type::Int,
+                        NetItem::Output(OutputEnt {
+                            param: Param {
+                                name: Ident::Symbol(5),
+                                param_type: Type::Int,
+                            }
                         }),
                         NetItem::Init(EntInit {
                             param: Param {
@@ -203,6 +208,7 @@ mod tests {
                             args: vec![
                                 Ident::Symbol(4),
                             ],
+                            span: Span {line: 0, col: 0},
                         }),
                     ],
                 }),
@@ -292,13 +298,18 @@ mod tests {
             Item::Net(Net {
                 name: Ident::Symbol(3),
                 items: vec![
-                    NetItem::Input(Param {
-                        name: Ident::Symbol(4),
-                        param_type: Type::Int,
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(4),
+                            param_type: Type::Int,
+                        },
+                        span: Span{line: 0, col: 0},
                     }),
-                    NetItem::Output(Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Int,
+                    NetItem::Output(OutputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Int,
+                        },
                     }),
                     NetItem::Init(EntInit {
                         param: Param {
@@ -313,6 +324,7 @@ mod tests {
                         args: vec![
                             Ident::Symbol(4),
                         ],
+                        span: Span {line: 0, col: 0},
                     }),
                 ],
             }),

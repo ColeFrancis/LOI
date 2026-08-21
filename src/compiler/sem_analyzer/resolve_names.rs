@@ -1128,6 +1128,7 @@ mod tests {
                             span: Span {line: 0, col: 0},
                         },
                     ],
+                    span: Span {line: 0, col: 0},
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Str {
@@ -1144,6 +1145,7 @@ mod tests {
                                 val: "d".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: Ident::Str {
@@ -1154,6 +1156,7 @@ mod tests {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -1185,6 +1188,7 @@ mod tests {
                         Ident::Symbol(5),
                         Ident::Symbol(7),
                     ],
+                    span: Span {line: 0, col: 0},
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(1),
@@ -1192,10 +1196,12 @@ mod tests {
                         Connection {
                             port: Ident::Symbol(2),
                             ent: Ident::Symbol(8),
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: Ident::Symbol(3),
                             ent: Ident::Symbol(6),
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -1371,6 +1377,7 @@ mod tests {
                             span: Span {line: 0, col: 0},
                         },
                     ],
+                    span: Span {line: 0, col: 0},
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Str {
@@ -1387,6 +1394,7 @@ mod tests {
                                 val: "d".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: Ident::Str {
@@ -1397,6 +1405,7 @@ mod tests {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -1503,6 +1512,7 @@ mod tests {
                                 val: "a".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                         Connection {
                             port: Ident::Str {
@@ -1513,6 +1523,7 @@ mod tests {
                                 val: "b".to_string(),
                                 span: Span {line: 0, col: 0},
                             },
+                            span: Span {line: 0, col: 0},
                         },
                     ],
                 }),
@@ -1722,6 +1733,7 @@ net SECOND {
                         args: vec![
                             Ident::Symbol(7),
                         ],
+                        span: Span {line: 15, col: 7},
                     }),
                 ],
             }),
@@ -1742,10 +1754,12 @@ net SECOND {
                             Connection {
                                 port: Ident::Symbol(7),
                                 ent: Ident::Symbol(10),
+                                span: Span {line: 23, col: 11},
                             },
                             Connection {
                                 port: Ident::Symbol(8),
                                 ent: Ident::Symbol(11),
+                                span: Span {line: 24, col: 11},
                             },
                         ],
                     }),

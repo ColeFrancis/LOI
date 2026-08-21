@@ -239,8 +239,8 @@ pub struct Net {
 
 #[derive(PartialEq, Debug)]
 pub enum NetItem {
-    Input(Param),
-    Output(Param),
+    Input(InputEnt),
+    Output(OutputEnt),
     Init(EntInit),
     RelInst(RelInst),
     NetInst(NetInst),
@@ -248,9 +248,22 @@ pub enum NetItem {
 }
 
 #[derive(PartialEq, Debug)]
+pub struct InputEnt {
+    pub param: Param,
+    pub span: Span,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct OutputEnt {
+    pub param: Param,
+    // span not needed yet
+}
+
+#[derive(PartialEq, Debug)]
 pub struct EntInit {
     pub param: Param,
     pub val: Expr,
+    // span not needed yet
 }
 
 #[derive(PartialEq, Debug)]
@@ -258,6 +271,7 @@ pub struct RelInst {
     pub asignee: Ident,
     pub rel: Ident,
     pub args: Vec<Ident>, 
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]
@@ -270,4 +284,5 @@ pub struct NetInst {
 pub struct Connection {
     pub port: Ident,
     pub ent: Ident,
+    pub span: Span
 }

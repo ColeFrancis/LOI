@@ -29,8 +29,7 @@ use super::scope::Scope;
 use super::types::Type;
 use crate::compiler::{
     ast::*,
-    symbol::{Symbol, SymbolKind, SymbolId},
-    diagnostics::Span,
+    symbol::{Symbol, SymbolKind},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -197,7 +196,7 @@ impl <'a> SemAnalyzer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::diagnostics::{Diagnostics, Span};
     use crate::compiler::sem_analyzer::scope::Scope;
 
     #[test]

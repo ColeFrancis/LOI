@@ -24,7 +24,6 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashSet;
 use rand::Rng;
 
 use super::SemAnalyzer;
@@ -32,7 +31,7 @@ use super::types::Type;
 use crate::compiler::{
     ast::*,
     symbol::SymbolKind,
-    diagnostics::{Diagnostics, Span, CompilerError},
+    diagnostics::{Span, CompilerError},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -423,11 +422,11 @@ impl <'a> SemAnalyzer<'a> {
             SimplePattern::Literal(pattern_literal) => 
                 literal == pattern_literal,
 
-            SimplePattern::Ident(pattern_ident) => false,
+            SimplePattern::Ident(_) => false,
 
-            SimplePattern::Tuple(pattern_tuple) => false,
+            SimplePattern::Tuple(_) => false,
 
-            SimplePattern::Comparison(pattern_comparison) => false,
+            SimplePattern::Comparison(_) => false,
 
             SimplePattern::Default => true,
 
@@ -443,6 +442,7 @@ mod tests {
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::symbol::Symbol;
+    use crate::compiler::diagnostics::Diagnostics;
 
     #[test]
     fn test_const () {
@@ -557,7 +557,7 @@ mod tests {
             &mut diagnostics
         );
 
-        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
+        let _result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
             left: Box::new(Expr::Literal(Literal::Real(1.0))),
             right: Box::new(Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Literal(Literal::Int(2))),
