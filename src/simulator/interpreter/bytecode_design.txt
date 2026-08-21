@@ -1,0 +1,16 @@
+Instructions:
+    ADD dest, src1, src2
+    SUB dest, src1, src2
+    MUL dest, src1, src2
+    DIV dest, src1, src2
+    AND dest, src1, src2
+    OR dest, src1, src2
+    MOD dest, src1, idx // src1 % idx
+
+    JEQ target, src1, src2 // Jump if equal
+    JLT target, src1, src2 // jump if less than
+    JGT target, src1, src2 // jump if greater than
+    JLE target, src1, src2 // jump if less than or equal
+    JGE target, src1, src2 // jump if greater than or equal
+    JMP target             // unconditional jump
+
