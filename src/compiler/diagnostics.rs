@@ -137,6 +137,7 @@ pub enum CompilerError {
         op_span: Span,
     },
 
+    // Prob expr literal but incorrect type
     NonRealProb {
         prob_type: Type,
         arm_span: Span,
@@ -195,7 +196,6 @@ pub enum CompilerError {
         arm_span: Span,
     },
 
-    // For a single arm's probability
     ProbOutOfRange {
         total_prob: bool,
         val: f64,
