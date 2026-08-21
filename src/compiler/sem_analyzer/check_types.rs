@@ -968,9 +968,12 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(0),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(1),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
             ],
@@ -1073,17 +1076,26 @@ mod tests {
         let result = sem_analyzer.check_net(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
@@ -1100,17 +1112,26 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
@@ -1262,17 +1283,26 @@ mod tests {
         let result = sem_analyzer.check_net(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Int,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
@@ -1289,17 +1319,26 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Int,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
             ],
@@ -1385,17 +1424,26 @@ mod tests {
         let result = sem_analyzer.check_net(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
@@ -1411,17 +1459,26 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Custom(Ident::Symbol(0)),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: Ident::Symbol(7),
-                    param_type: Type::Real,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Real,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
             ],

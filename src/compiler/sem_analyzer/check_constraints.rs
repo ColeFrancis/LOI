@@ -28,7 +28,7 @@ use super::SemAnalyzer;
 
 use crate::compiler::{
     ast::*,
-    symbol::SymbolKind,
+    symbol::{SymbolId, SymbolKind},
     diagnostics::{CompilerError, Span},
 };
 
@@ -54,7 +54,7 @@ impl <'a> SemAnalyzer<'a> {
     // TODO: reason more about if I need to check more than just multiple driver errors
     fn check_constraints_net(&mut self, mut net: Net) -> Option<Net> { 
         let mut has_errors = false; 
-        let mut driven_ents = HashSet::new();
+        let mut driven_ents: Vec<(SymbolId, Span)> = Vec::new();
 
         for item in &net.items {
             match item {
@@ -63,15 +63,16 @@ impl <'a> SemAnalyzer<'a> {
                         return None; // Not reachable
                     };
 
-                    if !driven_ents.insert(symbol_id) {
+                    if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == symbol_id) {
                         self.diagnostics.error(CompilerError::MultipleEntDrivers {
                             name: self.symbols[symbol_id].name.to_string(),
-                            first_span: Span{line: 0, col: 0},
-                            last_span: Span{line: 0, col: 0},                            // TODO: Figure out span
+                            first_span: old_span.clone(),
+                            last_span: input_ent.span.clone(),
                         });
 
                         has_errors = true;
                     }
+                    driven_ents.push((symbol_id, input_ent.span));
                 }
 
                 NetItem::RelInst(rel_inst) => {
@@ -79,15 +80,16 @@ impl <'a> SemAnalyzer<'a> {
                         return None; // Not reachable
                     };
 
-                    if !driven_ents.insert(asignee_symbol_id) {
+                    if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == asignee_symbol_id) {
                         self.diagnostics.error(CompilerError::MultipleEntDrivers {
                             name: self.symbols[asignee_symbol_id].name.to_string(),
-                            first_span: Span{line: 0, col: 0},
-                            last_span: rel_inst.span.clone(),                            // TODO: Figure out span
+                            first_span: old_span.clone(),
+                            last_span: rel_inst.span.clone(),
                         });
 
                         has_errors = true;
                     }
+                    driven_ents.push((asignee_symbol_id, rel_inst.span));
                 }
 
                 NetItem::NetInst(net_inst) => {
@@ -113,15 +115,16 @@ impl <'a> SemAnalyzer<'a> {
                                 return None; // not reachable
                             };
 
-                            if !driven_ents.insert(ent_symbol_id) {
+                            if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == ent_symbol_id) {
                                 self.diagnostics.error(CompilerError::MultipleEntDrivers {
                                     name: self.symbols[ent_symbol_id].name.to_string(),
-                                    first_span: Span{line: 0, col: 0},
-                                    last_span: connection.span.clone(),                            // TODO: Figure out span
+                                    first_span: old_span.clone(),
+                                    last_span: connection.span.clone(),
                                 });
 
                                 has_errors = true;
                             }
+                            driven_ents.push((ent_symbol_id, connection.span));
                         }
                     }
                 }
@@ -136,5 +139,320 @@ impl <'a> SemAnalyzer<'a> {
         else {
             Some(net)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+
+    use crate::compiler::sem_analyzer::scope::Scope;
+    use crate::compiler::symbol::{Symbol, NetPort};
+    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::sem_analyzer::types::Type;
+
+    #[test]
+    fn test_net_1() {
+        // net NET {
+        //     input a: Bool;
+        //     output b: Bool;
+
+        //     b := REL(a);
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "REL".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool],
+                        return_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "NET".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("a".to_string(), NetPort {
+                                symbol: 2,
+                                input: true,
+                            }),
+                            ("b".to_string(), NetPort {
+                                symbol: 3,
+                                input: false,
+                            }),
+                        ]),
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("REL".to_string(), 0),
+                        ("NET".to_string(), 1),
+                        ("a".to_string(), 2),
+                        ("b".to_string(), 3),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_constraints_net(Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Bool,
+                    },
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(3),
+                    rel: Ident::Symbol(0),
+                    args: vec![Ident::Symbol(2)],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        });
+
+        assert_eq!(diagnostics.num_errors(), 0);
+    }
+
+    #[test]
+    fn test_net_2() {
+        // net NET {
+        //     input a: Bool;
+        //     input b: Bool; // b driven twice (input, and return of REL)
+
+        //     b := REL(a);
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "REL".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool],
+                        return_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "NET".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("a".to_string(), NetPort {
+                                symbol: 2,
+                                input: true,
+                            }),
+                            ("b".to_string(), NetPort {
+                                symbol: 3,
+                                input: true,
+                            }),
+                        ]),
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("REL".to_string(), 0),
+                        ("NET".to_string(), 1),
+                        ("a".to_string(), 2),
+                        ("b".to_string(), 3),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_constraints_net(Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(3),
+                    rel: Ident::Symbol(0),
+                    args: vec![Ident::Symbol(2)],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        });
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn test_net_3() {
+        // net NET {
+        //     input a: Bool;
+        //     input b: Bool;
+
+        //     b := REL(a);
+        //     NET2 {
+        //         B := b, // B is an output, b is driven 3x
+        //     }
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![
+                Symbol {
+                    name: "REL".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool],
+                        return_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "NET2".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("B".to_string(), NetPort {
+                                symbol: 2,
+                                input: false,
+                            }),
+                        ]),
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "B".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "NET".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            ("a".to_string(), NetPort {
+                                symbol: 4,
+                                input: true,
+                            }),
+                            ("b".to_string(), NetPort {
+                                symbol: 6,
+                                input: true,
+                            }),
+                        ]),
+                    },
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span{line: 0, col: 0},
+                },
+            ],
+            scopes: vec![
+                Scope {
+                    symbols: HashMap::from([
+                        ("REL".to_string(), 0),
+                        ("NET2".to_string(), 1),
+                        ("B".to_string(), 2),
+                        ("NET".to_string(), 3),
+                        ("a".to_string(), 4),
+                        ("b".to_string(), 5),
+                    ])
+                },
+            ],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_constraints_net(Net {
+            name: Ident::Symbol(3),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(5),
+                    rel: Ident::Symbol(0),
+                    args: vec![Ident::Symbol(4)],
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(1),
+                    connections: vec![
+                        Connection {
+                            port: Ident::Symbol(2),
+                            ent: Ident::Symbol(5),
+                            span: Span{line: 0, col: 0},
+                        }
+                    ],
+                }),
+            ],
+        });
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 2);
     }
 }

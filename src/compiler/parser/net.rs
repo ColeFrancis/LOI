@@ -59,9 +59,13 @@ impl<'a> Parser<'a> {
 
         match &token.kind {
             TokenKind::Input => {
+                let span = self.peek().span.clone();
                 self.next();
 
-                let item = NetItem::Input(self.parse_param(&SyncRule::NetItem {depth: 0})?);
+                let item = NetItem::Input(InputEnt {
+                    param: self.parse_param(&SyncRule::NetItem {depth: 0})?,
+                    span,
+                });
 
                 self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
@@ -71,7 +75,9 @@ impl<'a> Parser<'a> {
             TokenKind::Output => {
                 self.next();
 
-                let item = NetItem::Output(self.parse_param(&SyncRule::NetItem {depth: 0})?);
+                let item = NetItem::Output(OutputEnt {
+                    param: self.parse_param(&SyncRule::NetItem {depth: 0})?
+                });
 
                 self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
@@ -290,21 +296,31 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: build_ident_str("ADD"),
             items: vec![
-                NetItem::Input(Param {
-                    name: build_ident_str("a"),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: build_ident_str("a"),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Input(Param {
-                    name: build_ident_str("b"),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: build_ident_str("b"),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: build_ident_str("sum"),
-                    param_type: Type::Bool,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: build_ident_str("sum"),
+                        param_type: Type::Bool,
+                    },
                 }),
-                NetItem::Output(Param {
-                    name: build_ident_str("cout"),
-                    param_type: Type::Bool,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: build_ident_str("cout"),
+                        param_type: Type::Bool,
+                    },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -421,14 +437,19 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: build_ident_str("ADD"),
             items: vec![
-                NetItem::Input(Param {
-                    name: build_ident_str("a"),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: build_ident_str("a"),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
-                NetItem::Output(Param {
-                    name: build_ident_str("sum"),
-                    param_type: Type::Bool,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: build_ident_str("sum"),
+                        param_type: Type::Bool,
+                    },
                 }),
             ],
         }));
@@ -462,9 +483,12 @@ mod tests {
             name: build_ident_str("ADD"),
             items: vec![
                 NetItem::Error,
-                NetItem::Input(Param {
-                    name: build_ident_str("b"),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: build_ident_str("b"),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
             ],
@@ -498,14 +522,19 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: build_ident_str("ADD"),
             items: vec![
-                NetItem::Input(Param {
-                    name: build_ident_str("a"),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: build_ident_str("a"),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::Error,
-                NetItem::Output(Param {
-                    name: build_ident_str("sum"),
-                    param_type: Type::Bool,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: build_ident_str("sum"),
+                        param_type: Type::Bool,
+                    },
                 }),
             ],
         }));

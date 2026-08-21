@@ -161,8 +161,8 @@ impl <'a> SemAnalyzer<'a> {
 
     fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
-            NetItem::Input(mut param) => {
-                let (name, span) = self.extract_ident_str(param.name)?;
+            NetItem::Input(mut input_ent) => {
+                let (name, span) = self.extract_ident_str(input_ent.param.name)?;
 
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
@@ -178,16 +178,16 @@ impl <'a> SemAnalyzer<'a> {
                     });
                 }
 
-                param.name = Ident::Symbol(symbol_id);
+                input_ent.param.name = Ident::Symbol(symbol_id);
 
-                param.param_type = self.resolve_type(param.param_type)
+                input_ent.param.param_type = self.resolve_type(input_ent.param.param_type)
                     .unwrap_or(Type::Error);
 
-                Some(NetItem::Input(param))
+                Some(NetItem::Input(input_ent))
             }
 
-            NetItem::Output(mut param) => {
-                let (name, span) = self.extract_ident_str(param.name)?;
+            NetItem::Output(mut output_ent) => {
+                let (name, span) = self.extract_ident_str(output_ent.param.name)?;
                 let symbol_id = self.find_or_define_symbol(
                     &name, 
                     SymbolKind::Ent(Type::Unknown), 
@@ -202,12 +202,12 @@ impl <'a> SemAnalyzer<'a> {
                     });
                 }
 
-                param.name = Ident::Symbol(symbol_id);
+                output_ent.param.name = Ident::Symbol(symbol_id);
 
-                param.param_type = self.resolve_type(param.param_type)
+                output_ent.param.param_type = self.resolve_type(output_ent.param.param_type)
                     .unwrap_or(Type::Error);
 
-                Some(NetItem::Output(param))
+                Some(NetItem::Output(output_ent))
             }
 
             NetItem::Init(mut ent_init) => {
@@ -1085,19 +1085,24 @@ mod tests {
                 span: Span {line: 0, col: 0},
             },
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Str {
-                        val: "a".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "a".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Bool,
                     },
-                    param_type: Type::Bool,
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Str {
-                        val: "b".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "b".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Real,
                     },
-                    param_type: Type::Real,
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -1166,13 +1171,18 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(4),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(5),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Symbol(6),
-                    param_type: Type::Real,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Real,
+                    },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -1343,19 +1353,24 @@ mod tests {
                 span: Span {line: 0, col: 0},
             },
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Str {
-                        val: "a".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "a".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Bool,
                     },
-                    param_type: Type::Bool,
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Str {
-                        val: "b".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "b".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Real,
                     },
-                    param_type: Type::Real,
                 }),
                 NetItem::Error,
                 NetItem::RelInst(RelInst {
@@ -1415,13 +1430,18 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(2),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(3),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Symbol(4),
-                    param_type: Type::Real,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Real,
+                    },
                 }),
                 NetItem::Error,
                 NetItem::Error,
@@ -1483,19 +1503,24 @@ mod tests {
                 span: Span {line: 0, col: 0},
             },
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Str {
-                        val: "a".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "a".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Bool,
                     },
-                    param_type: Type::Bool,
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Str {
-                        val: "b".to_string(),
-                        span: Span {line: 0, col: 0},
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Str {
+                            val: "b".to_string(),
+                            span: Span {line: 0, col: 0},
+                        },
+                        param_type: Type::Bool,
                     },
-                    param_type: Type::Bool,
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Str {
@@ -1533,13 +1558,18 @@ mod tests {
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(2),
             items: vec![
-                NetItem::Input(Param {
-                    name: Ident::Symbol(3),
-                    param_type: Type::Bool,
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Bool,
+                    },
+                    span: Span{line: 0, col: 0},
                 }),
-                NetItem::Output(Param {
-                    name: Ident::Symbol(4),
-                    param_type: Type::Bool,
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Bool,
+                    },
                 }),
                 NetItem::Error,
             ],
@@ -1719,13 +1749,18 @@ net SECOND {
             Item::Net(Net {
                 name: Ident::Symbol(6),
                 items: vec![
-                    NetItem::Input(Param {
-                        name: Ident::Symbol(7),
-                        param_type: Type::Int,
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Int,
+                        },
+                        span: Span{line: 12, col: 5},
                     }),
-                    NetItem::Output(Param {
-                        name: Ident::Symbol(8),
-                        param_type: Type::Int,
+                    NetItem::Output(OutputEnt {
+                        param: Param {
+                            name: Ident::Symbol(8),
+                            param_type: Type::Int,
+                        },
                     }),
                     NetItem::RelInst(RelInst {
                         asignee: Ident::Symbol(8),
@@ -1740,13 +1775,18 @@ net SECOND {
             Item::Net(Net {
                 name: Ident::Symbol(9),
                 items: vec![
-                    NetItem::Input(Param {
-                        name: Ident::Symbol(10),
-                        param_type: Type::Custom(Ident::Symbol(2)),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(10),
+                            param_type: Type::Custom(Ident::Symbol(2)),
+                        },
+                        span: Span{line: 19, col: 5},
                     }),
-                    NetItem::Output(Param {
-                        name: Ident::Symbol(11),
-                        param_type: Type::Custom(Ident::Symbol(2)),
+                    NetItem::Output(OutputEnt {
+                        param: Param {
+                            name: Ident::Symbol(11),
+                            param_type: Type::Custom(Ident::Symbol(2)),
+                        },
                     }),
                     NetItem::NetInst(NetInst {
                         net: Ident::Symbol(6),
