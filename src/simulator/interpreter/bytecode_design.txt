@@ -1,12 +1,21 @@
 Instructions:
-		MOV dest, src
+	MOV dest, src
 
-    ADD dest, src1, src2
-    SUB dest, src1, src2
-    MUL dest, src1, src2
-    DIV dest, src1, src2
+    IADD dest, src1, src2
+    ISUB dest, src1, src2
+    IMUL dest, src1, src2
+    IDIV dest, src1, src2
+	IPOW dest, src1, src2
+
+	FADD dest, src1, src2
+    FSUB dest, src1, src2
+    FMUL dest, src1, src2
+    FDIV dest, src1, src2
+	FPOW dest, src1, src2
+
     AND dest, src1, src2
     OR dest, src1, src2
+
     MOD dest, src1, idx // src1 % idx
 
     JEQ target, src1, src2 // Jump if equal
@@ -16,7 +25,7 @@ Instructions:
     JGE target, src1, src2 // jump if greater than or equal
     JMP target             // unconditional jump
 
-		RND dest // generates a random number in range [0,1)
+	RND dest // generates a random number in range [0,1)
 
 
 	sources can be literal or a virtual register
