@@ -13,3 +13,9 @@
 // limitations under the License.
 
 mod test_assembler;
+
+pub struct Interpreter {
+    // relation id refers to index of outer vector
+    bytecode: Vec<Vec<u8>>,
+    registers: [u64; 64],
+}
