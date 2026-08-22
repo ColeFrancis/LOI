@@ -1,4 +1,6 @@
 Instructions:
+		MOV dest, src
+
     ADD dest, src1, src2
     SUB dest, src1, src2
     MUL dest, src1, src2
@@ -13,4 +15,9 @@ Instructions:
     JLE target, src1, src2 // jump if less than or equal
     JGE target, src1, src2 // jump if greater than or equal
     JMP target             // unconditional jump
+
+		RND dest // generates a random number in range [0,1)
+
+
+	sources can be literal or a virtual register
 
