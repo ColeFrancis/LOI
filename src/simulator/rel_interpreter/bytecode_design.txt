@@ -109,7 +109,7 @@ bits:
         0 1 1: CDIV // not implemented yet
         1 0 0: CPOW // not implemented yet
         1 0 1: CABS // not implemented yet
-        1 1 0:
+        1 1 0: CONJ // not implemented yet
         1 1 1:
 
     1 0 f d d d:
