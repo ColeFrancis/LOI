@@ -6,15 +6,18 @@ Instructions:
     IMUL dest, src1, src2
     IDIV dest, src1, src2
 	IPOW dest, src1, src2
+	INEG dest, src
 
 	FADD dest, src1, src2
     FSUB dest, src1, src2
     FMUL dest, src1, src2
     FDIV dest, src1, src2
 	FPOW dest, src1, src2
+	FNEG dest, src
 
     AND dest, src1, src2
     OR dest, src1, src2
+	NOT dest, src
 
     MOD dest, src1, idx // src1 % idx
 
