@@ -22,6 +22,8 @@
 //!
 //! Author: Cole Francis
 
+use super::Interpreter;
+
 impl Interpreter {
     pub fn new(bytecode: Vec<Vec<u8>>) -> Self {
         Self {
@@ -30,11 +32,17 @@ impl Interpreter {
         }
     }
 
-    pub fn evaluate (relation_id: usize, args: Vec<u64>, sim_timestep: usize, rel_delay: usize) -> u64 {
-        // Fill arguments
-        self.registers[..args.len()].copy_from_slice(&args);
+    pub fn evaluate (&mut self, relation_id: usize, args: Vec<u64>, sim_timestep: usize, rel_delay: usize) -> u64 {
+        // Fill time info and arguments
+        self.registers[0] = sim_timestep as u64;
+        self.registers[1] = rel_delay as u64;
+        self.registers[2..args.len() + 2].copy_from_slice(&args);
         
-        // execute relation. return u64?
+        let code = &self.bytecode[relation_id];
+        Self::execute(&mut self.registers, code)
+    }
+
+    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> u64 {
         0
     }
 }

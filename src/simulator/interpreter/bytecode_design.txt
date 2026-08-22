@@ -34,6 +34,10 @@ Instructions:
 
     There are 64 registers, all 64 bits, registers addressed with 8 bits but top 2 ignored
 
+    simulation timestamp put into r0
+    relation delay put into r1
+    n arguments are put into r2..rn+1
+
     little endian
 
     for assembler "#" makes a comment but they must be on their own line 
