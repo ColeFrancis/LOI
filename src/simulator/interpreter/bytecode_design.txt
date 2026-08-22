@@ -1,29 +1,29 @@
 Instructions:
-    IADD dest, src1, src2
-    ISUB dest, src1, src2 // src1-src2
-    IMUL dest, src1, src2
-    IDIV dest, src1, src2 // src1/src2
-    IPOW dest, src1, src2 // src1^src2
+    IADD dest src1 src2
+    ISUB dest src1 src2 // src1-src2
+    IMUL dest src1 src2
+    IDIV dest src1 src2 // src1/src2
+    IPOW dest src1 src2 // src1^src2
 
-    FADD dest, src1, src2
-    FSUB dest, src1, src2
-    FMUL dest, src1, src2
-    FDIV dest, src1, src2
-    FPOW dest, src1, src2
+    FADD dest src1 src2
+    FSUB dest src1 src2
+    FMUL dest src1 src2
+    FDIV dest src1 src2
+    FPOW dest src1 src2
 
-    AND dest, src1, src2
-    OR dest, src1, src2
-    NOT dest, src   
+    AND dest src1, src2
+    OR dest src1, src2
+    NOT dest src   
 
-    MOD dest, src1, idx // src1 % idx  
-    ITOF dest, src    // Convert int to float
+    MOD dest src1 idx // src1 % idx  
+    ITOF dest src    // Convert int to float, src must be reg
 
     JMP offset             // unconditional jump  
-    JEQ offset, src1, src2 // Jump if equal
-    JLT offset, src1, src2 // jump if less than
-    JGT offset, src1, src2 // jump if greater than
-    JLE offset, src1, src2 // jump if less than or equal
-    JGE offset, src1, src2 // jump if greater than or equal
+    JEQ offset src1 src2 // Jump if equal
+    JLT offset src1 src2 // jump if less than
+    JGT offset src1 src2 // jump if greater than
+    JLE offset src1 src2 // jump if less than or equal
+    JGE offset src1 src2 // jump if greater than or equal
 
     MOV dest, src 
     RET src
@@ -35,6 +35,8 @@ Instructions:
     There are 64 registers, all 64 bits, registers addressed with 8 bits but top 2 ignored
 
     little endian
+
+    for assembler "#" makes a comment but they must be on their own line 
 
 bits:
     a a c d d d s s
@@ -59,7 +61,7 @@ bits:
         1 1 0:
         1 1 1:
 
-    0 1 0 d d x:
+    0 1 0 x d d:
         0 0: AND
         0 1: OR
         1 0: NOT
