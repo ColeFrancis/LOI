@@ -67,17 +67,17 @@ bits:
 
     a a:
         0 0: arithmetic instruction
-        0 1: logical / special math operation, other operation
+        0 1: logical / arithmetic instructions
         1 0: jump instruction
         1 1: compare instrcution
 
     0 x f:
-        0: integer arithmetic / logical operations, special math operations
-        1: float arithmetic / other operations
+        0: integer arithmetic / logical operations / other math operations
+        1: float arithmetic / complex arithmetic
 
     1 x f: 
-        0: integer comparisons
-        1: float comparisons
+        0: integer jumps /comparisons / other operations
+        1: float jump / comparisons / other operations
 
     0 0 x d d d:
         0 0 0: ADD
@@ -96,36 +96,53 @@ bits:
         1 1: 
 
     0 1 0 1 d d:
-        0 0: MOD
+        0 0: MOD // to convert int to mod
         0 1: F2C // not implemented yet
-        1 0: I2F
+        1 0: I2F // to convert int to float (real)
         1 1: I2C // not implemented yet
 
 
     0 1 1 d d d:
-        0 0 0: MOV
-        0 0 1: RET
-        1 0 0: RNG
+        0 0 0: CADD // not implemented yet
+        0 0 1: CSUB // not implemented yet
+        0 1 0: CMUL // not implemented yet
+        0 1 1: CDIV // not implemented yet
+        1 0 0: CPOW // not implemented yet
+        1 0 1: CABS // not implemented yet
+        1 1 0:
+        1 1 1:
 
     1 0 x d d d:
         0 0 0: JMP
-        0 0 1: JEQ
-        0 1 0:
-        0 1 1:
+        0 0 1: 
+        0 1 0: JEQ
+        0 1 1: JNE // not implemented yet
         1 0 0: JLT
         1 0 1: JLE
         1 1 0: JGT
         1 1 1: JGE
 
+    1 0 0 d d d:
+        0 0 0: JMP
+
+    1 0 1 d d d:
+        0 0 0: RET
+
     1 1 x d d d:
         0 0 0: 
-        0 0 1: EQ
-        0 1 0:
-        0 1 1:
+        0 0 1: 
+        0 1 0: EQ
+        0 1 1: NE // not implemented yet
         1 0 0: LT
         1 0 1: LE
         1 1 0: GT
         1 1 1: GE
+
+    1 1 0 d d d:
+        0 0 0: MOV
+
+    1 1 1 d d d:   
+        0 0 0: RND
 
 
 
