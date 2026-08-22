@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - Syntax must be exactly followed
+//! - Must match description in bytecode_design.txt
 //!
 //! Author: Cole Francis
 
