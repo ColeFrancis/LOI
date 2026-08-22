@@ -24,10 +24,12 @@
 
 use super::RelInterpreter;
 
+use crate::compiler::compiled_rel::CompiledRel;
+
 impl RelInterpreter {
-    pub fn new(bytecode: Vec<Vec<u8>>) -> Self {
+    pub fn new(relations: Vec<CompiledRel>) -> Self {
         Self {
-            bytecode,
+            relations,
             registers: [0; 64],
         }
     }
@@ -38,7 +40,7 @@ impl RelInterpreter {
         self.registers[1] = rel_delay as u64;
         self.registers[2..args.len() + 2].copy_from_slice(&args);
         
-        let code = &self.bytecode[relation_id];
+        let code = &self.relations[relation_id].bytecode;
         Self::execute(&mut self.registers, code)
     }
 

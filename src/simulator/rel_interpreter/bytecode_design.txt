@@ -79,7 +79,7 @@ bits:
         0: integer jumps /comparisons / other operations
         1: float jump / comparisons / other operations
 
-    0 0 x d d d:
+    0 0 f d d d:
         0 0 0: ADD
         0 0 1: SUB
         0 1 0: MUL
@@ -112,8 +112,8 @@ bits:
         1 1 0:
         1 1 1:
 
-    1 0 x d d d:
-        0 0 0: JMP
+    1 0 f d d d:
+        0 0 0:
         0 0 1: 
         0 1 0: JEQ
         0 1 1: JNE // not implemented yet
@@ -128,7 +128,7 @@ bits:
     1 0 1 d d d:
         0 0 0: RET
 
-    1 1 x d d d:
+    1 1 f d d d:
         0 0 0: 
         0 0 1: 
         0 1 0: EQ

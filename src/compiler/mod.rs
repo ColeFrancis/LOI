@@ -19,3 +19,4 @@ mod diagnostics;
 
 mod ast;
 mod symbol;
+pub mod compiled_rel;

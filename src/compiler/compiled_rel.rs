@@ -12,13 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-mod test_assembler;
+//! # symbol
+//!
+//! Defines the compiled relation struct
+//!
+//! ## Invariants
+//!
+//! - 
+//!
+//! Author: Cole Francis
 
-use crate::compiler::compiled_rel::CompiledRel;
-
-pub struct RelInterpreter {
-    // relation id refers to index of outer vector
-    relations: Vec<CompiledRel>,
-    registers: [u64; 64],
+pub struct CompiledRel {
+    pub complexity: usize,
+    pub bytecode: Vec<u8>,
 }
