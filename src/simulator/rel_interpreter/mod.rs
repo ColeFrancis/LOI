@@ -15,7 +15,7 @@
 mod core;
 mod test_assembler;
 
-pub struct Interpreter {
+pub struct RelInterpreter {
     // relation id refers to index of outer vector
     bytecode: Vec<Vec<u8>>,
     registers: [u64; 64],

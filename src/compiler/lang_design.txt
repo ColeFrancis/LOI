@@ -84,11 +84,16 @@ rel_t COND_PROB : (x: COIN) -> COIN =
 
 
 // Returns a 1 if x is over some threshold
-rel_t THRESH : (x:R) -> Bool = 
+rel_t THRESH : (x:Real) -> Bool = 
     cases x {
         >= 1 : true,
         _ : false
     };
+
+// or
+
+rel_t THRESH : (x:Real) -> Bool =
+    x >= 1;
 
 rel_t CUSTOM_BINOM : (p : Real) -> Bool = 
     sample {

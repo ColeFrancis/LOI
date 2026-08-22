@@ -22,9 +22,9 @@
 //!
 //! Author: Cole Francis
 
-use super::Interpreter;
+use super::RelInterpreter;
 
-impl Interpreter {
+impl RelInterpreter {
     pub fn new(bytecode: Vec<Vec<u8>>) -> Self {
         Self {
             bytecode,
