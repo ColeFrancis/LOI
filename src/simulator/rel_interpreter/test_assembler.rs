@@ -119,7 +119,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // -----------------
         // Logical
         // -----------------
-        "AND" | "OR" => {
+        "AND" | "OR" | "XOR" => {
             if operands.len() != 3 {
                 return None;
             }
@@ -127,6 +127,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let operation = match mnemonic {
                 "AND" => 0b00,
                 "OR"  => 0b01,
+                "XOR" => 0b11,
                 _ => unreachable!(),
             };
 
@@ -209,7 +210,9 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = (0b011000 << 2) | ss;
+            let opcode = 
+                (0b010100 << 2) | 
+                ss;
 
             output.push(opcode);
             output.push(dest);
@@ -220,7 +223,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             }
 
-            match operands[1] {
+            match operands[2] {
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 _ => return None,
             }
@@ -240,28 +243,22 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src = match operands[1] {
-                Operand::Register(r) => r,
-                Operand::Int(i) => {
-                    output.push(
-                        (0b01 << 6) |
-                        (0b1 << 5) |
-                        (0b100 << 2) |
-                        0b01
-                    );
+            
 
-                    output.push(dest);
-                    output.extend(i.to_le_bytes());
+            let src_immediate = matches!(operands[1], Operand::Int(_));
 
-                    return Some(output);
-                }
-                Operand::Float(_) => return None,
-            };
+            let ss = (src_immediate as u8) << 1;
 
-            output.push(0b01110000);
+            let opcode =
+                (0b011100) << 2 |
+                ss;
+
+            output.push(opcode);
+            output.push(dest);
 
             match operands[1] {
                 Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
                 _ => return None,
             }
         }
@@ -285,19 +282,23 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             output.extend(offset.to_le_bytes());
         }
 
-        "JEQ" | "JLT" | "JLE" | "JGT" | "JGE" => {
+        "IJEQ" | "IJNE" | "IJLT" | "IJLE" | "IJGT" | "IJGE" |
+        "FJEQ" | "FJNE" | "FJLT" | "FJLE" | "FJGT" | "FJGE" => {
             if operands.len() != 3 {
                 return None;
             }
 
             let operation = match mnemonic {
-                "JEQ" => 0b001,
-                "JLT" => 0b100,
-                "JLE" => 0b101,
-                "JGT" => 0b110,
-                "JGE" => 0b111,
+                "IJEQ" | "FJEQ" => 0b010,
+                "IJNE" | "FJNE" => 0b011,
+                "IJLT" | "FJLT" => 0b100,
+                "IJLE" | "FJLE" => 0b101,
+                "IJGT" | "FJGT" => 0b110,
+                "IJGE" | "FJGE" => 0b111,
                 _ => unreachable!(),
             };
+
+            let float = mnemonic.starts_with('F');
 
             let offset = match operands[0] {
                 Operand::Int(i) => i,
@@ -313,6 +314,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let opcode =
                 (0b10 << 6) |
+                ((float as u8) << 5) |
                 (operation << 2) |
                 ss;
 
@@ -322,13 +324,69 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
-                _ => return None,
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
             }
 
             match operands[2] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+            }
+        }
+
+        // -----------------
+        // Comparisons
+        // -----------------
+
+        "IEQ" | "INE" | "ILT" | "IGT" | "ILE" | "IGE" |
+        "FEQ" | "FNE" | "FLT" | "FGT" | "FLE" | "FGE" => {
+            if operands.len() != 3 {
+                return None;
+            }
+
+            let operation = match mnemonic {
+                "IEQ" | "FEQ" => 0b010,
+                "INE" | "FNE" => 0b011,
+                "ILT" | "FLT" => 0b100,
+                "ILE" | "FLE" => 0b101,
+                "IGT" | "FGT" => 0b110,
+                "IGE" | "FGE" => 0b111,
+                _ => unreachable!(),
+            };
+
+            let float = mnemonic.starts_with('F');
+
+            let offset = match operands[0] {
+                Operand::Register(r) => r,
                 _ => return None,
+            };
+
+            let src1_immediate = matches!(operands[1], Operand::Int(_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_));
+
+            let ss =
+                (src1_immediate as u8) << 1 |
+                (src2_immediate as u8);
+
+            let opcode =
+                (0b10 << 6) |
+                ((float as u8) << 5) |
+                (operation << 2) |
+                ss;
+
+            output.push(opcode);
+            output.extend(offset.to_le_bytes());
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+            }
+
+            match operands[2] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
             }
         }
 
@@ -346,7 +404,13 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let opcode = 0b110000;
+            let src_immediate = matches!(operands[1], Operand::Int(_));
+
+            let ss = (src_immediate as u8) << 1;
+
+            let opcode = 
+                (0b110000) << 2 |
+                ss;
 
             output.push(opcode);
             output.push(dest);
@@ -363,7 +427,13 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 return None;
             }
 
-            let opcode = 0b110001;
+            let src_immediate = matches!(operands[0], Operand::Int(_));
+
+            let ss = (src_immediate as u8) << 1;
+
+            let opcode = 
+                (0b101000) << 2 |
+                ss;
 
             output.push(opcode);
 
@@ -384,7 +454,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let opcode = 0b110100;
+            let opcode = 0b11100000;
 
             output.push(opcode);
             output.push(dest);
@@ -428,12 +498,23 @@ mod tests {
 # test
 IADD r1 r0 i23
 FMUL r2 r1 f-2.25
+AND r0 r1 r2
 JMP i48
+MOD r0 r1 i2
+IEQ r0 r1 r2
+MOV r0 r1
+RET r0
+RND r0
         ");
 
         assert_eq!(result, Ok(vec![0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b00101001, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0,
+                                   0b01000000, 0x00, 0x01, 0x02,
                                    0b10000000, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b01010000, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b11000000, 0x00, 0x01, 0x02,
+                                   0b10100000, 0x00,
+                                   0b11100000, 0x00,
                                    ]));
     }
 

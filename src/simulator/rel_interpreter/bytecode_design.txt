@@ -14,6 +14,7 @@ Instructions:
     AND dest src1, src2
     OR dest src1, src2
     NOT dest src   
+    XOR dest src1, src2
 
     MOD dest src1 idx // src1 % idx  
     ITOF dest src    // Convert int to float, src must be reg
@@ -21,24 +22,28 @@ Instructions:
     JMP offset             // unconditional jump 
 
     IJEQ offset src1 src2 // Jump if equal
+    IJNE offset src1 src2 // Jump if not equal
     IJLT offset src1 src2 // jump if less than
     IJGT offset src1 src2 // jump if greater than
     IJLE offset src1 src2 // jump if less than or equal
     IJGE offset src1 src2 // jump if greater than or equal
 
     FJEQ offset src1 src2 // Jump if equal
+    FJNE offset src1 src2 // Jump if not equal
     FJLT offset src1 src2 // jump if less than
     FJGT offset src1 src2 // jump if greater than
     FJLE offset src1 src2 // jump if less than or equal
     FJGE offset src1 src2 // jump if greater than or equal
 
     IEQ dest src1 src2 // src1 == src2
+    INE dest src1 src2 // src1 != src2
     ILT dest src1 src2 // src1 < src2
     IGT dest src1 src2 // src1 > src2
     ILE dest src1 src2 // src1 <= src2
     IGE dest src1 src2 // src1 >= src2
 
     FEQ dest src1 src2 
+    FNE dest src1 src2
     FLT dest src1 src2
     FGT dest src1 src2
     FLE dest src1 src2 
@@ -61,6 +66,9 @@ Instructions:
     little endian
 
     for assembler "#" makes a comment but they must be on their own line 
+
+    all values are encoded in 64 bits
+        i64, f64, and complex numbers will be 2 f32s packed into one 64 bit reg.
 
 bits:
     a a f d d d s s
@@ -93,7 +101,7 @@ bits:
         0 0: AND
         0 1: OR
         1 0: NOT
-        1 1: 
+        1 1: XOR // not implemented yet
 
     0 1 0 1 d d:
         0 0: MOD // to convert int to mod
