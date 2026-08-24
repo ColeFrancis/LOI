@@ -115,6 +115,39 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
+        "IABS" | "FABS" => {
+            if operands.len() != 2{
+                return None;
+            }
+
+            let float = mnemonic.starts_with('F');
+
+            let dest = match operands[0] {
+                Operand::Register(r) => r,
+                _ => return None,
+            };
+
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            
+            let ss = 
+                (src_immediate as u8) << 1;
+
+            let opcode =
+                (0b00 << 6) |
+                ((float as u8) << 5) |
+                (0b101 << 2) |
+                ss;
+                
+            output.push(opcode);
+            output.push(dest);
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+            }
+        }
+
         
         // -----------------
         // Logical
@@ -233,7 +266,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // ITOF
         // ------------------------------------------------------------
 
-        "ITOF" => {
+        "I2F" => {
             if operands.len() != 2 {
                 return None;
             }
@@ -250,7 +283,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let ss = (src_immediate as u8) << 1;
 
             let opcode =
-                (0b011100) << 2 |
+                (0b010110) << 2 |
                 ss;
 
             output.push(opcode);
@@ -369,7 +402,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 (src2_immediate as u8);
 
             let opcode =
-                (0b10 << 6) |
+                (0b11 << 6) |
                 ((float as u8) << 5) |
                 (operation << 2) |
                 ss;
@@ -498,10 +531,14 @@ mod tests {
 # test
 IADD r1 r0 i23
 FMUL r2 r1 f-2.25
+IABS r0 r1
 AND r0 r1 r2
+NOT r0 i1
+I2F r0 r1
 JMP i48
 MOD r0 r1 i2
 IEQ r0 r1 r2
+FJGE i48 r0 r1
 MOV r0 r1
 RET r0
 RND r0
@@ -509,10 +546,15 @@ RND r0
 
         assert_eq!(result, Ok(vec![0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b00101001, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0,
+                                   0b00010100, 0x00, 0x01,
                                    0b01000000, 0x00, 0x01, 0x02,
+                                   0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b01011000, 0x00, 0x01,
                                    0b10000000, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b01010000, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b11000000, 0x00, 0x01, 0x02,
+                                   0b11001000, 0x00, 0x01, 0x02,
+                                   0b10111100, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                                   0b11000000, 0x00, 0x01,
                                    0b10100000, 0x00,
                                    0b11100000, 0x00,
                                    ]));

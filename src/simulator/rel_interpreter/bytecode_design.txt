@@ -3,13 +3,15 @@ Instructions:
     ISUB dest src1 src2 // src1-src2
     IMUL dest src1 src2
     IDIV dest src1 src2 // src1/src2
-    IPOW dest src1 src2 // src1^src2
+    IPOW dest src1 src2 // src1^src2 
+    IABS dest src       // |src|
 
     FADD dest src1 src2
     FSUB dest src1 src2
     FMUL dest src1 src2
     FDIV dest src1 src2
     FPOW dest src1 src2
+    FABS dest src       // |src|
 
     AND dest src1, src2
     OR dest src1, src2
@@ -17,7 +19,7 @@ Instructions:
     XOR dest src1, src2
 
     MOD dest src1 idx // src1 % idx  
-    ITOF dest src    // Convert int to float, src must be reg
+    ITOF dest src     // Convert int to float
 
     JMP offset             // unconditional jump 
 
@@ -93,7 +95,7 @@ bits:
         0 1 0: MUL
         0 1 1: DIV
         1 0 0: POW
-        1 0 1: ABS // not implemented yet
+        1 0 1: ABS
         1 1 0:
         1 1 1:
 
@@ -101,30 +103,30 @@ bits:
         0 0: AND
         0 1: OR
         1 0: NOT
-        1 1: XOR // not implemented yet
+        1 1: XOR
 
     0 1 0 1 d d:
         0 0: MOD // to convert int to mod
-        0 1: F2C // not implemented yet
+        0 1: F2C            // not implemented yet
         1 0: I2F // to convert int to float (real)
-        1 1: I2C // not implemented yet
+        1 1: I2C            // not implemented yet
 
 
     0 1 1 d d d:
-        0 0 0: CADD // not implemented yet
-        0 0 1: CSUB // not implemented yet
-        0 1 0: CMUL // not implemented yet
-        0 1 1: CDIV // not implemented yet
-        1 0 0: CPOW // not implemented yet
-        1 0 1: CABS // not implemented yet
-        1 1 0: CONJ // not implemented yet
+        0 0 0: CADD         // not implemented yet
+        0 0 1: CSUB         // not implemented yet
+        0 1 0: CMUL         // not implemented yet
+        0 1 1: CDIV         // not implemented yet
+        1 0 0: CPOW         // not implemented yet
+        1 0 1: CABS         // not implemented yet
+        1 1 0: CONJ         // not implemented yet
         1 1 1:
 
     1 0 f d d d:
         0 0 0:
         0 0 1: 
         0 1 0: JEQ
-        0 1 1: JNE // not implemented yet
+        0 1 1: JNE
         1 0 0: JLT
         1 0 1: JLE
         1 1 0: JGT
@@ -140,7 +142,7 @@ bits:
         0 0 0: 
         0 0 1: 
         0 1 0: EQ
-        0 1 1: NE // not implemented yet
+        0 1 1: NE
         1 0 0: LT
         1 0 1: LE
         1 1 0: GT

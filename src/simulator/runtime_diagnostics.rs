@@ -12,5 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod rel_interpreter;
-mod runtime_diagnostics;
+//! # runtime_diagnostics
+//!
+//! Handles runtime errors in the simulator
+//!
+//! Author: Cole Francis
+
+pub enum RuntimeError {
+    InvalidOpcode(u8),
+    IntegerOverflow,
+    DivisionByZero,
+    NegativeExponent, // For integers
+}
