@@ -5,6 +5,7 @@ Instructions:
     IDIV dest src1 src2 // src1/src2
     IPOW dest src1 src2 // src1^src2 
     IABS dest src       // |src|
+    MOD  dest src1 src2 // src1 % src2
 
     FADD dest src1 src2
     FSUB dest src1 src2
@@ -18,8 +19,7 @@ Instructions:
     NOT dest src   
     XOR dest src1, src2
 
-    MOD dest src1 idx // src1 % idx  
-    ITOF dest src     // Convert int to float
+    I2F dest src     // Convert int to float
 
     JMP offset             // unconditional jump 
 
@@ -96,8 +96,11 @@ bits:
         0 1 1: DIV
         1 0 0: POW
         1 0 1: ABS
-        1 1 0:
+        1 1 0: 
         1 1 1:
+
+    0 0 0 d d d:
+        1 1 0: IMOD
 
     0 1 0 0 d d:
         0 0: AND
@@ -106,7 +109,7 @@ bits:
         1 1: XOR
 
     0 1 0 1 d d:
-        0 0: MOD // to convert int to mod
+        0 0: 
         0 1: F2C            // not implemented yet
         1 0: I2F // to convert int to float (real)
         1 1: I2C            // not implemented yet

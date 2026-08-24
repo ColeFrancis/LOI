@@ -64,7 +64,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // -----------------
         // Arithmetic
         // -----------------
-        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IPOW" |
+        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IPOW" | "IMOD" |
         "FADD" | "FSUB" | "FMUL" | "FDIV" | "FPOW" => {
             if operands.len() != 3 {
                 return None;
@@ -76,6 +76,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 "IMUL" | "FMUL"  => 0b010,
                 "IDIV" | "FDIV"  => 0b011,
                 "IPOW" | "FPOW"  => 0b100,
+                "IMOD"            => 0b110,
                 _ => unreachable!(),
             };
 
@@ -223,43 +224,6 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(_) => return None,
             };
-        }
-
-        // ------------------------------------------------------------
-        // MOD
-        // ------------------------------------------------------------
-
-        "MOD" => {
-            if operands.len() != 3 {
-                return None;
-            }
-
-            let dest = match operands[0] {
-                Operand::Register(r) => r,
-                _ => return None,
-            };
-
-            let src_immediate = matches!(operands[1], Operand::Int(_));
-
-            let ss = (src_immediate as u8) << 1;
-
-            let opcode = 
-                (0b010100 << 2) | 
-                ss;
-
-            output.push(opcode);
-            output.push(dest);
-
-            match operands[1] {
-                Operand::Register(r) => output.push(r),
-                Operand::Int(i) => output.extend(i.to_le_bytes()),
-                _ => return None,
-            }
-
-            match operands[2] {
-                Operand::Int(i) => output.extend(i.to_le_bytes()),
-                _ => return None,
-            }
         }
 
         // ------------------------------------------------------------
@@ -536,11 +500,12 @@ AND r0 r1 r2
 NOT r0 i1
 I2F r0 r1
 JMP i48
-MOD r0 r1 i2
+IMOD r0 r1 i2
 IEQ r0 r1 r2
 FJGE i48 r0 r1
 MOV r0 r1
 RET r0
+RET i1
 RND r0
         ");
 
@@ -551,11 +516,12 @@ RND r0
                                    0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b01011000, 0x00, 0x01,
                                    0b10000000, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b01010000, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b00011001, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11001000, 0x00, 0x01, 0x02,
                                    0b10111100, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
                                    0b11000000, 0x00, 0x01,
                                    0b10100000, 0x00,
+                                   0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11100000, 0x00,
                                    ]));
     }

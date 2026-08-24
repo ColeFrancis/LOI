@@ -18,6 +18,7 @@
 //!
 //! Author: Cole Francis
 
+#[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     InvalidOpcode(u8),
     IntegerOverflow,

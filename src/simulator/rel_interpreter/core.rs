@@ -23,6 +23,8 @@
 //!
 //! Author: Cole Francis
 
+use rand::Rng;
+
 use super::RelInterpreter;
 
 use crate::simulator::runtime_diagnostics::RuntimeError;
@@ -60,16 +62,17 @@ impl RelInterpreter {
         loop {
             let inst = bytecode[inst_counter];
 
+            let inst_type = inst & 0b11100000;
+            let op        = inst & 0b00011100;
+            
             let src1_is_reg = (inst & 0b10) == 0;
             let src2_is_reg = (inst & 0b01) == 0;
+
+            inst_counter += 1;
 
             match inst & 0b11100000 {
                 // Int arith
                 0b00000000 => {
-                    let op = inst & 0b00011100;
-
-                    inst_counter += 1;
-
                     let dest_reg = bytecode[inst_counter] as usize;
 
                     inst_counter += 1;
@@ -143,16 +146,19 @@ impl RelInterpreter {
                                 .ok_or(RuntimeError::IntegerOverflow)? as u64;
                         }
 
+                        // IMOD
+                        0b00011000 => {
+                            registers[dest_reg] = src1_val
+                                .checked_rem(src2_val)
+                                .ok_or(RuntimeError::DivisionByZero)? as u64;
+                        }
+
                         _ => unreachable!(),
                     }
                 }
 
                 // Float arith
                 0b00100000 => {
-                    let op = inst & 0b00011100;
-
-                    inst_counter += 1;
-
                     let dest_reg = bytecode[inst_counter] as usize;
 
                     inst_counter += 1;
@@ -215,7 +221,96 @@ impl RelInterpreter {
                 }
 
                 // Logical and conversions
-                0b01000000 => {}
+                0b01000000 => {
+                    let dest_reg = bytecode[inst_counter] as usize;
+
+                    inst_counter += 1;
+
+                    match op {
+                        // AND
+                        0b00000000 => {
+                            let src1_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            let src2_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            );
+
+                            registers[dest_reg] = (src1_val & src2_val) as u64;
+                        }
+
+                        // OR
+                        0b00000100 => {
+                            let src1_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            let src2_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            );
+
+                            registers[dest_reg] = (src1_val | src2_val) as u64;
+                        }
+
+                        // NOT
+                        0b00001000 => {
+                            let src_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            registers[dest_reg] = (!src_val) as u64;
+                        }
+
+                        // XOR
+                        0b00001100 => {
+                            let src1_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            let src2_val = Self::read_bool_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            );
+
+                            registers[dest_reg] = (src1_val ^ src2_val) as u64;
+                        }
+
+                        // I2F
+                        0b00011000 => {
+                            let src_val = Self::read_int_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            registers[dest_reg] = (src_val as f64).to_bits();
+                        }
+
+                        _ => unreachable!(),
+                    }
+                }
 
                 // Complex arith
                 // 0b01100000 => {
@@ -243,19 +338,283 @@ impl RelInterpreter {
                 // }
 
                 // Int comp jumps, jump
-                0b10000000 => {}
+                0b10000000 => {
+                    let offset = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        false,
+                    ) as usize;
 
-                // Float comp jumps, return
-                0b10100000 => {}
+                    // No source JMP inst
+                    match op {
+                        0b00000000 => {
+                            inst_counter += offset;
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+
+                    let src1_val = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
+
+                    let src2_val = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    match op {
+                        // IJEQ
+                        0b00001000 => if src1_val == src2_val {
+                            inst_counter += offset;
+                        }
+                        
+
+                        // IJNE
+                        0b00001100 => if src1_val != src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // IJLT
+                        0b00010000 => if src1_val < src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // IJLE
+                        0b00010100 => if src1_val <= src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // IJGT
+                        0b00011000 => if src1_val > src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // IJGE
+                        0b00011100 => if src1_val >= src2_val {
+                            inst_counter += offset;
+                        }
+
+                        _ => unreachable!(),
+                    }
+                }
+
+                // Float comp jumps, ret
+                0b10100000 => {
+                    // only source RET
+                    match op {
+                        0b00000000 => {
+                            // Even if its a float we're returning, we just need to move the raw bytes
+                            let src_val = Self::read_int_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            return Ok(src_val as u64);
+                        }
+
+                        _ => {}
+                    }
+
+                    let offset = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        false,
+                    ) as usize;
+
+                    let src1_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
+
+                    let src2_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    match op {
+                        // FJEQ
+                        0b00001000 => if src1_val == src2_val {
+                            inst_counter += offset;
+                        }
+                        
+
+                        // FJNE
+                        0b00001100 => if src1_val != src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // FJLT
+                        0b00010000 => if src1_val < src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // FJLE
+                        0b00010100 => if src1_val <= src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // FJGT
+                        0b00011000 => if src1_val > src2_val {
+                            inst_counter += offset;
+                        }
+
+                        // FJGE
+                        0b00011100 => if src1_val >= src2_val {
+                            inst_counter += offset;
+                        }
+
+                        _ => unreachable!(),
+                    }
+                }
 
                 // Int comp ops, mov
-                0b11000000 => {}
+                0b11000000 => {
+                    let dest_reg = bytecode[inst_counter] as usize;
+
+                    inst_counter += 1;
+
+                    // Single source mov
+                    match op {
+                        0b00000000 => {
+                            // Even if its a float we're moving, we just need to move the raw bytes
+                            let src_val = Self::read_int_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            registers[dest_reg] = src_val as u64;
+                        }
+
+                        _ => {}
+                    }
+
+                    let src1_val = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
+
+                    let src2_val = Self::read_int_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    match op {
+                        // IEQ
+                        0b00001000 => registers[dest_reg] = (src1_val == src2_val) as u64,
+
+                        // INE
+                        0b00001100 => registers[dest_reg] = (src1_val != src2_val) as u64,
+
+                        // ILT
+                        0b00010000 => registers[dest_reg] = (src1_val < src2_val) as u64,
+
+                        // ILE
+                        0b00010100 => registers[dest_reg] = (src1_val <= src2_val) as u64,
+
+                        // IGT
+                        0b00011000 => registers[dest_reg] = (src1_val > src2_val) as u64,
+
+                        // IGE
+                        0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
+
+                        _ => unreachable!(),
+                    }
+                }
 
                 // Float comp ops, rnd
-                0b11100000 => {}
+                0b11100000 => {
+                    let dest_reg = bytecode[inst_counter] as usize;
+
+                    inst_counter += 1;
+
+                    // No source RND op
+                    match op {
+                        0b00000000 => {
+                            let mut rng = rand::rng();
+                            let random_val: f64 = rng.random();
+
+                            registers[dest_reg] = random_val.to_bits();
+                        }
+
+                        _ => {}
+                    }
+
+                    let src1_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
+
+                    let src2_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    match op {
+                        // FEQ
+                        0b00001000 => registers[dest_reg] = (src1_val == src2_val) as u64,
+
+                        // FNE
+                        0b00001100 => registers[dest_reg] = (src1_val != src2_val) as u64,
+
+                        // FLT
+                        0b00010000 => registers[dest_reg] = (src1_val < src2_val) as u64,
+
+                        // FLE
+                        0b00010100 => registers[dest_reg] = (src1_val <= src2_val) as u64,
+
+                        // FGT
+                        0b00011000 => registers[dest_reg] = (src1_val > src2_val) as u64,
+
+                        // FGE
+                        0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
+
+                        _ => unreachable!(),
+                    }
+                }
 
                 _ => {}
             }
+        }
+    }
+
+    fn read_bool_source(registers: &[u64; 64], bytecode: &[u8], inst_counter: &mut usize, is_reg: bool) -> bool {
+        if is_reg {
+            let result = registers[bytecode[*inst_counter] as usize] != 0;
+            *inst_counter += 1;
+            result
+        } else {
+            let result = i64::from_le_bytes(
+                bytecode[*inst_counter..*inst_counter + 8]
+                    .try_into()
+                    .unwrap(),
+            ) != 0;
+            *inst_counter += 8;
+            result
         }
     }
 
@@ -290,4 +649,75 @@ impl RelInterpreter {
             result
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::simulator::rel_interpreter::test_assembler::assemble;
+
+    fn int_arith() {
+        // ((((((23-20) * 2) + 1) / 2) ^ 2) % 10)
+        let bytecode = assemble("
+            MOV r0 i23
+            ISUB r1 r0 i26
+            IABS r1 r1
+            IMUL r1 r1 r2
+            IADD r1 r1 i1
+            IDIV r1 r1 i2
+            IPOW r1 r1 i2
+            MOD r1 r1 i10
+            RET r1
+        ").unwrap();
+
+        let mut registers = [0; 64];
+        registers[2] = 3;
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok(5 as u64));
+    }
+
+    // Test all instructions. TODO:
+        // FADD
+        // FSUM
+        // FMUL
+        // FDIV
+        // FPOW
+        // FABS
+        // AND
+        // OR
+        // NOT
+        // XOR
+        // I2F
+        // JMP
+        // IJEQ
+        // IJNE
+        // IJLT
+        // IJGT
+        // IJLE
+        // IJGE
+        // FJEQ
+        // FJNE
+        // FJLT
+        // FJGT
+        // FJLE
+        // FJGE
+        // IEQ
+        // JNE
+        // IJL
+        // JGT
+        // IJL
+        // IGE
+        // FEQ
+        // FNE
+        // FJL
+        // FGT
+        // FJL
+        // FGE
+        // MOV
+        // RET
+        // RND
+
+    // Test all runtime errors
 }
