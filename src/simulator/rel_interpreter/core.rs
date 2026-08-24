@@ -678,18 +678,43 @@ mod tests {
         assert_eq!(result, Ok(5 as u64));
     }
 
+    fn float_arith() {
+        let bytecode = assemble("
+            FADD r0 f1.0 f1.0 // 2.0
+            FMUL r0 r0 f2.5   // 5.0
+            I2F r1 i10
+            FDIV r0 r0 r1    // 0.5
+            FSUM r0 r0 f1.0  // -0.5
+            FABS r0 r0       // 0.5
+            FPOW r0 r0 f2.0  // 0.25
+        ").unwrap();
+
+        let mut registers = [0; 64];
+        registers[2] = 3;
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok((0.25_f64).to_bits() as u64));
+    }
+
+    fn bool_arith() {
+        let bytecode = assemble("
+            MOV r1 i0
+            OR r0 r1 i1
+            XOR r0 r0 i1
+            AND r0 r0 i1
+            RET r0
+        ").unwrap();
+
+        let mut registers = [0; 64];
+        registers[2] = 3;
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok(0 as u64));
+    }
+
     // Test all instructions. TODO:
-        // FADD
-        // FSUM
-        // FMUL
-        // FDIV
-        // FPOW
-        // FABS
-        // AND
-        // OR
-        // NOT
-        // XOR
-        // I2F
         // JMP
         // IJEQ
         // IJNE
