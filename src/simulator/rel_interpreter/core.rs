@@ -740,8 +740,6 @@ mod tests {
         // FGT
         // FJL
         // FGE
-        // MOV
-        // RET
         // RND
 
     // Test all runtime errors
