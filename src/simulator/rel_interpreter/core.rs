@@ -74,6 +74,7 @@ impl RelInterpreter {
 
                     inst_counter += 1;
 
+                    // Handles incrementing inst_counter
                     let src1_val = Self::read_int_source(
                         registers,
                         bytecode,
@@ -94,6 +95,7 @@ impl RelInterpreter {
                         _ => {}
                     }
 
+                    // Handles incrementing inst_counter
                     let src2_val = Self::read_int_source(
                         registers,
                         bytecode,
