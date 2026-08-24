@@ -149,26 +149,68 @@ impl RelInterpreter {
 
                 // Float arith
                 0b00100000 => {
-                    match inst & 0b0011100 {
-                        // ADD
-                        0b00000000 => {}
+                    let op = inst & 0b00011100;
 
-                        // SUB
-                        0b00000100 => {}
+                    inst_counter += 1;
 
-                        // MUL
-                        0b00001000 => {}
+                    let dest_reg = bytecode[inst_counter] as usize;
 
-                        // DIV
-                        0b00001100 => {}
+                    inst_counter += 1;
 
-                        // POW
-                        0b00010000 => {}
+                    // Handles incrementing inst_counter
+                    let src1_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
 
+                    // Single source ABS inst
+                    match op {
                         // ABS
-                        0b00010100 => {}
+                        0b00010100 => {
+                            registers[dest_reg] = src1_val.abs().to_bits();
+                            continue;
+                        }
 
                         _ => {}
+                    }
+
+                    // Handles incrementing inst_counter
+                    let src2_val = Self::read_float_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    match op {
+                        // ADD
+                        0b00000000 => {
+                            registers[dest_reg] = (src1_val + src2_val).to_bits();
+                        }
+
+                        // SUB
+                        0b00000100 => {
+                            registers[dest_reg] = (src1_val - src2_val).to_bits();
+                        }
+
+                        // MUL
+                        0b00001000 => {
+                            registers[dest_reg] = (src1_val * src2_val).to_bits();
+                        }
+
+                        // DIV
+                        0b00001100 => {
+                            registers[dest_reg] = (src1_val / src2_val).to_bits();
+                        }
+
+                        // POW
+                        0b00010000 => {
+                            registers[dest_reg] = src1_val.powf(src2_val).to_bits();
+                        }
+
+                        _ => unreachable!(),
                     }
                 }
 
@@ -176,29 +218,29 @@ impl RelInterpreter {
                 0b01000000 => {}
 
                 // Complex arith
-                0b01100000 => {
-                    match inst & 0b0011100 {
-                        // ADD
-                        0b00000000 => {}
+                // 0b01100000 => {
+                //     match inst & 0b0011100 {
+                //         // ADD
+                //         0b00000000 => {}
 
-                        // SUB
-                        0b00000100 => {}
+                //         // SUB
+                //         0b00000100 => {}
 
-                        // MUL
-                        0b00001000 => {}
+                //         // MUL
+                //         0b00001000 => {}
 
-                        // DIV
-                        0b00001100 => {}
+                //         // DIV
+                //         0b00001100 => {}
 
-                        // POW
-                        0b00010000 => {}
+                //         // POW
+                //         0b00010000 => {}
 
-                        // ABS
-                        0b00010100 => {}
+                //         // ABS
+                //         0b00010100 => {}
 
-                        _ => {}
-                    }
-                }
+                //         _ => {}
+                //     }
+                // }
 
                 // Int comp jumps, jump
                 0b10000000 => {}
@@ -224,6 +266,22 @@ impl RelInterpreter {
             result
         } else {
             let result = i64::from_le_bytes(
+                bytecode[*inst_counter..*inst_counter + 8]
+                    .try_into()
+                    .unwrap(),
+            );
+            *inst_counter += 8;
+            result
+        }
+    }
+
+    fn read_float_source(registers: &[u64; 64], bytecode: &[u8], inst_counter: &mut usize, is_reg: bool) -> f64 {
+        if is_reg {
+            let result = registers[bytecode[*inst_counter] as usize] as f64;
+            *inst_counter += 1;
+            result
+        } else {
+            let result = f64::from_le_bytes(
                 bytecode[*inst_counter..*inst_counter + 8]
                     .try_into()
                     .unwrap(),
