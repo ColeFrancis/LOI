@@ -12,13 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod lexer;
-mod parser;
-mod sem_analyzer;
-mod code_gen;
-mod synthesis;
-mod diagnostics;
+mod core;
 
-mod ast;
-mod symbol;
-pub mod compiled_rel;
+use crate::compiler::ast::Program;
+
+pub struct CodeGen {
+    relations: Program,
+}

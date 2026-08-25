@@ -1,0 +1,10 @@
+After front ent, we have an ast, and a symbol table
+
+codegen takes either part of a program, or simply a vector of RelTypes and returns a vector of CompiledRelsS
+    how do we resolve set ent types?
+        Is it enough to just rely on the symbol table and assume the symbols all members of an ent_type come
+        right after the symbol of the ent type? It may be easier to have access to the ast ent type.
+
+At the end of compilation, we need a network, and vector of compiled relations
+    How will runtime errors know the name of the relation being run?
+    When a graph visualization of the net is implemented, how will the names of the entities be known?

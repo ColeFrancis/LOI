@@ -12,13 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod lexer;
-mod parser;
-mod sem_analyzer;
-mod code_gen;
-mod synthesis;
-mod diagnostics;
+//! # core
+//!
+//! Handles the compilation of relations into bytecode
+//!
+//! ## Invariants
+//!
+//! - 
+//!
+//! Author: Cole Francis
 
-mod ast;
-mod symbol;
-pub mod compiled_rel;
+use super::CodeGen;
+use crate::compiler::ast::Program;
+use crate::compiler::compiled_rel::CompiledRel;
+
+impl CodeGen {
+    pub fn new(relations: Program) -> Self {
+        Self {
+            relations,
+        }
+    }
+
+    pub fn compile(mut self) -> Vec<CompiledRel> {
+        Vec::new()
+    }
+}
