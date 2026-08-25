@@ -23,5 +23,5 @@ pub enum RuntimeError {
     InvalidOpcode(u8),
     IntegerOverflow,
     DivisionByZero,
-    NegativeExponent, // For integers
+    IntNegativeExponent, // For integers
 }

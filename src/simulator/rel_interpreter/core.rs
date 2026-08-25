@@ -138,7 +138,7 @@ impl RelInterpreter {
                         // POW
                         0b00010000 => {
                             if src2_val < 0 {
-                                return Err(RuntimeError::NegativeExponent);
+                                return Err(RuntimeError::IntNegativeExponent);
                             }
 
                             registers[dest_reg] = src1_val
@@ -153,7 +153,7 @@ impl RelInterpreter {
                                 .ok_or(RuntimeError::DivisionByZero)? as u64;
                         }
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -216,7 +216,7 @@ impl RelInterpreter {
                             registers[dest_reg] = src1_val.powf(src2_val).to_bits();
                         }
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -308,7 +308,7 @@ impl RelInterpreter {
                             registers[dest_reg] = (src_val as f64).to_bits();
                         }
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -402,7 +402,7 @@ impl RelInterpreter {
                             inst_counter += offset;
                         }
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -478,7 +478,7 @@ impl RelInterpreter {
                             inst_counter += offset;
                         }
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -539,14 +539,13 @@ impl RelInterpreter {
                         // IGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
                 // Float comp ops, rnd
                 0b11100000 => {
                     let dest_reg = bytecode[inst_counter] as usize;
-
                     inst_counter += 1;
 
                     // No source RND op
@@ -556,6 +555,7 @@ impl RelInterpreter {
                             let random_val: f64 = rng.random();
 
                             registers[dest_reg] = random_val.to_bits();
+                            continue;
                         }
 
                         _ => {}
@@ -594,7 +594,7 @@ impl RelInterpreter {
                         // FGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => unreachable!(),
+                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -624,6 +624,7 @@ impl RelInterpreter {
 mod tests {
     use super::*;
     use crate::simulator::rel_interpreter::test_assembler::assemble;
+    use crate::simulator::runtime_diagnostics::RuntimeError;
 
     #[test]
     fn int_arith() {
@@ -715,50 +716,158 @@ mod tests {
     #[test]
     fn float_jumps() {
         let bytecode = assemble("
+            JMP i9
+            RET i0
             MOV r0 f3.0
             FJEQ i9 r0 f3.0
-            RET i0
-            FJNE i9 r0 f4.0
             RET i1
-            FJLT i9 r0 f5.0
+            FJNE i9 r0 f4.0
             RET i2
-            FJGT i9 r0 f2.0
+            FJLT i9 r0 f5.0
             RET i3
-            FJLE i9 r0 f3.0
+            FJGT i9 r0 f2.0
             RET i4
-            FJGE i9 r0 f3.0
+            FJLE i9 r0 f3.0
             RET i5
+            FJGE i9 r0 f3.0
             RET i6
+            RET i7
         ").unwrap();
 
         let mut registers = [0; 64];
 
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Ok(6 as u64));
+        assert_eq!(result, Ok(7 as u64));
     }
 
-    // Test all instructions. TODO:
-        // JMP
-        // FJEQ
-        // FJNE
-        // FJLT
-        // FJGT
-        // FJLE
-        // FJGE
-        // IEQ
-        // JNE
-        // IJL
-        // JGT
-        // IJL
-        // IGE
-        // FEQ
-        // FNE
-        // FJL
-        // FGT
-        // FJL
-        // FGE
-        // RND
+    #[test]
+    fn int_cmp() {
+        let bytecode = assemble("
+            IEQ r0 i3 i3
+            IEQ r1 i3 i4
+            INE r2 i3 i4
+            INE r3 i3 i3
+            ILT r4 i3 i4
+            ILT r5 i4 i3
+            ILE r6 i3 i3
+            ILE r7 i3 i2
+            IGT r8 i4 i3
+            IGT r9 i4 i4
+            IGE r10 i4 i4
+            IGE r11 i3 i4
+            AND r0 r0 r2
+            AND r0 r0 r4
+            AND r0 r0 r6
+            AND r0 r0 r8
+            AND r0 r0 r10
+            OR r1 r1 r3
+            OR r1 r1 r5
+            OR r1 r1 r7
+            OR r1 r1 r9
+            OR r1 r1 r11
+            NOT r1 r1
+            AND r0 r0 r1
+            RET r0
+        ").unwrap();
 
-    // Test all runtime errors
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok(1 as u64));
+    }
+
+    #[test]
+    fn float_cmp() {
+        let bytecode = assemble("
+            FEQ r0 f3.0 f3.0
+            FEQ r1 f3.0 f4.0
+            FNE r2 f3.0 f4.0
+            FNE r3 f3.0 f3.0
+            FLT r4 f3.0 f4.0
+            FLT r5 f4.0 f3.0
+            FLE r6 f3.0 f3.0
+            FLE r7 f3.0 f2.0
+            FGT r8 f4.0 f3.0
+            FGT r9 f4.0 f4.0
+            FGE r10 f4.0 f4.0
+            FGE r11 f3.0 f4.0
+            AND r0 r0 r2
+            AND r0 r0 r4
+            AND r0 r0 r6
+            AND r0 r0 r8
+            AND r0 r0 r10
+            OR r1 r1 r3
+            OR r1 r1 r5
+            OR r1 r1 r7
+            OR r1 r1 r9
+            OR r1 r1 r11
+            NOT r1 r1
+            AND r0 r0 r1
+            RET r0
+        ").unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok(1 as u64));
+    }
+
+    #[test]
+    fn rand() {
+        let bytecode = assemble("
+            RND r0
+            MOV r1 i1
+            I2F r1 r1
+            FJLE i9 r0 r1
+            RET i0
+            RET i1
+        ").unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok(1 as u64));
+    }
+
+    #[test]
+    fn divide_by_zero() {
+        let bytecode = assemble("
+            IDIV r0 i1 i0
+        ").unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Err(RuntimeError::DivisionByZero));
+    }
+
+    #[test]
+    fn int_neg_exponent() {
+        let bytecode = assemble("
+            IPOW r0 i1 i-1
+        ").unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Err(RuntimeError::IntNegativeExponent));
+    }
+
+    #[test]
+    fn int_overflow() {
+        // Add 1 to max int value
+        let bytecode: Vec<u8> = vec![0b00000011, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x7f];
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Err(RuntimeError::IntegerOverflow));
+    }
 }
