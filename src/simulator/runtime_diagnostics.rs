@@ -28,14 +28,18 @@ pub enum RuntimeError {
 }
 
 impl RuntimeError {
-    pub fn from_index(index: usize, info: u64) -> Self {
+    pub fn from_index(index: usize, info: Option<u64>) -> Self {
         match index {
-            0 => Self::InvalidOpcode(info as u8),
+            0 => Self::InvalidOpcode(
+                info.expect("InvalidOpcode requires info") as u8
+            ),
             1 => Self::IntegerOverflow,
             2 => Self::DivisionByZero,
             3 => Self::IntNegativeExponent,
-            4 => Self::InvalidProb(f64::from_bits(info)),
-            _ => panic!("Invalid runtime error index"),
+            4 => Self::InvalidProb(
+                f64::from_bits(info.expect("InvalidProb reqires info")),
+            ),
+            _ => panic!("Invalid runtime error code: {index}"),
         }
     }
 }

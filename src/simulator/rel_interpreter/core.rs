@@ -404,8 +404,9 @@ impl RelInterpreter {
 
                 // Float comp jumps, ret, err
                 0b10100000 => {
-                    // only source RET
+                    // Get special ops handled first
                     match op {
+                        // RET
                         0b00000000 => {
                             // Even if its a float we're returning, we just need to move the raw bytes
                             let src_val = Self::read_source(
@@ -418,12 +419,13 @@ impl RelInterpreter {
                             return Ok(src_val);
                         }
 
+                        // ERR
                         0b00000100 => {
                             let code = bytecode[inst_counter];
                             inst_counter += 1;
 
                             if src1_is_reg { // no info, only code
-                                return Err(RuntimeError::from_index(code as usize, 0));
+                                return Err(RuntimeError::from_index(code as usize, None));
                             }else { 
                                 let src_val = Self::read_source(
                                     registers,
@@ -432,7 +434,7 @@ impl RelInterpreter {
                                     src2_is_reg,
                                 );
 
-                                return Err(RuntimeError::from_index(code as usize, src_val));
+                                return Err(RuntimeError::from_index(code as usize, Some(src_val)));
                             }
                         }
 
