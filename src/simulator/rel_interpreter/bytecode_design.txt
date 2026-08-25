@@ -54,10 +54,13 @@ Instructions:
 
     MOV dest, src 
     RET src
+    ERR code, src // src (info) is optional depending on ss bits
 
     RND dest // generates a random number in range [0,1)
 
 	sources can be literal or a virtual register
+
+    jump offsets and error codes are u8
 
     There are 64 registers, all 64 bits, registers addressed with 8 bits but top 2 ignored
 
@@ -140,6 +143,7 @@ bits:
 
     1 0 1 d d d:
         0 0 0: RET
+        0 0 1: ERR
 
     1 1 f d d d:
         0 0 0: 
@@ -164,3 +168,9 @@ bits:
         0 1: immediate reg
         1 0: reg       immediate
         1 1: immediate immediate
+
+    s s (for ERR):
+        0 0: no info
+        0 1: no info
+        1 0: info as reg
+        1 1: info as immediate

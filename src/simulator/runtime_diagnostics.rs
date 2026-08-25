@@ -24,4 +24,18 @@ pub enum RuntimeError {
     IntegerOverflow,
     DivisionByZero,
     IntNegativeExponent, // For integers
+    InvalidProb(f64),
+}
+
+impl RuntimeError {
+    pub fn from_index(index: usize, info: u64) -> Self {
+        match index {
+            0 => Self::InvalidOpcode(info as u8),
+            1 => Self::IntegerOverflow,
+            2 => Self::DivisionByZero,
+            3 => Self::IntNegativeExponent,
+            4 => Self::InvalidProb(f64::from_bits(info)),
+            _ => panic!("Invalid runtime error index"),
+        }
+    }
 }

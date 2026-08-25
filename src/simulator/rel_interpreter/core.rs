@@ -339,12 +339,8 @@ impl RelInterpreter {
 
                 // Int comp jumps, jump
                 0b10000000 => {
-                    let offset = Self::read_source(
-                        registers,
-                        bytecode,
-                        &mut inst_counter,
-                        false,
-                    ) as usize;
+                    let offset = bytecode[inst_counter] as usize;
+                    inst_counter += 1;
 
                     // No source JMP inst
                     match op {
@@ -406,7 +402,7 @@ impl RelInterpreter {
                     }
                 }
 
-                // Float comp jumps, ret
+                // Float comp jumps, ret, err
                 0b10100000 => {
                     // only source RET
                     match op {
@@ -422,15 +418,29 @@ impl RelInterpreter {
                             return Ok(src_val);
                         }
 
+                        0b00000100 => {
+                            let code = bytecode[inst_counter];
+                            inst_counter += 1;
+
+                            if src1_is_reg { // no info, only code
+                                return Err(RuntimeError::from_index(code as usize, 0));
+                            }else { 
+                                let src_val = Self::read_source(
+                                    registers,
+                                    bytecode,
+                                    &mut inst_counter,
+                                    src2_is_reg,
+                                );
+
+                                return Err(RuntimeError::from_index(code as usize, src_val));
+                            }
+                        }
+
                         _ => {}
                     }
 
-                    let offset = Self::read_source(
-                        registers,
-                        bytecode,
-                        &mut inst_counter,
-                        false,
-                    ) as usize;
+                    let offset = bytecode[inst_counter] as usize;
+                    inst_counter += 1;
 
                     let src1_val = f64::from_bits(Self::read_source(
                         registers,
@@ -690,17 +700,17 @@ mod tests {
     fn int_jumps() {
         let bytecode = assemble("
             MOV r0 i3
-            IJEQ i9 r0 i3
+            IJEQ b9 r0 i3
             RET i0
-            IJNE i9 r0 i4
+            IJNE b9 r0 i4
             RET i1
-            IJLT i9 r0 i5
+            IJLT b9 r0 i5
             RET i2
-            IJGT i9 r0 i2
+            IJGT b9 r0 i2
             RET i3
-            IJLE i9 r0 i3
+            IJLE b9 r0 i3
             RET i4
-            IJGE i9 r0 i3
+            IJGE b9 r0 i3
             RET i5
             RET i6
         ").unwrap();
@@ -716,20 +726,20 @@ mod tests {
     #[test]
     fn float_jumps() {
         let bytecode = assemble("
-            JMP i9
+            JMP b9
             RET i0
             MOV r0 f3.0
-            FJEQ i9 r0 f3.0
+            FJEQ b9 r0 f3.0
             RET i1
-            FJNE i9 r0 f4.0
+            FJNE b9 r0 f4.0
             RET i2
-            FJLT i9 r0 f5.0
+            FJLT b9 r0 f5.0
             RET i3
-            FJGT i9 r0 f2.0
+            FJGT b9 r0 f2.0
             RET i4
-            FJLE i9 r0 f3.0
+            FJLE b9 r0 f3.0
             RET i5
-            FJGE i9 r0 f3.0
+            FJGE b9 r0 f3.0
             RET i6
             RET i7
         ").unwrap();
@@ -821,7 +831,7 @@ mod tests {
             RND r0
             MOV r1 i1
             I2F r1 r1
-            FJLE i9 r0 r1
+            FJLE b9 r0 r1
             RET i0
             RET i1
         ").unwrap();
@@ -869,5 +879,21 @@ mod tests {
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Err(RuntimeError::IntegerOverflow));
+    }
+
+    #[test]
+    fn invalid_prob() {
+        let bytecode = assemble("
+            MOV r0 f1.1
+            FJLE b3 r0 f1.0
+            ERR b4 r0
+            RET i1
+        ").unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelInterpreter::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Err(RuntimeError::InvalidProb(1.1)));
     }
 }

@@ -22,10 +22,11 @@
 //!
 //! Author: Cole Francis
 
-enum Operand{
+enum Operand {
     Register(u8),
     Int(i64),
     Float(f64),
+    Byte(u8),
 }
 
 pub fn assemble(source: &str) -> Result<Vec<u8>, usize> {
@@ -107,12 +108,14 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
 
             match operands[2] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
         }
 
@@ -146,6 +149,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
         }
 
@@ -222,7 +226,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
-                Operand::Float(_) => return None,
+                _ => return None,
             };
         }
 
@@ -270,7 +274,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
 
             let offset = match operands[0] {
-                Operand::Int(i) => i,
+                Operand::Byte(b) => b,
                 _ => return None,
             };
 
@@ -298,7 +302,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let float = mnemonic.starts_with('F');
 
             let offset = match operands[0] {
-                Operand::Int(i) => i,
+                Operand::Byte(b) => b,
                 _ => return None,
             };
 
@@ -316,18 +320,20 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 ss;
 
             output.push(opcode);
-            output.extend(offset.to_le_bytes());
+            output.push(offset);
 
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
 
             match operands[2] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
         }
 
@@ -353,7 +359,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let float = mnemonic.starts_with('F');
 
-            let offset = match operands[0] {
+            let dest_val = match operands[0] {
                 Operand::Register(r) => r,
                 _ => return None,
             };
@@ -372,18 +378,20 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 ss;
 
             output.push(opcode);
-            output.extend(offset.to_le_bytes());
+            output.extend(dest_val.to_le_bytes());
 
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
 
             match operands[2] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
         }
 
@@ -416,6 +424,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
             }
         }
 
@@ -438,6 +447,45 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                _ => return None,
+            }
+        }
+
+        "ERR" => {
+            if operands.len() != 1 && operands.len() != 2 {
+                return None;
+            }
+
+            let has_info = operands.len() == 2;
+
+            let src_immediate = if has_info {
+                matches!(operands[1], Operand::Int(_) | Operand::Float(_))
+            } else {
+                false
+            };
+
+            let ss = (has_info as u8) << 1 | (src_immediate as u8);
+
+            let opcode = 
+                (0b101001) << 2 |
+                ss;
+
+            output.push(opcode);
+
+            let code = match operands[0] {
+                Operand::Byte(b) => b,
+                _ => return None,
+            };
+
+            output.push(code);
+
+            if has_info {
+                match operands[1] {
+                    Operand::Register(r) => output.push(r),
+                    Operand::Int(i) => output.extend(i.to_le_bytes()),
+                    Operand::Float(f) => output.extend(f.to_le_bytes()),
+                    _ => return None,
+                }
             }
         }
 
@@ -481,6 +529,11 @@ fn parse_operand(text: &str) -> Option<Operand> {
 
         "f" => Some(Operand::Float(value.parse().ok()?)),
 
+        "b" => {
+            println!("b reached");
+            Some(Operand::Byte(value.parse().ok()?))
+        }
+
         _ => None,
     }
 }
@@ -499,14 +552,16 @@ IABS r0 r1
 AND r0 r1 r2
 NOT r0 i1
 I2F r0 r1
-JMP i48
+JMP b48
 IMOD r0 r1 i2
 IEQ r0 r1 r2
-FJGE i48 r0 r1
+FJGE b48 r0 r1
 MOV r0 f3.0
 RET r0
 RET i1
 RND r0
+ERR b4 i0
+ERR b3
         ");
 
         assert_eq!(result, Ok(vec![0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -515,14 +570,16 @@ RND r0
                                    0b01000000, 0x00, 0x01, 0x02,
                                    0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b01011000, 0x00, 0x01,
-                                   0b10000000, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b10000000, 0x30,
                                    0b00011001, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11001000, 0x00, 0x01, 0x02,
-                                   0b10111100, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+                                   0b10111100, 0x30, 0x00, 0x01,
                                    0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40,
                                    0b10100000, 0x00,
                                    0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11100000, 0x00,
+                                   0b10100111, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                                   0b10100100, 0x03,
                                    ]));
     }
 
