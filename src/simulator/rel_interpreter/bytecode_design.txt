@@ -54,7 +54,7 @@ Instructions:
 
     MOV dest, src 
     RET src
-    ERR code, src // src (info) is optional depending on ss bits
+    ERR code, src // src is optional depending on ss bits
 
     RND dest // generates a random number in range [0,1)
 
@@ -170,7 +170,7 @@ bits:
         1 1: immediate immediate
 
     s s (for ERR):
-        0 0: no info
-        0 1: no info
-        1 0: info as reg
-        1 1: info as immediate
+        0 0: no src
+        0 1: no src
+        1 0: src as reg
+        1 1: src as immediate
