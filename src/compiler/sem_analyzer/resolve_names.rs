@@ -1600,7 +1600,7 @@ mod tests {
     }
 
     #[test]
-    fn program() {
+    fn program_1() {
         let mut diagnostics = Diagnostics::new();
 
         let tokens = Lexer::new("

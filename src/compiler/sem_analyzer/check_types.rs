@@ -388,6 +388,8 @@ mod tests {
     use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::parser::Parser;
+    use crate::compiler::lexer::Lexer;
 
     #[test]
     fn check_let_1() {
@@ -744,6 +746,53 @@ mod tests {
                 span: Span{line: 0, col: 5},
             },
         ]);
+    }
+
+    #[test]
+    fn check_rel_5() {
+        let mut diagnostics = Diagnostics::new();
+
+        let tokens = Lexer::new("
+let z3 = Mod(3);
+
+rel_t MOD_REL : () -> z3 = 1;
+        ", &mut diagnostics).tokenize();
+
+        let program = Parser::new(tokens, &mut diagnostics).parse();
+
+        let mut sem_analyzer = SemAnalyzer::new(program, &mut diagnostics);
+
+        sem_analyzer.resolve_names();
+
+        sem_analyzer.check_types();
+
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "z3".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span {line: 2, col: 5},
+            },
+            Symbol {
+                name: "MOD_REL".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![],
+                    return_type: Type::Mod(3)
+                },
+                span: Span {line: 4, col: 7},
+            }
+        ]);
+        assert_eq!(sem_analyzer.ast, Program {items: vec![
+            Item::Ent(EntType {
+                name: Ident::Symbol(0),
+                expr: EntExpr::Mod(3),
+            }),
+            Item::Rel(RelType {
+                name: Ident::Symbol(1),
+                params: vec![],
+                return_type: Type::Mod(3),
+                body: Expr::Literal(Literal::Int(1)),
+            }),
+        ]});
     }
 
     #[test]

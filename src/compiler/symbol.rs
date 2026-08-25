@@ -43,7 +43,7 @@ pub struct Symbol {
 pub enum SymbolKind {
     Const(Literal),
     Variable(Type),
-    EntType,
+    EntType,//(EntType),
     EntMember {
         parent: SymbolId,
         mapping: usize,
@@ -56,6 +56,12 @@ pub enum SymbolKind {
     Net {
        ports: HashMap<String, NetPort>
     },
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum EntType {
+    Mod(usize),
+    Set, 
 }
 
 #[derive(PartialEq, Debug, Clone)]
