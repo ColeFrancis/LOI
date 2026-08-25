@@ -182,7 +182,7 @@ impl <'a> SemAnalyzer<'a> {
                 Ident::Symbol(symbol_id) => match &self.symbols[*symbol_id].kind {
                     SymbolKind::Variable(ty) => ty.clone(),
 
-                    SymbolKind::EntMember(parent_id) => Type::Custom(Ident::Symbol(*parent_id)),
+                    SymbolKind::EntMember { parent, ..} => Type::Custom(Ident::Symbol(*parent)),
 
                     _ => Type::Error, // Should not be reachable
                 }
@@ -230,7 +230,7 @@ impl <'a> SemAnalyzer<'a> {
                 Ident::Symbol(symbol_id) => match &self.symbols[*symbol_id].kind {
                     SymbolKind::Variable(ty) => ty.clone(),
 
-                    SymbolKind::EntMember(parent_id) => Type::Custom(Ident::Symbol(*parent_id)),
+                    SymbolKind::EntMember {parent, ..} => Type::Custom(Ident::Symbol(*parent)),
 
                     _ => Type::Error, // Should not be reachable
                 }
@@ -592,12 +592,18 @@ mod tests {
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember(1),
+                    kind: SymbolKind::EntMember {
+                        parent: 1,
+                        mapping: 0,
+                    },
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember(1),
+                    kind: SymbolKind::EntMember{
+                        parent: 1,
+                        mapping: 1,
+                    },
                     span: Span{line: 0, col: 0},
                 },
             ],
@@ -1511,12 +1517,18 @@ mod tests {
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 0,
+                    },
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 1,
+                    },
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
@@ -1596,12 +1608,18 @@ mod tests {
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 0,
+                    },
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 1,
+                    },
                     span: Span {line: 0, col: 0},
                 },
                 
@@ -1612,7 +1630,10 @@ mod tests {
                 },
                 Symbol {
                     name: "B".to_string(),
-                    kind: SymbolKind::EntMember(3),
+                    kind: SymbolKind::EntMember{
+                        parent: 3,
+                        mapping: 0,
+                    },
                     span: Span {line: 0, col: 0},
                 },
                 Symbol {
@@ -1769,12 +1790,18 @@ mod tests {
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 0,
+                    },
                     span: Span{line: 0, col: 0},
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 1,
+                    },
                     span: Span{line: 0, col: 0},
                 },
             ],

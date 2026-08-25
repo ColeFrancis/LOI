@@ -123,7 +123,10 @@ net SECOND {
             },
             Symbol {
                 name: "A".to_string(),
-                kind: SymbolKind::EntMember(2),
+                kind: SymbolKind::EntMember{
+                    parent: 2,
+                    mapping: 0,
+                },
                 span: Span {line: 7, col: 17},
             },
             Symbol {

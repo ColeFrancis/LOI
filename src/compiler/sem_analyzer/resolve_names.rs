@@ -80,11 +80,14 @@ impl <'a> SemAnalyzer<'a> {
 
         match &mut ent_t.expr {
             EntExpr::SetEnt(idents) => {
-                for ident in idents {
+                for (index, ident) in idents.iter_mut().enumerate() {
                     let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
                     *ident = Ident::Symbol(self.define_symbol(
                         name,
-                        SymbolKind::EntMember(ent_t_symbol_id),
+                        SymbolKind::EntMember {
+                            parent: ent_t_symbol_id,
+                            mapping: index,
+                        },
                         span,
                     )?);
                 }
@@ -852,12 +855,18 @@ mod tests {
             },
             Symbol {
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember(0),
+                kind: SymbolKind::EntMember{
+                    parent: 0,
+                    mapping: 0,
+                },
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember(0),
+                kind: SymbolKind::EntMember{
+                    parent: 0,
+                    mapping: 1,
+                },
                 span: Span{line: 0, col: 2},
             },
         ]);
@@ -880,12 +889,18 @@ mod tests {
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 0,
+                    },
                     span: Span{line: 0, col: 1},
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember(0),
+                    kind: SymbolKind::EntMember{
+                        parent: 0,
+                        mapping: 1,
+                    },
                     span: Span{line: 0, col: 2},
                 },
             ],
@@ -980,12 +995,18 @@ mod tests {
             },
             Symbol {
                 name: "H".to_string(),
-                kind: SymbolKind::EntMember(0),
+                kind: SymbolKind::EntMember{
+                    parent: 0,
+                    mapping: 0,
+                },
                 span: Span{line: 0, col: 1},
             },
             Symbol {
                 name: "T".to_string(),
-                kind: SymbolKind::EntMember(0),
+                kind: SymbolKind::EntMember{
+                    parent: 0,
+                    mapping: 1,
+                },
                 span: Span{line: 0, col: 2},
             },
             Symbol {
@@ -1634,7 +1655,10 @@ net SECOND {
             },
             Symbol {
                 name: "A".to_string(),
-                kind: SymbolKind::EntMember(2),
+                kind: SymbolKind::EntMember{
+                    parent: 2,
+                    mapping: 0,
+                },
                 span: Span {line: 7, col: 17},
             },
             Symbol {

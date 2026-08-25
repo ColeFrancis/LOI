@@ -44,7 +44,10 @@ pub enum SymbolKind {
     Const(Literal),
     Variable(Type),
     EntType,
-    EntMember(SymbolId), // Parent
+    EntMember {
+        parent: SymbolId,
+        mapping: usize,
+    },
     Ent(Type),
     Rel_t {
         input_types: Vec<Type>,
