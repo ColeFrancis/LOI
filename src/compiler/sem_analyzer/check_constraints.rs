@@ -214,7 +214,7 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.check_constraints_net(Net {
+        let _result = sem_analyzer.check_constraints_net(Net {
             name: Ident::Symbol(1),
             items: vec![
                 NetItem::Input(InputEnt {

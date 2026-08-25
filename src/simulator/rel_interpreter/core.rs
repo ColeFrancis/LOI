@@ -39,11 +39,11 @@ impl RelInterpreter {
         }
     }
 
-    pub fn evaluate (&mut self, relation_id: usize, args: Vec<u64>, sim_timestep: usize, rel_delay: usize) -> u64 {
+    pub fn evaluate (&mut self, relation_id: usize, args: &[u64], sim_timestep: usize, rel_delay: usize) -> u64 {
         // Fill time info and arguments
         self.registers[0] = sim_timestep as u64;
         self.registers[1] = rel_delay as u64;
-        self.registers[2..args.len() + 2].copy_from_slice(&args);
+        self.registers[2..args.len() + 2].copy_from_slice(args);
         
         let code = &self.relations[relation_id].bytecode;
         
@@ -897,5 +897,26 @@ mod tests {
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Err(RuntimeError::InvalidProb(1.1)));
+    }
+
+    #[test]
+    fn test_evaluate() {
+        let relations = vec![
+            CompiledRel {
+                complexity: 0,
+                bytecode: assemble("
+                    FADD r0 r2 r3
+                    RET r0
+                ").unwrap(),
+            },
+        ];
+
+        let args = vec![(2.5_f64).to_bits() as u64, (3.0_f64).to_bits() as u64];
+
+        let result = RelInterpreter::new(relations).evaluate(0, &args, 0, 0);
+
+        assert_eq!(5.5_f64.to_bits() as u64, result);
+
+
     }
 }
