@@ -170,8 +170,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
             let ss =
                 (src1_immediate as u8) << 1 |
@@ -208,7 +208,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -242,7 +242,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             
 
-            let src_immediate = matches!(operands[1], Operand::Int(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -302,8 +302,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
             let ss =
                 (src1_immediate as u8) << 1 |
@@ -358,8 +358,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
             let ss =
                 (src1_immediate as u8) << 1 |
@@ -401,7 +401,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -424,7 +424,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 return None;
             }
 
-            let src_immediate = matches!(operands[0], Operand::Int(_));
+            let src_immediate = matches!(operands[0], Operand::Int(_) | Operand::Float(_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -503,7 +503,7 @@ JMP i48
 IMOD r0 r1 i2
 IEQ r0 r1 r2
 FJGE i48 r0 r1
-MOV r0 r1
+MOV r0 f3.0
 RET r0
 RET i1
 RND r0
@@ -519,7 +519,7 @@ RND r0
                                    0b00011001, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11001000, 0x00, 0x01, 0x02,
                                    0b10111100, 0x30, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
-                                   0b11000000, 0x00, 0x01,
+                                   0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40,
                                    0b10100000, 0x00,
                                    0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                                    0b11100000, 0x00,
