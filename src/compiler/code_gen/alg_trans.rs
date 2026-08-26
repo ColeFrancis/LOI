@@ -66,6 +66,7 @@ impl CodeGen {
                 }
             }
 
+            // TODO: ensure these are ordered properly
             // x + 0 -> x DONE
             // x + (-x) -> 0
             // x + x -> x * 2
@@ -77,7 +78,7 @@ impl CodeGen {
             // x - 0 -> x DONE
             // 0 - x -> -x DONE
             // x - x -> 0
-            // a * b - b * x -> x * (a - b)
+            // a * x - b * x -> x * (a - b)
             // a * x - x -> x * (a - 1)
             // x - a * x -> x * (1 - a)
             // x * 1 -> x DONE
@@ -230,6 +231,9 @@ impl CodeGen {
                     // BinaryOp::And => {}
 
                     // BinaryOp::Or => {}
+
+                    // x == x -> true
+                    // x != x -> false
 
                     _ => Expr::Binary(binary)
                 }
