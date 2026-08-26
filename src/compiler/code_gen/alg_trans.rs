@@ -73,6 +73,7 @@ impl CodeGen {
                 binary.right = Box::new(Self::algebraic_transform(*binary.right));
 
                 match binary.op {
+                    // x + 0 -> x DONE
                     // x + (-x) -> 0
                     // x + (-y) -> x - y
                     // x + x -> x * 2
@@ -80,7 +81,6 @@ impl CodeGen {
                     // a * x + b * x -> x * (a + b) 
                     // a + (x + b) -> x + (a + b) (a, b are literal)
                     // a + x -> x + a (a is literal)
-                    // x + 0 -> x DONE
                     BinaryOp::Add => {
                         match (&*binary.left, &*binary.right) {
                             // 0 + x
@@ -101,14 +101,19 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // x - x -> 0 DONE
+                    // 0 - x -> -x DONE
+                    // x - 0 -> x DONE
                     // x - (-y) -> x + y
-                    // x - x -> 0
                     // a * x - b * x -> x * (a - b)
                     // a * x - x -> x * (a - 1)
                     // x - a * x -> x * (1 - a)
-                    // 0 - x -> -x DONE
-                    // x - 0 -> x DONE
                     BinaryOp::Sub => {
+                        // x - x -> 0
+                        if Self::expr_equal(&binary.left, &binary.right) {
+                            return Expr::Literal(Literal::Int(0))
+                        }
+
                         match (&*binary.left, &*binary.right) {
                             // 0 - x
                             (&Expr::Literal(Literal::Int(0)), _) => return Expr::Unary(UnaryExpr {
@@ -135,20 +140,15 @@ impl CodeGen {
                             _ => {},
                         }
 
-                        // This does not work if spans are different
-                        if Self::expr_equal(&*binary.left, &*binary.right) {
-                            return Expr::Literal(Literal::Int(0))
-                        }
-
                         Expr::Binary(binary)
                     }
 
+                    // x * 1 -> x DONE
+                    // x * 0 -> 0 DONE
                     // (-x) * (-y) -> x * y
                     // x * (-y) -> -(x * y)
                     // a * (x * b) -> x * (a * b) (a, b are literal)
                     // a * x -> x * a (a is literal)
-                    // x * 1 -> x DONE
-                    // x * 0 -> 0 DONE
                     BinaryOp::Mul => {
                         match (&*binary.left, &*binary.right) {
                             // 0 * x
@@ -181,12 +181,12 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // 0 / x -> 0 DONE
+                    // x / 1 -> x DONE
+                    // x / x -> 1 if x is zero
                     // (-x) / (-y) -> x / y
                     // x / (-y) -> -(x / y)
                     // (-x) / y -> -(x / y)
-                    // 0 / x -> 0 DONE
-                    // x / 1 -> x
-                    // x / x -> 1 if x is zero
                     BinaryOp::Div => {
                         match (&*binary.left, &*binary.right) {
                             // 0 / x
@@ -194,6 +194,12 @@ impl CodeGen {
 
                             // 0.0 / x
                             (&Expr::Literal(Literal::Real(0.0)), _) => return Expr::Literal(Literal::Int(0)),
+
+                            // x / 1
+                            (_, &Expr::Literal(Literal::Int(1))) => return *binary.left,
+
+                            // x / 1.0
+                            (_, &Expr::Literal(Literal::Real(1.0))) => return *binary.left,
 
                             _ => {},
                         }
@@ -384,26 +390,33 @@ mod tests {
         assert_eq!(result, Expr::Ident(Ident::Symbol(0)));
     }
 
-    // #[test]
-    // fn binary_sub_1() {
-    //     // 3*x - 3*x
-    //     let expr = Expr::Binary(BinaryExpr {
-    //         left: Box::new(Expr::Binary(BinaryExpr {
-    //             left: Box::new(Expr::Literal(Literal::Int(3))),
-    //             right: Box::new(Expr::Ident(Ident::Symbol(0))),
-    //             op: BinaryOp::Mul,
-    //             op_span: Span{line: 0, col: 0},
-    //         })),
-    //         right: Box::new(Expr::),
-    //         op: BinaryOp::Sub,
-    //         op_span: Span{line: 0, col: 0},
-    //         expr_type: Type::Int,
-    //     });
+    #[test]
+    fn binary_sub_2() {
+        // 3*x - x*3
+        let expr = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(3))),
+                right: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: BinaryOp::Mul,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                right: Box::new(Expr::Ident(Ident::Symbol(0))),
+                left: Box::new(Expr::Literal(Literal::Int(3))),
+                op: BinaryOp::Mul,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            op: BinaryOp::Sub,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
 
-    //     let result = CodeGen::algebraic_transform(expr);
+        let result = CodeGen::algebraic_transform(expr);
 
-    //     assert_eq!(result, Expr::Literal(Literal::Int(0)));
-    // }
+        assert_eq!(result, Expr::Literal(Literal::Int(0)));
+    }
 
     #[test]
     fn mul_zero() {
