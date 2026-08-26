@@ -46,9 +46,10 @@ impl <'a> SemAnalyzer<'a> {
 
     fn check_constraints_item(&mut self, item: Item) -> Option<Item> {
         match item {
+            Item::Rel(rel_t) => Some(Item::Rel(rel_t)),
             Item::Net(net) => self.check_constraints_net(net).map(Item::Net),
             
-            other => Some(other),
+            _ => None,
         }
     }
 

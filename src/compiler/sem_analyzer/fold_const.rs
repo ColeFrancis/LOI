@@ -16,6 +16,11 @@
 //!
 //! Handles folding of compile-time constants in the annotated ast
 //!
+//! Invariants
+//!
+//! - All global let statements must be folded. 
+//!     Under normal compilation, assuming proper name resolution, it is impossible to have an unfolded global let statement.
+//!
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
@@ -39,7 +44,7 @@ impl <'a> SemAnalyzer<'a> {
 
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt) => self.fold_let(stmt, true).map(Item::Let),
+            Item::Let(stmt) => {self.fold_let(stmt, true); None}
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
             Item::Net(net) => Some(Item::Net(self.fold_net(net))),
 
