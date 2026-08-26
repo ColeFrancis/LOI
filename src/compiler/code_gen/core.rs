@@ -34,6 +34,7 @@ impl CodeGen {
     }
 
     pub fn compile(mut self) -> Vec<CompiledRel> {
+        // after optimization, the last step should be to turn x^2 back to x*x and 2x back to x+x
         Vec::new()
     }
 }

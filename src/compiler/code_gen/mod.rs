@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod core;
-mod optimize;
+mod alg_trans;
 
 use crate::compiler::ast::RelType;
 
