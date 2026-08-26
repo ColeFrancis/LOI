@@ -187,6 +187,28 @@ mod tests {
     }
 
     #[test]
+    fn rel_mod() {
+        // rel_t MOD : () -> Mod(3) = 1;
+        let kinds: Vec<TokenKind> = vec![Ident("MOD".to_string()), Colon, 
+            LParen, RParen, Arrow, 
+            Mod, LParen, IntLiteral(3), RParen, Equals, 
+            IntLiteral(1), Semicolon, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_rel_t();
+
+        assert_eq!(result, Some(RelType {
+            name: build_ident_str("MOD"),
+            params: vec![],
+            return_type: Type::Mod(3),
+            body: Expr::Literal(Literal::Int(1)),
+        }));
+    }
+
+    #[test]
     fn bad_rel_1() {
         // rel_t NUM  () -> Real = {  // missing colon
         //     let p = 0.5;

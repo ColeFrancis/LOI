@@ -172,6 +172,27 @@ impl<'a> Parser<'a> {
             TokenKind::Impulse     => Some(Type::Impulse),
             TokenKind::Int         => Some(Type::Int),
             TokenKind::Real        => Some(Type::Real),
+            TokenKind::Mod         => {
+                self.expect(TokenKind::LParen, rule)?;
+
+                let token = self.next();
+                let n = match token.kind {
+                    TokenKind::IntLiteral(n) => n,
+                    other => {
+                        self.diagnostics.error(CompilerError::UnexpectedToken {
+                            expected: vec![Expected::IntLiteral],
+                            found: other,
+                            span: token.span,
+                        });
+                        self.sync(rule);
+                        
+                        return None;
+                    }
+                };
+                self.expect(TokenKind::RParen, rule)?;
+
+                Some(Type::Mod(n))
+            }
             TokenKind::Ident(name) => Some(Type::Custom(Ident::Str{ val: name, span: token.span })),
             
             other => {

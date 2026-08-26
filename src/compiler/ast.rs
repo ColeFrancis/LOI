@@ -206,13 +206,7 @@ pub struct LetStatement {
 #[derive(PartialEq, Debug)]
 pub struct EntType {
     pub name: Ident,
-    pub expr: EntExpr,
-}
-
-#[derive(PartialEq, Debug)]
-pub enum EntExpr {
-    Mod(i64),
-    SetEnt(Vec<Ident>),
+    pub members: Vec<Ident>,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
