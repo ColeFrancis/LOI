@@ -16,10 +16,6 @@
 //!
 //! testing two functions for algebraic equivalence
 //!
-//! ## Invariants
-//!
-//! - Returned expression must always have the same behavior as inputed function (excepting neglegable differences in outputted floating point values)
-//!
 //! Author: Cole Francis
 
 use super::CodeGen;
