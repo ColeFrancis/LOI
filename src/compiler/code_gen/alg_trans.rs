@@ -34,12 +34,12 @@ impl CodeGen {
 
             Expr::Ident(ident) => Expr::Ident(ident),
 
-            // -(-x) -> x DONE
-            // ~(~x) -> x DONE
+            // DONE
             Expr::Unary(mut unary) => {
                 unary.expr = Box::new(Self::algebraic_transform(*unary.expr));
 
                 match unary.op {
+                    // -(-x) -> x DONE
                     UnaryOp::Neg => {
                         if let Expr::Unary(inner_unary) = &*unary.expr {
                             if let UnaryOp::Neg = inner_unary.op {
@@ -52,6 +52,7 @@ impl CodeGen {
                         Expr::Unary(unary)
                     }
 
+                    // ~(~x) -> x DONE
                     UnaryOp::BitNot => {
                         if let Expr::Unary(inner_unary) = &*unary.expr {
                             if let UnaryOp::BitNot = inner_unary.op {
@@ -66,59 +67,20 @@ impl CodeGen {
                 }
             }
 
-            // x + (-x) -> 0
-            // x + (-y) -> x - y
-            // x + x -> x * 2
-            // x + a * x -> x * (a + 1)
-            // a * x + b * x -> x * (a + b) 
-            // a + (x + b) -> x + (a + b) (a, b are literal)
-            // a + x -> x + a (a is literal)
-            // x + 0 -> x DONE
-
-            // x - (-y) -> x + y
-            // x - x -> 0
-            // a * x - b * x -> x * (a - b)
-            // a * x - x -> x * (a - 1)
-            // x - a * x -> x * (1 - a)
-            // 0 - x -> -x DONE
-            // x - 0 -> x DONE
-
-            // (-x) * (-y) -> x * y
-            // x * (-y) -> -(x * y)
-            // a * (x * b) -> x * (a * b) (a, b are literal)
-            // a * x -> x * a (a is literal)
-            // x * 1 -> x DONE
-            // x * 0 -> 0 DONE
-
-            // (-x) / (-y) -> x / y
-            // x / (-y) -> -(x / y)
-            // (-x) / y -> -(x / y)
-            // 0 / x -> 0 DONE
-            // x / 1 -> x
-            // x / x -> 1 if x is zero
-
-            // 1 ^ x -> 1 DONE
-            // x ^ 1 -> x DONE
-            // x ^ 0 -> 1 DONE
-
-            // x & true -> x
-            // x & false -> false
-            // x & x -> x
-            // x & ~x -> false
-
-            // x | true -> true
-            // x | false -> x
-            // x | x -> x
-            // x | ~x -> true
-
-            // x == x -> true
-
-            // x != x -> false
+            // NOT DONE
             Expr::Binary(mut binary) => {
                 binary.left = Box::new(Self::algebraic_transform(*binary.left));
                 binary.right = Box::new(Self::algebraic_transform(*binary.right));
 
                 match binary.op {
+                    // x + (-x) -> 0
+                    // x + (-y) -> x - y
+                    // x + x -> x * 2
+                    // x + a * x -> x * (a + 1)
+                    // a * x + b * x -> x * (a + b) 
+                    // a + (x + b) -> x + (a + b) (a, b are literal)
+                    // a + x -> x + a (a is literal)
+                    // x + 0 -> x DONE
                     BinaryOp::Add => {
                         match (&*binary.left, &*binary.right) {
                             // 0 + x
@@ -139,6 +101,13 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // x - (-y) -> x + y
+                    // x - x -> 0
+                    // a * x - b * x -> x * (a - b)
+                    // a * x - x -> x * (a - 1)
+                    // x - a * x -> x * (1 - a)
+                    // 0 - x -> -x DONE
+                    // x - 0 -> x DONE
                     BinaryOp::Sub => {
                         match (&*binary.left, &*binary.right) {
                             // 0 - x
@@ -174,6 +143,12 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // (-x) * (-y) -> x * y
+                    // x * (-y) -> -(x * y)
+                    // a * (x * b) -> x * (a * b) (a, b are literal)
+                    // a * x -> x * a (a is literal)
+                    // x * 1 -> x DONE
+                    // x * 0 -> 0 DONE
                     BinaryOp::Mul => {
                         match (&*binary.left, &*binary.right) {
                             // 0 * x
@@ -206,6 +181,12 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // (-x) / (-y) -> x / y
+                    // x / (-y) -> -(x / y)
+                    // (-x) / y -> -(x / y)
+                    // 0 / x -> 0 DONE
+                    // x / 1 -> x
+                    // x / x -> 1 if x is zero
                     BinaryOp::Div => {
                         match (&*binary.left, &*binary.right) {
                             // 0 / x
@@ -220,6 +201,9 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
+                    // 1 ^ x -> 1 DONE
+                    // x ^ 1 -> x DONE
+                    // x ^ 0 -> 1 DONE
                     BinaryOp::Pow => {
                         match (&*binary.left, &*binary.right) {
                             // x ^ 0
@@ -246,17 +230,69 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
-                    // BinaryOp::And => {}
+                    // x & true -> x DONE
+                    // x & false -> false DONE
+                    // x & x -> x
+                    // x & ~x -> false
+                    BinaryOp::And => {
+                        match (&*binary.left, &*binary.right) {
+                            // true & x
+                            (&Expr::Literal(Literal::Bool(true)), _) => return *binary.right,
 
-                    // BinaryOp::Or => {}
+                            // x & true
+                            (_, &Expr::Literal(Literal::Bool(true))) => return *binary.left,
+                            
+                            // false & x
+                            (&Expr::Literal(Literal::Bool(false)), _) => return Expr::Literal(Literal::Bool(false)),
+
+                            // x & true
+                            (_, &Expr::Literal(Literal::Bool(false))) => return Expr::Literal(Literal::Bool(false)),
+
+                            _ => {},
+                        }
+
+                        Expr::Binary(binary)
+                    }
+
+                    // x | true -> true DONE
+                    // x | false -> x DONE
+                    // x | x -> x
+                    // x | ~x -> true
+                    BinaryOp::Or => {
+                        match (&*binary.left, &*binary.right) {
+                            // true | x
+                            (&Expr::Literal(Literal::Bool(true)), _) => return Expr::Literal(Literal::Bool(true)),
+
+                            // x | true
+                            (_, &Expr::Literal(Literal::Bool(true))) => return Expr::Literal(Literal::Bool(true)),
+                            
+                            // false | x
+                            (&Expr::Literal(Literal::Bool()), _) => return *binary.right,
+
+                            // x | true
+                            (_, &Expr::Literal(Literal::Bool(false))) => return *binary.left,
+
+                            _ => {},
+                        }
+
+                        Expr::Binary(binary)
+                    }
+
+                    // x xor true -> ~x
+                    // x xor false -> x
+                    // BinaryOp::Xor
 
                     // x == x -> true
+                    // BinaryOp::Eq
+
                     // x != x -> false
+                    // BinaryOp::Ne
 
                     _ => Expr::Binary(binary)
                 }
             }
 
+            // DONE
             Expr::Tuple(mut tuple) => {
                 for expr in &mut tuple {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
@@ -267,10 +303,16 @@ impl CodeGen {
                 Expr::Tuple(tuple)
             }
 
+            // NOT DONE
             // Expr::Block(block) => {}
 
+            // NOT DONE
+            // if two arm expressions are the same, merge them to one arm with a vec of simple patterns
+            // if two simple patterns are the same in one arm, merge them
             // Expr::Cases(cases) => {}
 
+            // NOT DONE
+            // if two arm expressions are the same, merge them into one arm where the prob is the sum of both
             // Expr::Sample(sample) => {}
 
             _ => Expr::Error,
