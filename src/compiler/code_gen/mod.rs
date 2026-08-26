@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod core;
-mod alg_trans;
+mod algebraic_trans;
 mod expr_equal;
 
 use crate::compiler::ast::RelType;

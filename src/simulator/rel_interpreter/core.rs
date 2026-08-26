@@ -70,7 +70,7 @@ impl RelInterpreter {
 
             inst_counter += 1;
 
-            match inst & 0b11100000 {
+            match inst_type {
                 // Int arith
                 0b00000000 => {
                     let dest_reg = bytecode[inst_counter] as usize;
@@ -610,7 +610,7 @@ impl RelInterpreter {
                     }
                 }
 
-                other => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
             }
         }
     }
