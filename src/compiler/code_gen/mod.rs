@@ -14,6 +14,7 @@
 
 mod core;
 mod alg_trans;
+mod expr_equal;
 
 use crate::compiler::ast::RelType;
 

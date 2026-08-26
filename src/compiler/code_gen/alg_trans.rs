@@ -320,16 +320,6 @@ impl CodeGen {
             _ => Expr::Error,
         }
     }
-
-    // Compares two expressions to see if their equal.
-    // cannot naively compare as spans may be different. 
-    //      Maybe you can just set all the spans to zero though?
-    fn expr_equal(left: &Expr, right: &Expr) -> bool {
-        // match (left, right) {
-
-        // }
-        false
-    }
 }
 
 #[cfg(test)]
