@@ -230,10 +230,11 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
-                    // x & true -> x DONE
-                    // x & false -> false DONE
                     // x & x -> x
                     // x & ~x -> false
+                    // (~x) & (~y) -> ~(x | y)
+                    // x & true -> x DONE
+                    // x & false -> false DONE
                     BinaryOp::And => {
                         match (&*binary.left, &*binary.right) {
                             // true & x
@@ -254,10 +255,11 @@ impl CodeGen {
                         Expr::Binary(binary)
                     }
 
-                    // x | true -> true DONE
-                    // x | false -> x DONE
                     // x | x -> x
                     // x | ~x -> true
+                    // (~x) | (~y) -> ~(x & y)
+                    // x | true -> true DONE
+                    // x | false -> x DONE
                     BinaryOp::Or => {
                         match (&*binary.left, &*binary.right) {
                             // true | x
