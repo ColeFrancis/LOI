@@ -66,36 +66,54 @@ impl CodeGen {
                 }
             }
 
-            // TODO: ensure these are ordered properly
-            // x + 0 -> x DONE
             // x + (-x) -> 0
+            // x + (-y) -> x - y
             // x + x -> x * 2
             // x + a * x -> x * (a + 1)
             // a * x + b * x -> x * (a + b) 
-            // a + x -> x + a (a is literal)
             // a + (x + b) -> x + (a + b) (a, b are literal)
+            // a + x -> x + a (a is literal)
+            // x + 0 -> x DONE
+
             // x - (-y) -> x + y
-            // x - 0 -> x DONE
-            // 0 - x -> -x DONE
             // x - x -> 0
             // a * x - b * x -> x * (a - b)
             // a * x - x -> x * (a - 1)
             // x - a * x -> x * (1 - a)
-            // x * 1 -> x DONE
-            // x * 0 -> 0 DONE
+            // 0 - x -> -x DONE
+            // x - 0 -> x DONE
+
             // (-x) * (-y) -> x * y
             // x * (-y) -> -(x * y)
-            // a * x -> x * a (a is literal)
             // a * (x * b) -> x * (a * b) (a, b are literal)
-            // 0 / x -> 0 DONE
-            // x / 1 -> x
-            // x / x -> 1 if x is zero
+            // a * x -> x * a (a is literal)
+            // x * 1 -> x DONE
+            // x * 0 -> 0 DONE
+
             // (-x) / (-y) -> x / y
             // x / (-y) -> -(x / y)
             // (-x) / y -> -(x / y)
+            // 0 / x -> 0 DONE
+            // x / 1 -> x
+            // x / x -> 1 if x is zero
+
             // 1 ^ x -> 1 DONE
             // x ^ 1 -> x DONE
             // x ^ 0 -> 1 DONE
+
+            // x & true -> x
+            // x & false -> false
+            // x & x -> x
+            // x & ~x -> false
+
+            // x | true -> true
+            // x | false -> x
+            // x | x -> x
+            // x | ~x -> true
+
+            // x == x -> true
+
+            // x != x -> false
             Expr::Binary(mut binary) => {
                 binary.left = Box::new(Self::algebraic_transform(*binary.left));
                 binary.right = Box::new(Self::algebraic_transform(*binary.right));
