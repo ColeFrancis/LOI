@@ -14,7 +14,7 @@
 
 //! # expr_equal
 //!
-//! for determining if two expressions are guarenteed to be equal
+//! testing two functions for algebraic equivalence
 //!
 //! ## Invariants
 //!
@@ -95,27 +95,9 @@ impl CodeGen {
                 true
             }
 
-            (Expr::Block(left_block), Expr::Block(right_block)) => {
-                for (left_statement, right_statement) in left_block.statements.iter().zip(right_block.statements.iter()) {
-                    if !Self::statements_equal(&left_statement, &right_statement) {
-                        return false;
-                    }
-                }
-
-                Self::expr_equal(&left_block.expr, &right_block.expr)
-            }
-
-            (Expr::Cases(left_cases), Expr::Cases(right_cases)) => {
-                for (left_arm, right_arm) in left_cases.arms.iter().zip(right_cases.arms.iter()) {
-
-                }
-
-                Self::expr_equal(&left_cases.scrutinee, &right_cases.scrutinee)
-            }
-
-            // Sample expressions are random so there is no way to know if their equal execpt 
-            // under too narrow of circumstances to consider here
-
+            // There are more cases that are missed but the point of this function is not 
+            // to find exaustive equivalence but a quick check of algebraic equivalence
+            
             _ => false,
         }
     }
@@ -128,60 +110,6 @@ impl CodeGen {
                 }
 
                 Self::expr_equal(&left_let_statement.expr, &right_let_statement.expr)
-            }
-
-            _ => false,
-        }
-    }
-
-    fn cases_arms_equal(left: &CasesArm, right: &CasesArm) -> bool {
-        for (left_simple_pattern, right_simple_pattern) in left.pattern.iter().zip(right.pattern.iter()) {
-            if !Self::simple_patterns_equal(&left_simple_pattern, &right_simple_pattern) {
-                return false;
-            }
-        }
-
-        Self::expr_equal(&left.expr, &right.expr)
-    }
-
-    fn simple_patterns_equal(left: &SimplePattern, right: &SimplePattern) -> bool {
-        match (left, right) {
-            (SimplePattern::Default, SimplePattern::Default) => true,
-
-            (SimplePattern::Literal(left_literal), SimplePattern::Literal(right_literal)) => {
-                // Int(a) == Real(b) is true if  a == b in value
-                match (left_literal, right_literal) {
-                    (Literal::Int(left_val), Literal::Real(right_val)) => {
-                        *left_val as f64 == *right_val
-                    }
-
-                    (Literal::Real(left_val), Literal::Int(right_val)) => {
-                        *left_val == *right_val as f64
-                    }
-
-                    _ => left_literal == right_literal,
-                }
-            }
-
-            (SimplePattern::Ident(left_ident), SimplePattern::Ident(right_ident)) => left_ident == right_ident,
-
-            (SimplePattern::Tuple(left_tuple), SimplePattern::Tuple(right_tuple)) => {
-                // if any are not equal, the entire expression is not equal
-                for (left_pattern, right_pattern) in left_tuple.iter().zip(right_tuple.iter()) {
-                    if !Self::simple_patterns_equal(left_pattern, right_pattern) {
-                        return false;
-                    }
-                }
-
-                true
-            }
-
-            (SimplePattern::Comparison(left_comp), SimplePattern::Comparison(right_comp)) => {
-                if left_comp.op != right_comp.op {
-                    return false;
-                }
-
-                Self::expr_equal(&left_comp.expr, &right_comp.expr)
             }
 
             _ => false,
