@@ -269,7 +269,7 @@ impl CodeGen {
                             (_, &Expr::Literal(Literal::Bool(true))) => return Expr::Literal(Literal::Bool(true)),
                             
                             // false | x
-                            (&Expr::Literal(Literal::Bool()), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Bool(false)), _) => return *binary.right,
 
                             // x | true
                             (_, &Expr::Literal(Literal::Bool(false))) => return *binary.left,
@@ -446,4 +446,6 @@ mod tests {
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
+
+    // TODO: Test boolean operations
 }
