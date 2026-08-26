@@ -43,7 +43,7 @@ pub struct Symbol {
 pub enum SymbolKind {
     Const(Literal),
     Variable(Type),
-    EntType,//(EntType),
+    EntType,
     EntMember {
         parent: SymbolId,
         mapping: usize,

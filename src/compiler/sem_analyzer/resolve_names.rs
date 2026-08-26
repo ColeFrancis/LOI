@@ -40,18 +40,19 @@ impl <'a> SemAnalyzer<'a> {
         self.ast.items = Vec::with_capacity(items.len());
 
         for item in items {
-            let resolved_item = self.resolve_item(item).unwrap_or(Item::Error);
-            self.ast.items.push(resolved_item);
+            if let Some(resolved_item) = self.resolve_item(item) {
+                self.ast.items.push(resolved_item);
+            }
         }
     }
 
     fn resolve_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Let(stmt)     => self.resolve_let(stmt).map(Item::Let),
-            Item::Ent(ent_type) => self.resolve_ent(ent_type).map(Item::Ent),
+            Item::Ent(ent_type) =>{self.resolve_ent(ent_type); None},
             Item::Rel(rel_type) => self.resolve_rel(rel_type).map(Item::Rel),
             Item::Net(net)      => self.resolve_net(net).map(Item::Net),
-            Item::Error         => Some(Item::Error),
+            _ => None,
         }
     }
 
@@ -69,7 +70,7 @@ impl <'a> SemAnalyzer<'a> {
         Some(stmt)
     }
 
-    fn resolve_ent(&mut self, mut ent_t: EntType) -> Option<EntType> {
+    fn resolve_ent(&mut self, mut ent_t: EntType) -> Option<()> {
         let (name, span) = self.extract_ident_str(ent_t.name)?;
         let ent_t_symbol_id = self.define_symbol(
             name,
@@ -77,27 +78,19 @@ impl <'a> SemAnalyzer<'a> {
             span,
         )?;
 
-
-        match &mut ent_t.expr {
-            EntExpr::SetEnt(idents) => {
-                for (index, ident) in idents.iter_mut().enumerate() {
-                    let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
-                    *ident = Ident::Symbol(self.define_symbol(
-                        name,
-                        SymbolKind::EntMember {
-                            parent: ent_t_symbol_id,
-                            mapping: index,
-                        },
-                        span,
-                    )?);
-                }
-            }
-            _ => {}
+        for (index, ident) in ent_t.members.iter_mut().enumerate() {
+            let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
+            *ident = Ident::Symbol(self.define_symbol(
+                name,
+                SymbolKind::EntMember {
+                    parent: ent_t_symbol_id,
+                    mapping: index,
+                },
+                span,
+            )?);
         }
 
-        ent_t.name = Ident::Symbol(ent_t_symbol_id);
-        
-        Some(ent_t)
+        None
     }
 
     fn resolve_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
@@ -785,36 +778,6 @@ mod tests {
     }
 
     #[test]
-    fn resolve_ent_1() {
-        // ent_t z3 = Mod(3);
-        let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program{items: vec![]},
-            &mut diagnostics,
-        );
-
-        let result = sem_analyzer.resolve_ent(EntType {
-            name: Ident::Str {
-                val: "z3".to_string(),
-                span: Span{line: 0, col: 0}
-            },
-            expr: EntExpr::Mod(3),
-        });
-
-        assert_eq!(result, Some(EntType {
-            name: Ident::Symbol(0),
-            expr: EntExpr::Mod(3),
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "z3".to_string(),
-                kind: SymbolKind::EntType,
-                span: Span{line: 0, col: 0},
-            },
-        ]);
-    }
-
-    #[test]
     fn resolve_ent_2() {
         // ent_t COIN = {H, T};
         let mut diagnostics = Diagnostics::new();
@@ -823,12 +786,12 @@ mod tests {
             &mut diagnostics,
         );
 
-        let result = sem_analyzer.resolve_ent(EntType {
+        sem_analyzer.resolve_ent(EntType {
             name: Ident::Str {
                 val: "COIN".to_string(),
                 span: Span{line: 0, col: 0}
             },
-            expr: EntExpr::SetEnt(vec![
+            members: vec![
                 Ident::Str {
                     val: "H".to_string(),
                     span: Span{line: 0, col: 1}
@@ -837,16 +800,9 @@ mod tests {
                     val: "T".to_string(),
                     span: Span{line: 0, col: 2}
                 },
-            ]),
+            ],
         });
-
-        assert_eq!(result, Some(EntType {
-            name: Ident::Symbol(0),
-            expr: EntExpr::SetEnt(vec![
-                Ident::Symbol(1),
-                Ident::Symbol(2),
-            ]),
-        }));
+        
         assert_eq!(sem_analyzer.symbols, vec![
             Symbol {
                 name: "COIN".to_string(),
@@ -1746,12 +1702,6 @@ net SECOND {
                     })),
                     expr_type: Type::Unknown,
                 }),
-            }),
-            Item::Ent(EntType {
-                name: Ident::Symbol(2),
-                expr: EntExpr::SetEnt(vec![
-                    Ident::Symbol(3),
-                ]),
             }),
             Item::Rel(RelType {
                 name: Ident::Symbol(4),

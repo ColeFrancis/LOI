@@ -79,6 +79,8 @@ let n = {
 
 ent_t SINGLE = {A};
 
+// rel_t MOD_ADD : (in: Mod(3)) -> Mod(3) = in + 2;
+
 rel_t ADD : (b: Int) -> Int = n + b;
 
 net FIRST {
@@ -135,12 +137,12 @@ net SECOND {
                     input_types: vec![Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span {line: 9, col: 7},
+                span: Span {line: 11, col: 7},
             },
             Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span {line: 9, col: 14},
+                span: Span {line: 11, col: 14},
             },
             Symbol {
                 name: "FIRST".to_string(),
@@ -156,17 +158,17 @@ net SECOND {
                         }),
                     ])
                 },
-                span: Span {line: 11, col: 5},
+                span: Span {line: 13, col: 5},
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 12, col: 11},
+                span: Span {line: 14, col: 11},
             },
             Symbol {
                 name: "q".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 13, col: 12},
+                span: Span {line: 15, col: 12},
             },
             Symbol {
                 name: "SECOND".to_string(),
@@ -182,26 +184,20 @@ net SECOND {
                         }),
                     ])
                 },
-                span: Span {line: 18, col: 5},
+                span: Span {line: 20, col: 5},
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 19, col: 11},
+                span: Span {line: 21, col: 11},
             },
             Symbol {
                 name: "c".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 20, col: 12},
+                span: Span {line: 22, col: 12},
             },
         ]);
         assert_eq!(validated_program, Program {items: vec![
-            Item::Ent(EntType {
-                name: Ident::Symbol(2),
-                expr: EntExpr::SetEnt(vec![
-                    Ident::Symbol(3),
-                ]),
-            }),
             Item::Rel(RelType {
                 name: Ident::Symbol(4),
                 params: vec![
@@ -215,7 +211,7 @@ net SECOND {
                     left: Box::new(Expr::Literal(Literal::Int(2))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(Ident::Symbol(5))),
-                    op_span: Span {line: 9, col: 33},
+                    op_span: Span {line: 11, col: 33},
                     expr_type: Type::Int,
                 }),
             }),
@@ -227,7 +223,7 @@ net SECOND {
                             name: Ident::Symbol(7),
                             param_type: Type::Int,
                         },
-                        span: Span{line: 12, col: 5},
+                        span: Span{line: 14, col: 5},
                     }),
                     NetItem::Output(OutputEnt {
                         param: Param {
@@ -241,7 +237,7 @@ net SECOND {
                         args: vec![
                             Ident::Symbol(7),
                         ],
-                        span: Span {line: 15, col: 7},
+                        span: Span {line: 17, col: 7},
                     }),
                 ],
             }),
@@ -253,7 +249,7 @@ net SECOND {
                             name: Ident::Symbol(10),
                             param_type: Type::Int,
                         },
-                        span: Span{line: 19, col: 5},
+                        span: Span{line: 21, col: 5},
                     }),
                     NetItem::Output(OutputEnt {
                         param: Param {
@@ -274,12 +270,12 @@ net SECOND {
                             Connection {
                                 port: Ident::Symbol(7),
                                 ent: Ident::Symbol(10),
-                                span: Span {line: 24, col: 11},
+                                span: Span {line: 26, col: 11},
                             },
                             Connection {
                                 port: Ident::Symbol(8),
                                 ent: Ident::Symbol(11),
-                                span: Span {line: 25, col: 11},
+                                span: Span {line: 27, col: 11},
                             },
                         ],
                     }),

@@ -179,6 +179,8 @@ impl<'a> Lexer<'a> {
 
                 while let Some(c) = self.next() {
                     if c == b'\n' {
+                        self.curr_line += 1;
+                        self.curr_col = 0;
                         break;
                     }
                 }
@@ -190,6 +192,10 @@ impl<'a> Lexer<'a> {
                 self.next();
 
                 while let Some(c) = self.next() {
+                    if c == b'\n' {
+                        self.curr_line += 1;
+                        self.curr_col = 0;
+                    }
                     if c == b'*' && self.peek() == Some(b'/') {
                         self.next();
                         return None;
@@ -407,7 +413,7 @@ mod test {
     #[test]
     fn test_line_col() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new(" a\nbc\td_ 67\n  / /* */;", &mut diagnostics).tokenize();
+        let tokens = Lexer::new(" a\nbc\td_ 67\n  / /* \n*/ ;", &mut diagnostics).tokenize();
 
         assert_eq!(tokens[0].span.line, 1);
         assert_eq!(tokens[0].span.col, 2);
@@ -424,7 +430,7 @@ mod test {
         assert_eq!(tokens[4].span.line, 3);
         assert_eq!(tokens[4].span.col, 3);
 
-        assert_eq!(tokens[5].span.line, 3);
-        assert_eq!(tokens[5].span.col, 10);
+        assert_eq!(tokens[5].span.line, 4);
+        assert_eq!(tokens[5].span.col, 4);
     }
 }

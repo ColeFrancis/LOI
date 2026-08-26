@@ -43,8 +43,7 @@ impl <'a> SemAnalyzer<'a> {
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
             Item::Net(net) => Some(Item::Net(self.fold_net(net))),
 
-            // ent_t have no expressions
-            other => Some(other),
+            _ => None,
         }
     }
 

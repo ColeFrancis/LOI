@@ -271,7 +271,7 @@ mod tests {
             items: vec![
                 Item::Ent(EntType {
                     name: build_ident_str("COIN"),
-                    expr: EntExpr::SetEnt(vec![build_ident_str("H"), build_ident_str("T")]),
+                    members: vec![build_ident_str("H"), build_ident_str("T")],
                 }),
                 Item::Let(LetStatement {
                     name: build_ident_str("a"),
@@ -313,7 +313,7 @@ net EMPTY {}", &mut diagnostics).tokenize();
                         val: "COIN".to_string(),
                         span: Span {line: 1, col: 7},
                     },
-                    expr: EntExpr::SetEnt(vec![
+                    members: vec![
                         ast::Ident::Str {
                             val: "H".to_string(),
                             span: Span {line: 1, col: 15},
@@ -322,7 +322,7 @@ net EMPTY {}", &mut diagnostics).tokenize();
                             val: "T".to_string(),
                             span: Span {line: 1, col: 18},
                         },
-                    ]),
+                    ],
                 }),
                 Item::Let(LetStatement {
                     name: ast::Ident::Str {

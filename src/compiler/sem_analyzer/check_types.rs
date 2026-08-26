@@ -40,18 +40,18 @@ impl <'a> SemAnalyzer<'a> {
         self.ast.items = Vec::with_capacity(items.len());
 
         for item in items {
-            let resolved_item = self.check_item(item).unwrap_or(Item::Error);
-            self.ast.items.push(resolved_item);
+            if let Some(resolved_item) = self.check_item(item) {
+                self.ast.items.push(resolved_item);
+            }
         }
     }
 
     fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Let(stmt)     => Some(Item::Let(self.check_let(stmt))),
-            Item::Ent(ent_type) => Some(Item::Ent(ent_type)),
             Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
             Item::Net(net)      => self.check_net(net).map(Item::Net),
-            Item::Error         => Some(Item::Error),
+            _ => None,
         }
     }
 

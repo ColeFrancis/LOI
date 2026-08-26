@@ -38,8 +38,9 @@ impl <'a> SemAnalyzer<'a> {
         self.ast.items = Vec::with_capacity(items.len());
 
         for item in items {
-            let checked_item = self.check_constraints_item(item).unwrap_or(Item::Error);
-            self.ast.items.push(checked_item);
+            if let Some(checked_item) = self.check_constraints_item(item) {
+                self.ast.items.push(checked_item);
+            }
         }
     }
 

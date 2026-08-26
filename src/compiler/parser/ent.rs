@@ -94,7 +94,7 @@ mod tests {
 
         assert_eq!(result, Some(EntType {
             name: build_ident_str("coin"),
-            expr: EntExpr::SetEnt(vec![build_ident_str("H"), build_ident_str("T")]),
+            members: vec![build_ident_str("H"), build_ident_str("T")],
         }));
     }
 
@@ -104,76 +104,6 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![Ident("coin".to_string()), Equals, 
             LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()),
             Semicolon, Eof];
-
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_ent_t();
-
-        assert_eq!(result, None);
-        assert_eq!(diagnostics.num_errors(), 1);
-    }
-
-    #[test]
-    fn mod_ent() {
-        // ent_t z4 = Mod(4); 
-        let kinds: Vec<TokenKind> = vec![Ident("z4".to_string()), Equals, 
-            Mod, LParen, IntLiteral(4), RParen, Semicolon, Eof];
-
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_ent_t();
-
-        assert_eq!(result, Some(EntType {
-            name: build_ident_str("z4"),
-            expr: EntExpr::Mod(4),
-        }));
-    }
-
-    #[test]
-    fn bad_mod_ent_1() {
-        // ent_t z4 = mod(4);    (should be Mod not mod)
-        let kinds: Vec<TokenKind> = vec![Ident("z4".to_string()), Equals, 
-            Ident("mod".to_string()), LParen, IntLiteral(4), RParen, Semicolon, Eof];
-
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_ent_t();
-
-        assert_eq!(result, None);
-        assert_eq!(diagnostics.num_errors(), 1);
-    }
-
-    #[test]
-    fn bad_mod_ent_2() {
-        // ent_t z4 = Mod(4;    (missing ")")
-        let kinds: Vec<TokenKind> = vec![Ident("z4".to_string()), Equals, 
-            Mod, LParen, IntLiteral(4), Semicolon, Eof];
-
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_ent_t();
-
-        assert_eq!(result, None);
-        assert_eq!(diagnostics.num_errors(), 1);
-    }
-
-    #[test]
-    fn bad_mod_ent_3() {
-        // ent_t z4 Mod(4;    (missing "=", ")")
-        let kinds: Vec<TokenKind> = vec![Ident("z4".to_string()), 
-            Mod, LParen, IntLiteral(4), Semicolon, Eof];
 
         let tokens: Vec<Token> = build_token_vec(kinds);
 
