@@ -23,11 +23,11 @@
 //! Author: Cole Francis
 
 use super::CodeGen;
-use crate::compiler::ast::Program;
+use crate::compiler::ast::RelType;
 use crate::compiler::compiled_rel::CompiledRel;
 
 impl CodeGen {
-    pub fn new(relations: Program) -> Self {
+    pub fn new(relations: Vec<RelType>) -> Self {
         Self {
             relations,
         }

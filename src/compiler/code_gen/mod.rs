@@ -13,9 +13,10 @@
 // limitations under the License.
 
 mod core;
+mod optimize;
 
-use crate::compiler::ast::Program;
+use crate::compiler::ast::RelType;
 
 pub struct CodeGen {
-    relations: Program,
+    relations: Vec<RelType>,
 }
