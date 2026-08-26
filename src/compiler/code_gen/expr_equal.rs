@@ -122,5 +122,53 @@ mod tests {
     use super::*;
     use crate::compiler::sem_analyzer::types::Type;
 
-    // TODO: test
+    #[test]
+    fn test_binary_1() {
+        // x + 3
+        let left = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Literal(Literal::Int(3))),
+            op: BinaryOp::Add,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
+
+        // 3.0 + x
+        let right = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Add,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
+
+        let result = CodeGen::expr_equal(&left, &right);
+
+        assert!(result);
+    }
+
+    #[test]
+    fn test_binary_2() {
+        // x - 3
+        let left = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Ident(Ident::Symbol(0))),
+            right: Box::new(Expr::Literal(Literal::Int(3))),
+            op: BinaryOp::Sub,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
+
+        // 3.0 - x
+        let right = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Sub,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
+
+        let result = CodeGen::expr_equal(&left, &right);
+
+        assert!(!result);
+    }
 }
