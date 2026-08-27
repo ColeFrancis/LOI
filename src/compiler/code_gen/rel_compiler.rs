@@ -28,7 +28,7 @@ use std::collections::HashMap;
 use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
-use crate::compiler::symbol::SymbolId;
+use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 
@@ -36,18 +36,23 @@ pub struct RelCompiler<'a> {
     reg_map: HashMap<SymbolId, usize>,
     reg_used: [bool; 64],
 
-    rel_name: &'a str,
-    rel_span: Span,
+    rel_symbol_id: SymbolId,
+    symbol_table: &'a [Symbol],
     diagnostics: &'a mut Diagnostics,
 }
 
 impl<'a> RelCompiler<'a> {
-    pub fn compile(relation: RelType, diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
+    pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
+        let rel_symbol_id = match relation.name {
+            Ident::Symbol(id) => id,
+            _ => return None,
+        };
+
         let mut compiler = Self {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
-            rel_name: "TODO", // TODO: figure out how to get name
-            rel_span: Span{line: 0, col: 0}, // TODO: figure out how to get span
+            rel_symbol_id,
+            symbol_table,
             diagnostics,
         };
 
@@ -100,13 +105,18 @@ impl<'a> RelCompiler<'a> {
                 }
             }
 
-            Expr::Ident(Ident::Symbol(id)) => Source::Reg(id as usize), // how to get type?
+            Expr::Ident(Ident::Symbol(id)) => {
+                let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
+                    return None; // not reachable
+                };
+                (Source::Reg(id as usize), ident_type)
+            }
 
             Expr::Unary(unary) => {
                 match (unary.expr_type, unary.op) {
                     // a mod n == (-a) mod n
                     (Type::Mod(modulus), UnaryOp::Neg) => {
-                        let (sub_bytecode, src) = self.compile_expr(*unary.expr)?;
+                        let (sub_bytecode, src, _) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
@@ -124,7 +134,7 @@ impl<'a> RelCompiler<'a> {
                     }
 
                     (Type::Int, UnaryOp::Neg) => {
-                        let (sub_bytecode, src) = self.compile_expr(*unary.expr)?;
+                        let (sub_bytecode, src, _) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
@@ -142,7 +152,7 @@ impl<'a> RelCompiler<'a> {
                     }
 
                     (Type::Real, UnaryOp::Neg) => {
-                        let (sub_bytecode, src) = self.compile_expr(*unary.expr)?;
+                        let (sub_bytecode, src, _) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
@@ -160,7 +170,7 @@ impl<'a> RelCompiler<'a> {
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
-                        let (sub_bytecode, src) = self.compile_expr(*unary.expr)?;
+                        let (sub_bytecode, src, _) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
@@ -173,15 +183,24 @@ impl<'a> RelCompiler<'a> {
                             src: src,
                         });
 
-                        Source::Reg(dest)
+                        (Source::Reg(dest), Type::Bool)
                     }
                     
-                    // (Type::Impulase, UnaryOp::BitNot) => {}
+                    // implemented as var != simulation_time
+                    // (Type::Impulse, UnaryOp::BitNot) => {}
 
                     _ => return None,
                 }
             }
 
+            // if an expr is Real, convert any int sources to float
+            // match sub_type {
+            //     Type::Mod(_) | Type::Int => bytecode.push(Instruction::I2F {
+            //         dest: dest,
+            //         src: dest,
+            //     }),
+            //     _ => {}
+            // }
             // Expr::Binary(binary) => {}
 
             // Expr::Tuple(tuple) => {}
@@ -206,8 +225,8 @@ impl<'a> RelCompiler<'a> {
 
         if idx.is_none() {
             self.diagnostics.error(CompilerError::TooManySymbols {
-                rel_name: self.rel_name.to_string(),
-                rel_span: self.rel_span,
+                rel_name: self.symbol_table[self.rel_symbol_id].name.clone(),
+                rel_span: self.symbol_table[self.rel_symbol_id].span.clone(),
             });
         }
 
@@ -219,39 +238,36 @@ impl<'a> RelCompiler<'a> {
 mod tests {
     use super::*;
 
-    fn get_empty_rel_type() -> RelType {
-        RelType {
-            name: Ident::Symbol(0),
-            params: vec![],
-            return_type: Type::Int,
-            body: Expr::Error,
-        }
-    }
-
     #[test]
     fn compile_literal_expr() {
         let mut diagnostics = Diagnostics::new();
+        let symbol_table = Vec::new();
         let mut compiler = RelCompiler {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
-            rel_name: "", 
-            rel_span: Span{line: 0, col: 0},
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
             diagnostics: &mut diagnostics,
         };
 
         let ir = compiler.compile_expr(Expr::Literal(Literal::Int(3)));
 
-        assert_eq!(ir, Some((vec![], Source::Int(3))));
+        assert_eq!(ir, Some((vec![], Source::Int(3), Type::Int)));
     }
 
     #[test]
     fn compile_ident_expr() {
         let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Int),
+            span: Span{line: 0, col: 0},
+        }];
         let mut compiler = RelCompiler {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
-            rel_name: "", 
-            rel_span: Span{line: 0, col: 0},
+            rel_symbol_id: 1,
+            symbol_table: &symbol_table,
             diagnostics: &mut diagnostics,
         };
         compiler.reg_map.insert(0, 0);
@@ -259,17 +275,19 @@ mod tests {
 
         let ir = compiler.compile_expr(Expr::Ident(Ident::Symbol(0)));
 
-        assert_eq!(ir, Some((vec![], Source::Reg(0))));
+        assert_eq!(ir, Some((vec![], Source::Reg(0), Type::Int)));
     }
 
     #[test]
     fn compile_unary_expr_1() {
+        // -(3)
         let mut diagnostics = Diagnostics::new();
+        let symbol_table = Vec::new();
         let mut compiler = RelCompiler {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
-            rel_name: "", 
-            rel_span: Span{line: 0, col: 0},
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
             diagnostics: &mut diagnostics,
         };
 
@@ -286,17 +304,19 @@ mod tests {
                 src1: Source::Int(3),
                 src2: Source::Int(-1),
             },
-        ], Source::Reg(0))));
+        ], Source::Reg(0), Type::Int)));
     }
 
     #[test]
     fn compile_unary_expr_2() {
+        // ~(false)
         let mut diagnostics = Diagnostics::new();
+        let symbol_table = Vec::new();
         let mut compiler = RelCompiler {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
-            rel_name: "", 
-            rel_span: Span{line: 0, col: 0},
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
             diagnostics: &mut diagnostics,
         };
 
@@ -312,6 +332,6 @@ mod tests {
                 dest: 0,
                 src: Source::Bool(false),
             },
-        ], Source::Reg(0))));
+        ], Source::Reg(0), Type::Bool)));
     }
 }
