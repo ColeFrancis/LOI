@@ -28,28 +28,31 @@ use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 
 impl CodeGen {
-    pub(super) fn algebraic_transform(expr: Expr) -> Expr {
+    pub(super) fn algebraic_transform(expr: Expr) -> (Expr, bool) {
         match expr {
-            Expr::Literal(literal) => Expr::Literal(literal),
+            Expr::Literal(literal) => (Expr::Literal(literal), false),
 
-            Expr::Ident(ident) => Expr::Ident(ident),
+            Expr::Ident(ident) => (Expr::Ident(ident), false),
 
             // DONE
             Expr::Unary(mut unary) => {
-                unary.expr = Box::new(Self::algebraic_transform(*unary.expr));
+                let (transformed_expr, modified) = Self::algebraic_transform(*unary.expr);
+                unary.expr = Box::new(transformed_expr);
 
                 match unary.op {
                     // -(-x) -> x DONE
+                    // -(x + y) -> -x - y
+                    // -(x - y) -> y - x
                     UnaryOp::Neg => {
                         if let Expr::Unary(inner_unary) = &*unary.expr {
                             if let UnaryOp::Neg = inner_unary.op {
                                 if let Expr::Unary(inner_unary) = *unary.expr {
-                                    return *inner_unary.expr;
+                                    return (*inner_unary.expr, true);
                                 }
                             }
                         }
 
-                        Expr::Unary(unary)
+                        (Expr::Unary(unary), modified)
                     }
 
                     // ~(~x) -> x DONE
@@ -57,168 +60,176 @@ impl CodeGen {
                         if let Expr::Unary(inner_unary) = &*unary.expr {
                             if let UnaryOp::BitNot = inner_unary.op {
                                 if let Expr::Unary(inner_unary) = *unary.expr {
-                                    return *inner_unary.expr;
+                                    return (*inner_unary.expr, true);
                                 }
                             }
                         }
 
-                        Expr::Unary(unary)
+                        (Expr::Unary(unary), modified)
                     }
                 }
             }
 
             // NOT DONE
             Expr::Binary(mut binary) => {
-                binary.left = Box::new(Self::algebraic_transform(*binary.left));
-                binary.right = Box::new(Self::algebraic_transform(*binary.right));
+                let (transformed_left, left_modified) = Self::algebraic_transform(*binary.left);
+                let (transformed_right, right_modified) = Self::algebraic_transform(*binary.right);
+                binary.left = Box::new(transformed_left);
+                binary.right = Box::new(transformed_right);
+
+                let modified = left_modified | right_modified;
 
                 match binary.op {
                     // x + 0 -> x DONE
                     // x + x -> x * 2 DONE
-                    // x + x * y -> x * (y + 1) DONE
+                    // x + (x + y) -> x*2 + y
+                    // x + (x - y) -> x*2 - y
+                    // x + (y - x) -> y
+                    // x + x * y -> x * (y + 1) DONE (NOT included for now)
+                    // x + x/y -> x *(1/y + 1)
                     // x * y + x * z -> x * (y + z) 
                     // x + (-x) -> 0 DONE
                     // x + (-y) -> x - y DONE
                     // a + (x + b) -> x + (a + b) (a, b are literal) 
                     // a + (x - b) -> x + (a - b) (a, b ar literal)
-                    // a + x -> x + a (a is literal)
+                    // a + x -> x + a (a is literal) DONE
                     BinaryOp::Add => {
                         match (&*binary.left, &*binary.right) {
                             // 0 + x
-                            (&Expr::Literal(Literal::Int(0)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Int(0)), _) => return (*binary.right, true),
 
                             // 0.0 + x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Real(0.0)), _) => return (*binary.right, true),
 
                             // x + 0
-                            (_, &Expr::Literal(Literal::Int(0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Int(0))) => return (*binary.left, true),
 
                             // x + 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Real(0.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
                         // x + x -> x * 2
                         if Self::expr_equal(&binary.left, &binary.right) {
-                            return Expr::Binary(BinaryExpr {
+                            return (Expr::Binary(BinaryExpr {
                                 left: Box::new(*binary.left),
                                 right: Box::new(Expr::Literal(Literal::Int(2))),
                                 op: BinaryOp::Mul,
                                 op_span: Span{line: 0, col: 0},
                                 expr_type: binary.expr_type,
-                            });
+                            }), true);
                         }
 
                         // x * a + x * b -> x * (a + b)
 
                         // x + x * y -> x * (y + 1)
-                        let pull_out_left = match &*binary.right {
-                            Expr::Binary(sub_binary) if sub_binary.op == BinaryOp::Mul => {
-                                if Self::expr_equal(&binary.left, &sub_binary.left) {
-                                    Some(true)
-                                }
-                                else if Self::expr_equal(&binary.left, &sub_binary.right) {
-                                    Some(false)
-                                }
-                                else {
-                                    None
-                                }
-                            }
-                            _ => None
-                        };
-                        match pull_out_left {
-                            Some(true) => if let Expr::Binary(sub_binary) = *binary.right {
-                                return Expr::Binary(BinaryExpr {
-                                    left: Box::new(*binary.left),
-                                    right: Box::new(Expr::Binary(BinaryExpr {
-                                        left: Box::new(*sub_binary.left),
-                                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                                        op: BinaryOp::Add,
-                                        op_span: Span{line: 0, col: 0},
-                                        expr_type: sub_binary.expr_type,
-                                    })),
-                                    op: BinaryOp::Mul,
-                                    op_span: Span{line: 0, col: 0},
-                                    expr_type: binary.expr_type,
-                                });
-                            }
+                        // let pull_out_left = match &*binary.right {
+                        //     Expr::Binary(sub_binary) if sub_binary.op == BinaryOp::Mul => {
+                        //         if Self::expr_equal(&binary.left, &sub_binary.left) {
+                        //             Some(true)
+                        //         }
+                        //         else if Self::expr_equal(&binary.left, &sub_binary.right) {
+                        //             Some(false)
+                        //         }
+                        //         else {
+                        //             None
+                        //         }
+                        //     }
+                        //     _ => None
+                        // };
+                        // match pull_out_left {
+                        //     Some(true) => if let Expr::Binary(sub_binary) = *binary.right {
+                        //         return Expr::Binary(BinaryExpr {
+                        //             left: Box::new(*binary.left),
+                        //             right: Box::new(Expr::Binary(BinaryExpr {
+                        //                 left: Box::new(*sub_binary.left),
+                        //                 right: Box::new(Expr::Literal(Literal::Int(1))),
+                        //                 op: BinaryOp::Add,
+                        //                 op_span: Span{line: 0, col: 0},
+                        //                 expr_type: sub_binary.expr_type,
+                        //             })),
+                        //             op: BinaryOp::Mul,
+                        //             op_span: Span{line: 0, col: 0},
+                        //             expr_type: binary.expr_type,
+                        //         });
+                        //     }
 
-                            Some(false) => if let Expr::Binary(sub_binary) = *binary.right {
-                                return Expr::Binary(BinaryExpr {
-                                    left: Box::new(*binary.left),
-                                    right: Box::new(Expr::Binary(BinaryExpr {
-                                        left: Box::new(*sub_binary.right),
-                                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                                        op: BinaryOp::Add,
-                                        op_span: Span{line: 0, col: 0},
-                                        expr_type: sub_binary.expr_type,
-                                    })),
-                                    op: BinaryOp::Mul,
-                                    op_span: Span{line: 0, col: 0},
-                                    expr_type: binary.expr_type,
-                                });
-                            }
+                        //     Some(false) => if let Expr::Binary(sub_binary) = *binary.right {
+                        //         return Expr::Binary(BinaryExpr {
+                        //             left: Box::new(*binary.left),
+                        //             right: Box::new(Expr::Binary(BinaryExpr {
+                        //                 left: Box::new(*sub_binary.right),
+                        //                 right: Box::new(Expr::Literal(Literal::Int(1))),
+                        //                 op: BinaryOp::Add,
+                        //                 op_span: Span{line: 0, col: 0},
+                        //                 expr_type: sub_binary.expr_type,
+                        //             })),
+                        //             op: BinaryOp::Mul,
+                        //             op_span: Span{line: 0, col: 0},
+                        //             expr_type: binary.expr_type,
+                        //         });
+                        //     }
 
-                            _ => {}
-                        }
+                        //     _ => {}
+                        // }
 
                         // x * y + x -> x * (y + 1)
-                        let pull_out_left = match &*binary.left {
-                            Expr::Binary(sub_binary) if sub_binary.op == BinaryOp::Mul => {
-                                if Self::expr_equal(&binary.right, &sub_binary.left) {
-                                    Some(true)
-                                }
-                                else if Self::expr_equal(&binary.right, &sub_binary.right) {
-                                    Some(false)
-                                }
-                                else {
-                                    None
-                                }
-                            }
-                            _ => None
-                        };
-                        match pull_out_left {
-                            Some(true) => if let Expr::Binary(sub_binary) = *binary.left {
-                                return Expr::Binary(BinaryExpr {
-                                    left: Box::new(*binary.right),
-                                    right: Box::new(Expr::Binary(BinaryExpr {
-                                        left: Box::new(*sub_binary.left),
-                                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                                        op: BinaryOp::Add,
-                                        op_span: Span{line: 0, col: 0},
-                                        expr_type: sub_binary.expr_type,
-                                    })),
-                                    op: BinaryOp::Mul,
-                                    op_span: Span{line: 0, col: 0},
-                                    expr_type: binary.expr_type,
-                                });
-                            }
+                        // let pull_out_left = match &*binary.left {
+                        //     Expr::Binary(sub_binary) if sub_binary.op == BinaryOp::Mul => {
+                        //         if Self::expr_equal(&binary.right, &sub_binary.left) {
+                        //             Some(true)
+                        //         }
+                        //         else if Self::expr_equal(&binary.right, &sub_binary.right) {
+                        //             Some(false)
+                        //         }
+                        //         else {
+                        //             None
+                        //         }
+                        //     }
+                        //     _ => None
+                        // };
+                        // match pull_out_left {
+                        //     Some(true) => if let Expr::Binary(sub_binary) = *binary.left {
+                        //         return Expr::Binary(BinaryExpr {
+                        //             left: Box::new(*binary.right),
+                        //             right: Box::new(Expr::Binary(BinaryExpr {
+                        //                 left: Box::new(*sub_binary.left),
+                        //                 right: Box::new(Expr::Literal(Literal::Int(1))),
+                        //                 op: BinaryOp::Add,
+                        //                 op_span: Span{line: 0, col: 0},
+                        //                 expr_type: sub_binary.expr_type,
+                        //             })),
+                        //             op: BinaryOp::Mul,
+                        //             op_span: Span{line: 0, col: 0},
+                        //             expr_type: binary.expr_type,
+                        //         });
+                        //     }
 
-                            Some(false) => if let Expr::Binary(sub_binary) = *binary.left {
-                                return Expr::Binary(BinaryExpr {
-                                    left: Box::new(*binary.right),
-                                    right: Box::new(Expr::Binary(BinaryExpr {
-                                        left: Box::new(*sub_binary.right),
-                                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                                        op: BinaryOp::Add,
-                                        op_span: Span{line: 0, col: 0},
-                                        expr_type: sub_binary.expr_type,
-                                    })),
-                                    op: BinaryOp::Mul,
-                                    op_span: Span{line: 0, col: 0},
-                                    expr_type: binary.expr_type,
-                                });
-                            }
+                        //     Some(false) => if let Expr::Binary(sub_binary) = *binary.left {
+                        //         return Expr::Binary(BinaryExpr {
+                        //             left: Box::new(*binary.right),
+                        //             right: Box::new(Expr::Binary(BinaryExpr {
+                        //                 left: Box::new(*sub_binary.right),
+                        //                 right: Box::new(Expr::Literal(Literal::Int(1))),
+                        //                 op: BinaryOp::Add,
+                        //                 op_span: Span{line: 0, col: 0},
+                        //                 expr_type: sub_binary.expr_type,
+                        //             })),
+                        //             op: BinaryOp::Mul,
+                        //             op_span: Span{line: 0, col: 0},
+                        //             expr_type: binary.expr_type,
+                        //         });
+                        //     }
 
-                            _ => {}
-                        }
+                        //     _ => {}
+                        // }
 
                         // x + (-x) -> 0, x + (-y) -> x - y
                         let negate_right = match &*binary.right {
                             Expr::Unary(unary) if unary.op == UnaryOp::Neg => {
                                 if Self::expr_equal(&binary.left, &unary.expr) {
-                                    return Expr::Literal(Literal::Int(0));
+                                    return (Expr::Literal(Literal::Int(0)), true);
                                 }
 
                                 true
@@ -230,7 +241,7 @@ impl CodeGen {
                                 binary.right = unary.expr;
                                 binary.op = BinaryOp::Sub;
 
-                                return Expr::Binary(binary);
+                                return (Expr::Binary(binary), true);
                             }
                         }
 
@@ -238,7 +249,7 @@ impl CodeGen {
                         let negate_left = match &*binary.left {
                             Expr::Unary(unary) if unary.op == UnaryOp::Neg => {
                                 if Self::expr_equal(&binary.right, &unary.expr) {
-                                    return Expr::Literal(Literal::Int(0));
+                                    return (Expr::Literal(Literal::Int(0)), true);
                                 }
 
                                 true
@@ -251,53 +262,76 @@ impl CodeGen {
                                 binary.right = unary.expr;
                                 binary.op = BinaryOp::Sub;
 
-                                return Expr::Binary(binary);
+                                return (Expr::Binary(binary), true);
                             }
                         }
+
+                        // a + x -> x + a (a is literal)
+                        let swap = match &*binary.left {
+                            &Expr::Literal(_) => true,
+                            _ => false,
+                        };
+                        if swap {
+                            if let Expr::Literal(literal) = *binary.left {
+                                binary.left = Box::new(*binary.right);
+                                binary.right = Box::new(Expr::Literal(literal));
+
+                                return (Expr::Binary(binary), true);
+                            };
+                        }
                         
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
                     // x - x -> 0 DONE
                     // 0 - x -> -x DONE
                     // x - 0 -> x DONE
-                    // x - (-y) -> x + y
+                    // x - (x + y) -> -y
+                    // (x + y) - x -> y
+                    // x - (x - y) -> y
+                    // x - (y - x) -> x*2 - y
+                    // (x - y) - x -> -y
+                    // (y - x) - x -> y - x*2
+                    // x - y * x -> x * (1 - y)
+                    // y * x - x -> x * (y - 1)
+                    // x - x/y -> x * (1 - 1/y)
+                    // x/y - x -> x * (1/y - 1)
                     // a * x - b * x -> x * (a - b)
                     // a * x - x -> x * (a - 1)
-                    // x - a * x -> x * (1 - a)
+                    // x - (-y) -> x + y
                     BinaryOp::Sub => {
                         // x - x -> 0
                         if Self::expr_equal(&binary.left, &binary.right) {
-                            return Expr::Literal(Literal::Int(0));
+                            return (Expr::Literal(Literal::Int(0)), true);
                         }
 
                         match (&*binary.left, &*binary.right) {
                             // 0 - x
-                            (&Expr::Literal(Literal::Int(0)), _) => return Expr::Unary(UnaryExpr {
+                            (&Expr::Literal(Literal::Int(0)), _) => return (Expr::Unary(UnaryExpr {
                                 expr: binary.right,
                                 op: UnaryOp::Neg,
                                 op_span: Span{line: 0, col: 0}, // span no longer matters
                                 expr_type: binary.expr_type,
-                            }),
+                            }), true),
 
                             // 0.0 - x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return Expr::Unary(UnaryExpr {
+                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Unary(UnaryExpr {
                                 expr: binary.right,
                                 op: UnaryOp::Neg,
                                 op_span: Span{line: 0, col: 0}, // span no longer matters
                                 expr_type: binary.expr_type,
-                            }),
+                            }), true),
 
                             // x - 0
-                            (_, &Expr::Literal(Literal::Int(0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Int(0))) => return (*binary.left, true),
 
                             // x - 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Real(0.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
                     // x * 1 -> x DONE
@@ -309,59 +343,64 @@ impl CodeGen {
                     BinaryOp::Mul => {
                         match (&*binary.left, &*binary.right) {
                             // 0 * x
-                            (&Expr::Literal(Literal::Int(0)), _) => return Expr::Literal(Literal::Int(0)),
+                            (&Expr::Literal(Literal::Int(0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 0.0 * x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return Expr::Literal(Literal::Int(0)),
+                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x * 0
-                            (_, &Expr::Literal(Literal::Int(0))) => return Expr::Literal(Literal::Int(0)),
+                            (_, &Expr::Literal(Literal::Int(0))) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x * 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return Expr::Literal(Literal::Int(0)),
+                            (_, &Expr::Literal(Literal::Real(0.0))) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 1 * x
-                            (&Expr::Literal(Literal::Int(1)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Int(1)), _) => return (*binary.right, true),
 
                             // 1.0 * x
-                            (&Expr::Literal(Literal::Real(1.0)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Real(1.0)), _) => return (*binary.right, true),
 
                             // x * 1
-                            (_, &Expr::Literal(Literal::Int(1))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x * 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
                     // 0 / x -> 0 DONE
                     // x / 1 -> x DONE
-                    // x / x -> 1 if x is zero
+                    // x / x -> 1 if x is zero DONE
                     // (-x) / (-y) -> x / y
                     // x / (-y) -> -(x / y)
                     // (-x) / y -> -(x / y)
                     BinaryOp::Div => {
                         match (&*binary.left, &*binary.right) {
                             // 0 / x
-                            (&Expr::Literal(Literal::Int(0)), _) => return Expr::Literal(Literal::Int(0)),
+                            (&Expr::Literal(Literal::Int(0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 0.0 / x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return Expr::Literal(Literal::Int(0)),
+                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x / 1
-                            (_, &Expr::Literal(Literal::Int(1))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x / 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        // x / x -> 1
+                        if Self::expr_equal(&binary.left, &binary.right) {
+                            return (Expr::Literal(Literal::Int(1)), true);
+                        }
+
+                        (Expr::Binary(binary), modified)
                     }
 
                     // 1 ^ x -> 1 DONE
@@ -370,77 +409,87 @@ impl CodeGen {
                     BinaryOp::Pow => {
                         match (&*binary.left, &*binary.right) {
                             // x ^ 0
-                            (_, &Expr::Literal(Literal::Int(0))) => return Expr::Literal(Literal::Int(1)),
+                            (_, &Expr::Literal(Literal::Int(0))) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // x ^ 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return Expr::Literal(Literal::Int(1)),
+                            (_, &Expr::Literal(Literal::Real(0.0))) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // 1 ^ x
-                            (&Expr::Literal(Literal::Int(1)), _) => return Expr::Literal(Literal::Int(1)),
+                            (&Expr::Literal(Literal::Int(1)), _) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // 1.0 ^ x
-                            (&Expr::Literal(Literal::Real(1.0)), _) => return Expr::Literal(Literal::Int(1)),
+                            (&Expr::Literal(Literal::Real(1.0)), _) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // x ^ 1
-                            (_, &Expr::Literal(Literal::Int(1))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x ^ 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
-                    // x & x -> x
+                    // x & x -> x DONE
                     // x & ~x -> false
                     // (~x) & (~y) -> ~(x | y)
                     // x & true -> x DONE
                     // x & false -> false DONE
                     BinaryOp::And => {
+                        // x & x -> x
+                        if Self::expr_equal(&binary.left, &binary.right) {
+                            return (*binary.left, true);
+                        }
+
                         match (&*binary.left, &*binary.right) {
                             // true & x
-                            (&Expr::Literal(Literal::Bool(true)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Bool(true)), _) => return (*binary.right, true),
 
                             // x & true
-                            (_, &Expr::Literal(Literal::Bool(true))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Bool(true))) => return (*binary.left, true),
                             
                             // false & x
-                            (&Expr::Literal(Literal::Bool(false)), _) => return Expr::Literal(Literal::Bool(false)),
+                            (&Expr::Literal(Literal::Bool(false)), _) => return (Expr::Literal(Literal::Bool(false)), true),
 
                             // x & true
-                            (_, &Expr::Literal(Literal::Bool(false))) => return Expr::Literal(Literal::Bool(false)),
+                            (_, &Expr::Literal(Literal::Bool(false))) => return (Expr::Literal(Literal::Bool(false)), true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
-                    // x | x -> x
+                    // x | x -> x DONE
                     // x | ~x -> true
                     // (~x) | (~y) -> ~(x & y)
                     // x | true -> true DONE
                     // x | false -> x DONE
                     BinaryOp::Or => {
+                        // x | x -> x
+                        if Self::expr_equal(&binary.left, &binary.right) {
+                            return (*binary.left, true);
+                        }
+
                         match (&*binary.left, &*binary.right) {
                             // true | x
-                            (&Expr::Literal(Literal::Bool(true)), _) => return Expr::Literal(Literal::Bool(true)),
+                            (&Expr::Literal(Literal::Bool(true)), _) => return (Expr::Literal(Literal::Bool(true)), true),
 
                             // x | true
-                            (_, &Expr::Literal(Literal::Bool(true))) => return Expr::Literal(Literal::Bool(true)),
+                            (_, &Expr::Literal(Literal::Bool(true))) => return (Expr::Literal(Literal::Bool(true)), true),
                             
                             // false | x
-                            (&Expr::Literal(Literal::Bool(false)), _) => return *binary.right,
+                            (&Expr::Literal(Literal::Bool(false)), _) => return (*binary.right, true),
 
                             // x | true
-                            (_, &Expr::Literal(Literal::Bool(false))) => return *binary.left,
+                            (_, &Expr::Literal(Literal::Bool(false))) => return (*binary.left, true),
 
                             _ => {},
                         }
 
-                        Expr::Binary(binary)
+                        (Expr::Binary(binary), modified)
                     }
 
                     // x xor true -> ~x
@@ -453,19 +502,25 @@ impl CodeGen {
                     // x != x -> false
                     // BinaryOp::Ne
 
-                    _ => Expr::Binary(binary)
+                    _ => (Expr::Binary(binary), modified),
                 }
             }
 
             // DONE
             Expr::Tuple(mut tuple) => {
+                let mut modified = false; 
                 for expr in &mut tuple {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
+                    let (transformed_expr, this_modified) = Self::algebraic_transform(owned_expr);
 
-                    *expr = Self::algebraic_transform(owned_expr);
+                    *expr = transformed_expr;
+
+                    if this_modified {
+                        modified = true;
+                    }
                 }
 
-                Expr::Tuple(tuple)
+                (Expr::Tuple(tuple), modified)
             }
 
             // NOT DONE
@@ -480,7 +535,7 @@ impl CodeGen {
             // if two arm expressions are the same, merge them into one arm where the prob is the sum of both
             // Expr::Sample(sample) => {}
 
-            _ => Expr::Error,
+            other => (other, false),
         }
     }
 }
@@ -505,7 +560,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Ident(Ident::Symbol(0)));
     }
@@ -521,7 +576,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Ident(Ident::Symbol(0)));
     }
@@ -542,7 +597,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
@@ -563,7 +618,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -590,7 +645,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -612,7 +667,7 @@ mod tests {
             expr_type: Type::Real,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -623,69 +678,91 @@ mod tests {
         }));
     }
 
+    // #[test]
+    // // x + y * x -> x * (y + 1)
+    // fn binary_add_6() {
+    //     let expr = Expr::Binary(BinaryExpr {
+    //         left: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //         right: Box::new(Expr::Binary(BinaryExpr {
+    //             left: Box::new(Expr::Ident(Ident::Symbol(1))),
+    //             right: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //             op: BinaryOp::Mul,
+    //             op_span: Span{line: 0, col: 0},
+    //             expr_type: Type::Int,
+    //         })),
+    //         op: BinaryOp::Add,
+    //         op_span: Span{line: 0, col: 0},
+    //         expr_type: Type::Int,
+    //     });
+
+    //     let result = CodeGen::algebraic_transform(expr);
+
+    //     assert_eq!(result, Expr::Binary(BinaryExpr {
+    //         left: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //         right: Box::new(Expr::Binary(BinaryExpr {
+    //             left: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //             right: Box::new(Expr::Literal(Literal::Int(1))),
+    //             op: BinaryOp::Add,
+    //             op_span: Span{line: 0, col: 0},
+    //             expr_type: Type::Int,
+    //         })),
+    //         op: BinaryOp::Mul,
+    //         op_span: Span{line: 0, col: 0},
+    //         expr_type: Type::Int,
+    //     }));
+    // }
+
+    // #[test]
+    // // y * x + x-> x * (y + 1)
+    // fn binary_add_7() {
+    //     let expr = Expr::Binary(BinaryExpr {
+    //         left: Box::new(Expr::Binary(BinaryExpr {
+    //             left: Box::new(Expr::Ident(Ident::Symbol(1))),
+    //             right: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //             op: BinaryOp::Mul,
+    //             op_span: Span{line: 0, col: 0},
+    //             expr_type: Type::Int,
+    //         })),
+    //         right: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //         op: BinaryOp::Add,
+    //         op_span: Span{line: 0, col: 0},
+    //         expr_type: Type::Int,
+    //     });
+
+    //     let result = CodeGen::algebraic_transform(expr);
+
+    //     assert_eq!(result, Expr::Binary(BinaryExpr {
+    //         left: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //         right: Box::new(Expr::Binary(BinaryExpr {
+    //             left: Box::new(Expr::Ident(Ident::Symbol(0))),
+    //             right: Box::new(Expr::Literal(Literal::Int(1))),
+    //             op: BinaryOp::Add,
+    //             op_span: Span{line: 0, col: 0},
+    //             expr_type: Type::Int,
+    //         })),
+    //         op: BinaryOp::Mul,
+    //         op_span: Span{line: 0, col: 0},
+    //         expr_type: Type::Int,
+    //     }));
+    // }
+
     #[test]
-    // x + y * x -> x * (y + 1)
-    fn binary_add_6() {
+    // 1 + x -> x + 1
+    fn binary_add_8() {
         let expr = Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Ident(Ident::Symbol(0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Ident(Ident::Symbol(0))),
-                op: BinaryOp::Mul,
-                op_span: Span{line: 0, col: 0},
-                expr_type: Type::Int,
-            })),
-            op: BinaryOp::Add,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Int,
-        });
-
-        let result = CodeGen::algebraic_transform(expr);
-
-        assert_eq!(result, Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Ident(Ident::Symbol(0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(0))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Add,
-                op_span: Span{line: 0, col: 0},
-                expr_type: Type::Int,
-            })),
-            op: BinaryOp::Mul,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Int,
-        }));
-    }
-
-    #[test]
-    // y * x + x-> x * (y + 1)
-    fn binary_add_7() {
-        let expr = Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Ident(Ident::Symbol(0))),
-                op: BinaryOp::Mul,
-                op_span: Span{line: 0, col: 0},
-                expr_type: Type::Int,
-            })),
+            left: Box::new(Expr::Literal(Literal::Int(1))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
             op: BinaryOp::Add,
             op_span: Span{line: 0, col: 0},
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Symbol(0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(0))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Add,
-                op_span: Span{line: 0, col: 0},
-                expr_type: Type::Int,
-            })),
-            op: BinaryOp::Mul,
+            right: Box::new(Expr::Literal(Literal::Int(1))),
+            op: BinaryOp::Add,
             op_span: Span{line: 0, col: 0},
             expr_type: Type::Int,
         }));
@@ -707,7 +784,7 @@ mod tests {
             expr_type: Type::Real,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Ident(Ident::Symbol(0)));
     }
@@ -735,7 +812,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
@@ -751,7 +828,7 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
@@ -767,14 +844,10 @@ mod tests {
             expr_type: Type::Int,
         });
 
-        let result = CodeGen::algebraic_transform(expr);
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
-
-    // TO test:
-    // x + (-x) -> 0
-    // x + (-y) -> x - y
 
     // TODO: Test boolean operations
 }
