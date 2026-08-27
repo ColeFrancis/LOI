@@ -22,7 +22,7 @@
 //!
 //! Author: Cole Francis
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Source {
     RegInter(usize), // Registers for intermediate values that can be overridden
     RegVar(usize), // Registers that should not be overridden

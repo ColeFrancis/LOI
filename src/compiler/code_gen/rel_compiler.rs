@@ -129,7 +129,11 @@ impl<'a> RelCompiler<'a> {
 
                         let dest = match src {
                             Source::RegInter(reg) => reg,
-                            _ => self.get_next_reg()?,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
                         };
 
                         bytecode.push(Instruction::IMUL {
@@ -147,7 +151,11 @@ impl<'a> RelCompiler<'a> {
 
                         let dest = match src {
                             Source::RegInter(reg) => reg,
-                            _ => self.get_next_reg()?,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
                         };
 
                         bytecode.push(Instruction::IMUL {
@@ -165,7 +173,11 @@ impl<'a> RelCompiler<'a> {
 
                         let dest = match src {
                             Source::RegInter(reg) => reg,
-                            _ => self.get_next_reg()?,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
                         };
 
                         bytecode.push(Instruction::FMUL {
@@ -183,7 +195,11 @@ impl<'a> RelCompiler<'a> {
 
                         let dest = match src {
                             Source::RegInter(reg) => reg,
-                            _ => self.get_next_reg()?,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
                         };
 
                         // Convert impulse to Bool by inserting bytecode
@@ -229,36 +245,254 @@ impl<'a> RelCompiler<'a> {
             //  we need to first take the modulus of the value then perform the op
             Expr::Binary(binary) => {
                 match (binary.expr_type, binary.op) {
-                    // (Type::Mod(modulus), BinaryOp::Lt) => {}
-                    // (Type::Mod(modulus), BinaryOp::Gt) => {}
-                    // (Type::Mod(modulus), BinaryOp::Le) => {}
-                    // (Type::Mod(modulus), BinaryOp::Ge) => {}
-                    // (Type::Mod(modulus), BinaryOp::Add) => {}
-                    // (Type::Mod(modulus), BinaryOp::Sub) => {}
-                    // (Type::Mod(modulus), BinaryOp::Mul) => {}
+                    (Type::Mod(modulus), BinaryOp::Add) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IADD {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Mod(modulus))
+                    }
+                    (Type::Mod(modulus), BinaryOp::Sub) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::ISUB {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Mod(modulus))
+                    }
+                    (Type::Mod(modulus), BinaryOp::Mul) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IMUL {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Mod(modulus))
+                    }
                     // (Type::Mod(modulus), BinaryOp::Div) => {}
                     // (Type::Mod(modulus), BinaryOp::Pow) => {}
                     
-                    // (Type::Int, BinaryOp::Lt) => {}
-                    // (Type::Int, BinaryOp::Gt) => {}
-                    // (Type::Int, BinaryOp::Le) => {}
-                    // (Type::Int, BinaryOp::Ge) => {}
-                    // (Type::Int, BinaryOp::Add) => {}
-                    // (Type::Int, BinaryOp::Sub) => {}
-                    // (Type::Int, BinaryOp::Mul) => {}
-                    // (Type::Int, BinaryOp::Div) => {}
-                    // (Type::Int, BinaryOp::Pow) => {}
                     
-                    // (Type::Real, BinaryOp::Lt) => {}
-                    // (Type::Real, BinaryOp::Gt) => {}
-                    // (Type::Real, BinaryOp::Le) => {}
-                    // (Type::Real, BinaryOp::Ge) => {}
+                    (Type::Int, BinaryOp::Add) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IADD {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    (Type::Int, BinaryOp::Sub) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::ISUB {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    (Type::Int, BinaryOp::Mul) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IMUL {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    (Type::Int, BinaryOp::Div) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IDIV {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    (Type::Int, BinaryOp::Pow) => {
+                        let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, _) = self.compile_expr(*binary.right)?;
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let dest = match (src1, src2) {
+                            // When both are available, we should free one after the op
+                            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
+                                self.reg_used[reg2] = false;
+                                reg1
+                            }, 
+                            (Source::RegInter(reg), _) => reg,
+                            (_, Source::RegInter(reg)) => reg,
+                            _ => {
+                                let reg = self.get_next_reg()?;
+                                self.reg_used[reg] = true;
+                                reg
+                            },
+                        };
+
+                        bytecode.push(Instruction::IPOW {
+                            dest: dest,
+                            src1: src1,
+                            src2: src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    
                     // (Type::Real, BinaryOp::Add) => {}
                     // (Type::Real, BinaryOp::Sub) => {}
                     // (Type::Real, BinaryOp::Mul) => {}
                     // (Type::Real, BinaryOp::Div) => {}
                     // (Type::Real, BinaryOp::Pow) => {}
 
+                    // All comparison operators result in expr_type Bool
+                    // (Type::Bool, BinaryOp::Lt) => {}
+                    // (Type::Bool, BinaryOp::Gt) => {}
+                    // (Type::Bool, BinaryOp::Le) => {}
+                    // (Type::Bool, BinaryOp::Ge) => {}
                     // (Type::Bool, BinaryOp::Or) => {}
                     // (Type::Bool, BinaryOp::And) => {}
 
@@ -302,7 +536,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn compile_literal_expr() {
+    fn literal_expr() {
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
         let mut compiler = RelCompiler {
@@ -319,7 +553,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_ident_expr() {
+    fn ident_expr() {
         let mut diagnostics = Diagnostics::new();
         let symbol_table = vec![Symbol {
             name: "".to_string(),
@@ -342,7 +576,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_unary_expr_1() {
+    fn unary_expr_1() {
         // -(3)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
@@ -371,7 +605,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_unary_expr_2() {
+    fn unary_expr_2() {
         // ~(false)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
@@ -399,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn compile_unary_expr_3() {
+    fn unary_expr_3() {
         // ~(false) (false is impulse)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = vec![Symbol {
@@ -430,5 +664,64 @@ mod tests {
                 src2: Source::RegInter(0),
             },
         ], Source::RegInter(2), Type::Bool)));
+    }
+
+    #[test]
+    fn binary_add_1() {
+        // -(3) + -(a)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Int),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 0);
+        compiler.reg_used[0] = true;
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Literal(Literal::Int(3))),
+                op: UnaryOp::Neg,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            right: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Neg,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            op: BinaryOp::Add,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        }));
+            
+        assert_eq!(ir, Some((vec![
+            Instruction::IMUL {
+                dest: 1,
+                src1: Source::Int(3),
+                src2: Source::Int(-1),
+            },
+            Instruction::IMUL {
+                dest: 2,
+                src1: Source::RegVar(0),
+                src2: Source::Int(-1),
+            },
+            Instruction::IADD {
+                dest: 1,
+                src1: Source::RegInter(1),
+                src2: Source::RegInter(2),
+            },
+        ], Source::RegInter(1), Type::Int)));
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[2], false);
     }
 }
