@@ -35,32 +35,27 @@ impl CodeGen {
     }
 
     pub fn compile(mut self) -> Vec<CompiledRel> {
-        // after optimization, the last step should be to turn x^2 back to x*x and 2x back to x+x
-        // also turn (-x) + a (a is literal) back to a - x
-        self.optimize();
+        let mut compiled_relations = Vec::new();
+        for relation in self.relations {
+            let optimized_expr = Self::optimize_expr(relation.body);
+        }
         
-        Vec::new()
+        compiled_relations
     }
 
-    fn optimize(&mut self) {
-        for relation in &mut self.relations {
-            let mut owned_expr = std::mem::replace(&mut relation.body, Expr::Error);
+    fn optimize_expr(mut expr: Expr) -> Expr {
+        loop {
+            let (transformed_expr, modified) = Self::algebraic_transform(expr);
+            expr = transformed_expr;
 
-            loop {
-                let (transformed_expr, modified) = Self::algebraic_transform(owned_expr);
-                owned_expr = transformed_expr;
+            // TODO: Fold expression?
 
-                if !modified {
-                    break;
-                }
+            if !modified {
+                // TODO: Convert x^2 -> x*x, 2x -> x+x, (-x) + a -> a - x
 
-                // TODO: Fold expression
+                return expr;
             }
-            
-            // TODO: Convert x^2 -> x*x, 2x -> x+x, (-x) + a -> a - x
-            
-            relation.body = owned_expr;
-        }
+        }  
     }
 }
 
