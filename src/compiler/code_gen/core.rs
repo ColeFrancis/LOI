@@ -37,6 +37,8 @@ impl CodeGen {
     pub fn compile(mut self) -> Vec<CompiledRel> {
         // after optimization, the last step should be to turn x^2 back to x*x and 2x back to x+x
         // also turn (-x) + a (a is literal) back to a - x
+        self.optimize();
+        
         Vec::new()
     }
 
@@ -54,6 +56,8 @@ impl CodeGen {
 
                 // TODO: Fold expression
             }
+            
+            // TODO: Convert x^2 -> x*x, 2x -> x+x, (-x) + a -> a - x
             
             relation.body = owned_expr;
         }
