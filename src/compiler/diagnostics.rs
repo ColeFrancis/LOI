@@ -211,6 +211,16 @@ pub enum CompilerError {
         first_span: Span,
         last_span: Span
     },
+
+    ///////////////
+    // CodeGen
+    ///////////////
+
+    // There are only 62 registers available for use in the interpreter
+    TooManySymbols { 
+        rel_name: String,
+        rel_span: Span,
+    }
 }
 
 #[derive(Debug, PartialEq)]

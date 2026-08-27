@@ -374,7 +374,7 @@ impl CodeGen {
 
                     // 0 / x -> 0 DONE
                     // x / 1 -> x DONE
-                    // x / x -> 1 if x is zero DONE
+                    // x / x -> 1 DONE
                     // (-x) / (-y) -> x / y
                     // x / (-y) -> -(x / y)
                     // (-x) / y -> -(x / y)

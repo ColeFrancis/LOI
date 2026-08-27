@@ -22,9 +22,10 @@
 //!
 //! Author: Cole Francis
 
+
 use super::CodeGen;
+use super::rel_compiler::RelCompiler;
 use crate::compiler::ast::*;
-use crate::compiler::ast::RelType;
 use crate::compiler::compiled_rel::CompiledRel;
 
 impl CodeGen {
@@ -36,26 +37,32 @@ impl CodeGen {
 
     pub fn compile(mut self) -> Vec<CompiledRel> {
         let mut compiled_relations = Vec::new();
-        for relation in self.relations {
-            let optimized_expr = Self::optimize_expr(relation.body);
+        for mut relation in self.relations {
+            relation.body = Self::optimize_expr(relation.body);
+
+            // TODO: figure out how errors will be dealt with upon returning None
+            // compiled_relations.push(RelCompiler::compile(relation).unwrap());
         }
         
         compiled_relations
     }
 
     fn optimize_expr(mut expr: Expr) -> Expr {
-        loop {
-            let (transformed_expr, modified) = Self::algebraic_transform(expr);
-            expr = transformed_expr;
+        // loop {
+        //     // TODO: ensure expr_type is always correct
+        //     let (transformed_expr, modified) = Self::algebraic_transform(expr);
+        //     expr = transformed_expr;
 
-            // TODO: Fold expression?
+        //     // TODO: Fold expression?
 
-            if !modified {
-                // TODO: Convert x^2 -> x*x, 2x -> x+x, (-x) + a -> a - x
+        //     if !modified {
+        //         // TODO: Convert x^2 -> x*x, 2x -> x+x, (-x) + a -> a - x
 
-                return expr;
-            }
-        }  
+        //         return expr;
+        //     }
+        // }  
+
+        expr
     }
 }
 
