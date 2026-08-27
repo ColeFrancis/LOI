@@ -289,6 +289,7 @@ impl <'a> SemAnalyzer<'a> {
     fn verify_return_type(&mut self, return_type: &Type, expr_type: &Type, rel_span: &Span) -> Option<Type> {
         match (return_type, expr_type) {
             (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
+            (Type::Impulse, Type::Bool) => Some(Type::Impulse),
 
             (Type::Bool, Type::Impulse) => Some(Type::Bool), // Keep?
             (Type::Bool, Type::Bool) => Some(Type::Bool),

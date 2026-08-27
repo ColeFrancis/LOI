@@ -43,6 +43,7 @@ several entity types are predefined:
 
 Bool (true or false)
 Impulse (think of it as a single spike, or a delta dirac function)
+    Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
 Int (represented as u64)
 Real (represented as f64)
 

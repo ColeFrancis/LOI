@@ -24,7 +24,8 @@
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Source {
-    Reg(usize),
+    RegInter(usize), // Registers for intermediate values that can be overridden
+    RegVar(usize), // Registers that should not be overridden
     Bool(bool),
     Int(i64),
     Float(f64),

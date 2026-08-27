@@ -106,10 +106,18 @@ impl<'a> RelCompiler<'a> {
             }
 
             Expr::Ident(Ident::Symbol(id)) => {
+                let reg = if let Some(reg) = self.reg_map.get(&id) {
+                    *reg
+                } else {
+                    let reg = self.get_next_reg()?;
+                    self.reg_map.insert(id, reg);
+                    self.reg_used[reg] = true;
+                    reg
+                };
                 let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
                     return None; // not reachable
                 };
-                (Source::Reg(id as usize), ident_type)
+                (Source::RegVar(reg as usize), ident_type)
             }
 
             Expr::Unary(unary) => {
@@ -120,7 +128,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
-                            Source::Reg(reg) => reg,
+                            Source::RegInter(reg) => reg,
                             _ => self.get_next_reg()?,
                         };
 
@@ -130,7 +138,7 @@ impl<'a> RelCompiler<'a> {
                             src2: Source::Int(-1),
                         });
 
-                        (Source::Reg(dest), Type::Mod(modulus))
+                        (Source::RegInter(dest), Type::Mod(modulus))
                     }
 
                     (Type::Int, UnaryOp::Neg) => {
@@ -138,7 +146,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
-                            Source::Reg(reg) => reg,
+                            Source::RegInter(reg) => reg,
                             _ => self.get_next_reg()?,
                         };
 
@@ -148,7 +156,7 @@ impl<'a> RelCompiler<'a> {
                             src2: Source::Int(-1),
                         });
 
-                        (Source::Reg(dest), Type::Int)
+                        (Source::RegInter(dest), Type::Int)
                     }
 
                     (Type::Real, UnaryOp::Neg) => {
@@ -156,7 +164,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
-                            Source::Reg(reg) => reg,
+                            Source::RegInter(reg) => reg,
                             _ => self.get_next_reg()?,
                         };
 
@@ -166,28 +174,42 @@ impl<'a> RelCompiler<'a> {
                             src2: Source::Float(-1.0),
                         });
 
-                        (Source::Reg(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Real)
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
-                        let (sub_bytecode, src, _) = self.compile_expr(*unary.expr)?;
+                        let (sub_bytecode, src, sup_type) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(sub_bytecode);
 
                         let dest = match src {
-                            Source::Reg(reg) => reg,
+                            Source::RegInter(reg) => reg,
                             _ => self.get_next_reg()?,
                         };
+
+                        // Convert impulse to Bool by inserting bytecode
+                        match sup_type {
+                            Type::Impulse => {
+                                println!("dest: {}", dest);
+                                // Combine IEQ with NOT for efficency
+                                bytecode.push(Instruction::INE {
+                                    dest: dest,
+                                    src1: src,
+                                    src2: Source::RegInter(0),
+                                });
+
+                                return Some((bytecode, Source::RegInter(dest), Type::Bool));
+                            }
+                            _ => {}
+                        }
 
                         bytecode.push(Instruction::NOT {
                             dest: dest,
                             src: src,
                         });
 
-                        (Source::Reg(dest), Type::Bool)
+                        (Source::RegInter(dest), Type::Bool)
                     }
-                    
-                    // implemented as var != simulation_time
-                    // (Type::Impulse, UnaryOp::BitNot) => {}
+
 
                     _ => return None,
                 }
@@ -201,7 +223,48 @@ impl<'a> RelCompiler<'a> {
             //     }),
             //     _ => {}
             // }
-            // Expr::Binary(binary) => {}
+            // convert int/mod to real, impulse to bool
+            // make secondary registers available again
+            // For mod type, if the operator does not have modular congruence, 
+            //  we need to first take the modulus of the value then perform the op
+            Expr::Binary(binary) => {
+                match (binary.expr_type, binary.op) {
+                    // (Type::Mod(modulus), BinaryOp::Lt) => {}
+                    // (Type::Mod(modulus), BinaryOp::Gt) => {}
+                    // (Type::Mod(modulus), BinaryOp::Le) => {}
+                    // (Type::Mod(modulus), BinaryOp::Ge) => {}
+                    // (Type::Mod(modulus), BinaryOp::Add) => {}
+                    // (Type::Mod(modulus), BinaryOp::Sub) => {}
+                    // (Type::Mod(modulus), BinaryOp::Mul) => {}
+                    // (Type::Mod(modulus), BinaryOp::Div) => {}
+                    // (Type::Mod(modulus), BinaryOp::Pow) => {}
+                    
+                    // (Type::Int, BinaryOp::Lt) => {}
+                    // (Type::Int, BinaryOp::Gt) => {}
+                    // (Type::Int, BinaryOp::Le) => {}
+                    // (Type::Int, BinaryOp::Ge) => {}
+                    // (Type::Int, BinaryOp::Add) => {}
+                    // (Type::Int, BinaryOp::Sub) => {}
+                    // (Type::Int, BinaryOp::Mul) => {}
+                    // (Type::Int, BinaryOp::Div) => {}
+                    // (Type::Int, BinaryOp::Pow) => {}
+                    
+                    // (Type::Real, BinaryOp::Lt) => {}
+                    // (Type::Real, BinaryOp::Gt) => {}
+                    // (Type::Real, BinaryOp::Le) => {}
+                    // (Type::Real, BinaryOp::Ge) => {}
+                    // (Type::Real, BinaryOp::Add) => {}
+                    // (Type::Real, BinaryOp::Sub) => {}
+                    // (Type::Real, BinaryOp::Mul) => {}
+                    // (Type::Real, BinaryOp::Div) => {}
+                    // (Type::Real, BinaryOp::Pow) => {}
+
+                    // (Type::Bool, BinaryOp::Or) => {}
+                    // (Type::Bool, BinaryOp::And) => {}
+
+                    _ => return None,
+                }
+            }
 
             // Expr::Tuple(tuple) => {}
 
@@ -275,7 +338,7 @@ mod tests {
 
         let ir = compiler.compile_expr(Expr::Ident(Ident::Symbol(0)));
 
-        assert_eq!(ir, Some((vec![], Source::Reg(0), Type::Int)));
+        assert_eq!(ir, Some((vec![], Source::RegVar(0), Type::Int)));
     }
 
     #[test]
@@ -304,7 +367,7 @@ mod tests {
                 src1: Source::Int(3),
                 src2: Source::Int(-1),
             },
-        ], Source::Reg(0), Type::Int)));
+        ], Source::RegInter(0), Type::Int)));
     }
 
     #[test]
@@ -332,6 +395,40 @@ mod tests {
                 dest: 0,
                 src: Source::Bool(false),
             },
-        ], Source::Reg(0), Type::Bool)));
+        ], Source::RegInter(0), Type::Bool)));
+    }
+
+    #[test]
+    fn compile_unary_expr_3() {
+        // ~(false) (false is impulse)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Impulse),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_used[0] = true; // storing sim timestep
+
+        let ir = compiler.compile_expr(Expr::Unary(UnaryExpr {
+            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: UnaryOp::BitNot,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Bool,
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::INE {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::RegInter(0),
+            },
+        ], Source::RegInter(2), Type::Bool)));
     }
 }

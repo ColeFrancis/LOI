@@ -45,6 +45,10 @@ impl <'a> SemAnalyzer<'a> {
                     .unwrap_or(Expr::Error));
 
                 unary_expr.expr_type = self.get_expr_type(&unary_expr.expr);
+                // Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
+                if unary_expr.expr_type == Type::Impulse {
+                    unary_expr.expr_type = Type::Bool;
+                }
 
                 self.verify_unary_op_type_match(&unary_expr.expr_type, &unary_expr.op, &unary_expr.op_span)?;
 
@@ -61,6 +65,10 @@ impl <'a> SemAnalyzer<'a> {
                 let right_expr_type = self.get_expr_type(&binary_expr.right);
 
                 binary_expr.expr_type = self.verify_expr_type_match(&left_expr_type, &right_expr_type, &binary_expr.op_span)?;
+                // Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
+                if binary_expr.expr_type == Type::Impulse {
+                    binary_expr.expr_type = Type::Bool;
+                }
 
                 binary_expr.expr_type = self.verify_binary_op_type_match(&binary_expr.expr_type, &binary_expr.op, &binary_expr.op_span)?;
 
