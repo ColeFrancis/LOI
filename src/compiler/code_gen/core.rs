@@ -23,6 +23,7 @@
 //! Author: Cole Francis
 
 use super::CodeGen;
+use crate::compiler::ast::*;
 use crate::compiler::ast::RelType;
 use crate::compiler::compiled_rel::CompiledRel;
 
@@ -37,5 +38,64 @@ impl CodeGen {
         // after optimization, the last step should be to turn x^2 back to x*x and 2x back to x+x
         // also turn (-x) + a (a is literal) back to a - x
         Vec::new()
+    }
+
+    fn optimize(&mut self) {
+        for relation in &mut self.relations {
+            let mut owned_expr = std::mem::replace(&mut relation.body, Expr::Error);
+
+            loop {
+                let (transformed_expr, modified) = Self::algebraic_transform(owned_expr);
+                owned_expr = transformed_expr;
+
+                if !modified {
+                    break;
+                }
+            }
+            
+            relation.body = owned_expr;
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::compiler::sem_analyzer::types::Type;
+    use crate::compiler::diagnostics::Span;
+
+    #[test]
+    fn optimize_1() {
+        // (x * (1 - 1) + 1) - 5
+        let expr = Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    right: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: BinaryOp::Sub,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    })),
+                    op: BinaryOp::Mul,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Int,
+                })),
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op: BinaryOp::Add,
+                op_span: Span{line: 0, col: 0},
+                expr_type: Type::Int,
+            })),
+            right: Box::new(Expr::Literal(Literal::Int(5))),
+            op: BinaryOp::Sub,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        });
+        
+
+        let (result, _modified) = CodeGen::algebraic_transform(expr);
+
+        assert_eq!(result, Expr::Literal(Literal::Int(-4)));
     }
 }

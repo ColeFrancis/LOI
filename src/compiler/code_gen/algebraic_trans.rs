@@ -24,7 +24,7 @@
 
 use super::CodeGen;
 use crate::compiler::ast::*;
-    use crate::compiler::diagnostics::Span;
+use crate::compiler::diagnostics::Span;
 use crate::compiler::compiled_rel::CompiledRel;
 
 impl CodeGen {

@@ -358,7 +358,7 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     // expr and pattern already folded. Returns none if there is an expr or pattern that prevents the outer cases expression from being folded
-    fn expr_matches_pattern(expr: &Expr, pattern: &SimplePattern) -> Option<bool> {
+    pub fn expr_matches_pattern(expr: &Expr, pattern: &SimplePattern) -> Option<bool> {
         match expr {
             Expr::Literal(expr_literal) => match pattern {
                 SimplePattern::Default => Some(true),
@@ -417,7 +417,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn pattern_matches_literal(pattern: &SimplePattern, literal: &Literal) -> bool {
+    pub fn pattern_matches_literal(pattern: &SimplePattern, literal: &Literal) -> bool {
         match pattern {
             SimplePattern::Literal(pattern_literal) => 
                 literal == pattern_literal,

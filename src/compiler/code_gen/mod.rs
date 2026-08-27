@@ -15,6 +15,7 @@
 mod core;
 mod algebraic_trans;
 mod expr_equal;
+mod fold_again;
 
 use crate::compiler::ast::RelType;
 
