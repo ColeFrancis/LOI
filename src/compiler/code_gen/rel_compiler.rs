@@ -648,6 +648,9 @@ impl<'a> RelCompiler<'a> {
         }
     }
 
+    // Converts all impulse type to bool with an IEQ instruction
+    // fn coerce_bool 
+
     fn get_binary_dest(&mut self, src1: Source, src2: Source) -> Option<usize> {
         match (src1, src2) {
             // When both are available, we should free one after the op
