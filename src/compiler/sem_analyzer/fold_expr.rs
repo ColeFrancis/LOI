@@ -21,6 +21,7 @@
 //! ## Invariants:
 //!
 //! - If an expression is folded into a literal, its type must match the original expr_type
+//! - Literals in a binary expression must always match types with expr_type (therefore, int literals in real binary expressions must be converted to real literals)
 //!
 //! Author: Cole Francis
 
