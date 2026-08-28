@@ -863,4 +863,6 @@ mod tests {
         assert_eq!(compiler.reg_used[1], true);
         assert_eq!(compiler.reg_used[2], false);
     }
+
+    // TODO: test binary arith of mods with div
 }
