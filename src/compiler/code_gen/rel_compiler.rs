@@ -290,8 +290,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_sub_bytecode);
                         bytecode.extend(right_sub_bytecode);
 
-                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type, true)?;
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type, true)?;
+                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -310,7 +310,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_sub_bytecode);
                         bytecode.extend(right_sub_bytecode);
 
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type, true)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -322,7 +322,6 @@ impl<'a> RelCompiler<'a> {
 
                         (Source::RegInter(dest), Type::Mod(modulus))
                     }
-                    
                     
                     (Type::Int, BinaryOp::Add) => {
                         let (left_sub_bytecode, src1, _) = self.compile_expr(*binary.left)?;
@@ -382,8 +381,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_sub_bytecode);
                         bytecode.extend(right_sub_bytecode);
 
-                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type, true)?;
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type, true)?;
+                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -402,7 +401,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_sub_bytecode);
                         bytecode.extend(right_sub_bytecode);
 
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type, true)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -516,13 +515,206 @@ impl<'a> RelCompiler<'a> {
                         (Source::RegInter(dest), Type::Real)
                     }
 
-                    // All comparison operators result in expr_type Bool
-                    // (Type::Bool, BinaryOp::Lt) => {}
-                    // (Type::Bool, BinaryOp::Gt) => {}
-                    // (Type::Bool, BinaryOp::Le) => {}
-                    // (Type::Bool, BinaryOp::Ge) => {}
-                    // (Type::Bool, BinaryOp::Or) => {}
-                    // (Type::Bool, BinaryOp::And) => {}
+                    (Type::Bool, BinaryOp::Lt) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is real, make both real
+                            (&Type::Real, _) | (_, &Type::Real) => {
+                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FLT {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::ILT {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+                                
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
+                    (Type::Bool, BinaryOp::Gt) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is real, make both real
+                            (&Type::Real, _) | (_, &Type::Real) => {
+                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FGT {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::IGT {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+                                
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
+                    (Type::Bool, BinaryOp::Le) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is real, make both real
+                            (&Type::Real, _) | (_, &Type::Real) => {
+                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FLE {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::ILE {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+                                
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
+                    (Type::Bool, BinaryOp::Ge) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is real, make both real
+                            (&Type::Real, _) | (_, &Type::Real) => {
+                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FGE {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::IGE {
+                                    dest: dest,
+                                    src1: src1,
+                                    src2: src2,
+                                });
+                                
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
+                    (Type::Bool, BinaryOp::Or) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let src1 = self.coerce_bool(&mut bytecode, src1, left_sub_type)?;
+                        let src2 = self.coerce_bool(&mut bytecode, src2, right_sub_type)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(Instruction::OR {
+                            dest,
+                            src1,
+                            src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Bool)
+                    }
+                    (Type::Bool, BinaryOp::And) => {
+                        let (left_sub_bytecode, src1, left_sub_type) = self.compile_expr(*binary.left)?;
+                        let (right_sub_bytecode, src2, right_sub_type) = self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_sub_bytecode);
+                        bytecode.extend(right_sub_bytecode);
+
+                        let src1 = self.coerce_bool(&mut bytecode, src1, left_sub_type)?;
+                        let src2 = self.coerce_bool(&mut bytecode, src2, right_sub_type)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(Instruction::AND {
+                            dest,
+                            src1,
+                            src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Bool)
+                    }
 
                     _ => return None,
                 }
@@ -558,29 +750,25 @@ impl<'a> RelCompiler<'a> {
         idx
     }
 
-    fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type, reduce_mod: bool) -> Option<Source> {
+    fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type) -> Option<Source> {
         match ty {
             Type::Mod(n) => {
-                if reduce_mod {
-                    let dest = match src {
-                        Source::RegInter(reg) => reg,
-                        _ => {
-                            let reg = self.get_next_reg()?;
-                            self.reg_used[reg] = true;
-                            reg
-                        }
-                    };
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => {
+                        let reg = self.get_next_reg()?;
+                        self.reg_used[reg] = true;
+                        reg
+                    }
+                };
 
-                    bytecode.push(Instruction::MOD {
-                        dest,
-                        src1: src,
-                        src2: Source::Int(n),
-                    });
+                bytecode.push(Instruction::MOD {
+                    dest,
+                    src1: src,
+                    src2: Source::Int(n),
+                });
 
-                    Some(Source::RegInter(dest))
-                } else {
-                    Some(src)
-                }
+                Some(Source::RegInter(dest))
             }
             Type::Int => Some(src),
             _ => unreachable!("cannot coerde {:?} to Int", ty)
@@ -648,8 +836,30 @@ impl<'a> RelCompiler<'a> {
         }
     }
 
-    // Converts all impulse type to bool with an IEQ instruction
-    // fn coerce_bool 
+    // Converts all impulse type to bool with an IEQ
+    fn coerce_bool (&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type, ) -> Option<Source> {
+        match ty {
+            Type::Impulse => {
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => {
+                        let reg = self.get_next_reg()?;
+                        self.reg_used[reg] = true;
+                        reg
+                    },
+                };
+                bytecode.push(Instruction::IEQ {
+                    dest,
+                    src1: src,
+                    src2: Source::RegVar(0), // sim timestep is always in reg 0
+                });
+                Some(Source::RegInter(dest))
+            }
+
+            Type::Bool => Some(src),
+            _ => unreachable!("cannot coerce {:?} into Bool", ty),
+        }
+    }
 
     fn get_binary_dest(&mut self, src1: Source, src2: Source) -> Option<usize> {
         match (src1, src2) {
@@ -867,5 +1077,175 @@ mod tests {
         assert_eq!(compiler.reg_used[2], false);
     }
 
-    // TODO: test binary arith of mods with div
+    #[test]
+    fn binary_div_1() {
+        //  3 ^ a  (a is a mod 10)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Mod(10)),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 1);
+        compiler.reg_used[0] = true;
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Int(3))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Pow,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::MOD {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::Int(10),
+            },
+            Instruction::IPOW {
+                dest: 2,
+                src1: Source::Int(3),
+                src2: Source::RegInter(2),
+            },
+        ], Source::RegInter(2), Type::Int)));
+    }
+
+    #[test]
+    fn binary_and_1() {
+        // true and a  (a is an impulse)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Impulse),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 1);
+        compiler.reg_used[0] = true;
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Bool(true))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::And,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Bool,
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::IEQ {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::RegVar(0),
+            },
+            Instruction::AND {
+                dest: 2,
+                src1: Source::Bool(true),
+                src2: Source::RegInter(2),
+            },
+        ], Source::RegInter(2), Type::Bool)));
+    }
+
+    #[test]
+    fn binary_cmp_1() {
+        //  3 < a  (a is a mod 10)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Mod(10)),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 1);
+        compiler.reg_used[0] = true;
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Int(3))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Lt,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Bool,
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::MOD {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::Int(10),
+            },
+            Instruction::ILT {
+                dest: 2,
+                src1: Source::Int(3),
+                src2: Source::RegInter(2),
+            },
+        ], Source::RegInter(2), Type::Bool)));
+    }
+
+    #[test]
+    fn binary_cmp_2() {
+        //  3.0 < a  (a is a mod 10)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Mod(10)),
+            span: Span{line: 0, col: 0},
+        }];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 1);
+        compiler.reg_used[0] = true;
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr{
+            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            right: Box::new(Expr::Ident(Ident::Symbol(0))),
+            op: BinaryOp::Lt,
+            op_span: Span{line: 0, col: 0},
+            expr_type: Type::Bool,
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::MOD {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::Int(10),
+            },
+            Instruction::I2F {
+                dest: 2,
+                src: Source::RegInter(2),
+            },
+            Instruction::FLT {
+                dest: 2,
+                src1: Source::Float(3.0),
+                src2: Source::RegInter(2),
+            },
+        ], Source::RegInter(2), Type::Bool)));
+    }
 }
