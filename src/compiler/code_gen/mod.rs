@@ -14,7 +14,6 @@
 
 mod core;
 mod algebraic_trans;
-mod expr_equal;
 mod rel_compiler;
 mod intermediate_rep;
 
