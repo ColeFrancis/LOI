@@ -120,6 +120,14 @@ impl <'a> SemAnalyzer<'a> {
                 // Check for duplicate arms
                 let mut has_errors = false;
                 let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
+
+                if cases_expr.arms.len() == 0 {
+                    self.diagnostics.error(CompilerError::NoReturnArm {
+                        span: cases_expr.span,
+                    });
+
+                    has_errors = true;
+                }
                 for arm in &mut cases_expr.arms {
                     for pattern in &mut arm.pattern {
                         let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
@@ -171,6 +179,14 @@ impl <'a> SemAnalyzer<'a> {
                 let mut has_default = false;
                 let mut foldable = true;
                 let mut running_prob = 0.0;
+
+                if sample_expr.arms.len() == 0 {
+                    self.diagnostics.error(CompilerError::NoReturnArm {
+                        span: sample_expr.span,
+                    });
+
+                    has_errors = true;
+                }
                 for arm in &mut sample_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
                     arm.expr = self.fold_expr(owned_expr, fold_sample);
@@ -181,7 +197,6 @@ impl <'a> SemAnalyzer<'a> {
                             let mut folded_expr = self.fold_expr(owned_expr, fold_sample);
                             // Convert prob to real number 
                             if let Expr::Literal(Literal::Int(int)) = folded_expr {
-                                println!("reached");
                                 folded_expr = Expr::Literal(Literal::Real(int as f64));
                             }
                             *expr = folded_expr;

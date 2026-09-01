@@ -190,6 +190,11 @@ pub enum CompilerError {
         op_span: Span,
     },
 
+    // Checked when folding expressions
+    NoReturnArm {
+        span: Span,
+    },
+
     // when folding cases expression
     DuplicatePattern {
         old_arm_span: Span,
@@ -220,7 +225,7 @@ pub enum CompilerError {
     TooManySymbols { 
         rel_name: String,
         rel_span: Span,
-    }
+    },
 }
 
 #[derive(Debug, PartialEq)]
