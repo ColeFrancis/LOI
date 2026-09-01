@@ -698,8 +698,6 @@ impl<'a> RelCompiler<'a> {
                 }
             }
 
-            // Expr::Tuple(tuple) => {}
-
             Expr::Block(block) => {
                 for statement in block.statements {
                     let Statement::Let(let_statement) = statement else {
@@ -736,7 +734,53 @@ impl<'a> RelCompiler<'a> {
                 (src, sub_type)
             }
 
-            // Expr::Cases(cases) => {}
+            // Expr::Cases(cases) => {
+            //     let mut srcuitnee_sources = Vec::new();
+            //     let mut scrutinee_types = Vec::new();
+
+            //     if let Expr::Tuple(tuple_expr) = *cases.scrutinee {
+            //         for expr in tuple_expr {
+            //             let (expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
+
+            //             bytecode.extend(expr_bytecode);
+
+            //             scrutinee_sources.push(src);
+            //             scrutinee_types.push(sub_type);
+            //         }
+            //     } else {
+            //         let (expr_bytecode, src, sub_type) = self.compile_expr(*cases.scrutinee)?;
+
+            //         bytecode.extend(expr_bytecode);
+
+            //         scrutinee_sources.push(src);
+            //         scrutinee_types.push(sub_type);
+            //     }
+
+            //     // for something like  
+            //     //     cases (a, b) {
+            //     //         (2, 3) | (3, 4): 1, 
+            //     //         (5, 6): 2,
+            //     //         _: 3
+            //     //     }, 
+            //     // compile to this pseudocode:
+            //     //     case_1:
+            //     //         JNE case_2 a 2
+            //     //         JNE case_2 b 3
+            //     //         JMP shared_arm_code
+            //     //     case_2:
+            //     //         JNE case_3 a 3
+            //     //         JNE case_3 b 4
+            //     //     shared_arm_code:
+            //     //         ...
+            //     //         JMP end
+            //     //     case_3:
+            //     //         JNE end a 5
+            //     //         JNE end b 6
+            //     //         ...
+            //     //         JMP end
+            //     //     end:
+            //     //         ...
+            // }
 
             Expr::Sample(sample) => {
                 // Generate random value
@@ -879,7 +923,8 @@ impl<'a> RelCompiler<'a> {
                 (Source::RegInter(dest), sample.expr_type)
             }
 
-            // Expr::Error => return None,
+            Expr::Error => return None,
+            Expr::Tuple(_) => return None, // Only appear in cases where they're handled specially
 
             _ => return None, // Temporary
         };
@@ -1658,12 +1703,12 @@ mod tests {
                 offset: 0
             },
         ], Source::RegInter(6), Type::Int)));
-        assert_eq!(compiler.reg_used[0], true);
-        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[0], true);  // "n"
+        assert_eq!(compiler.reg_used[1], true);  // "a"
         assert_eq!(compiler.reg_used[2], false); // rnd
         assert_eq!(compiler.reg_used[3], false); // cdf[0]
         assert_eq!(compiler.reg_used[4], false); // cdf[1]
         assert_eq!(compiler.reg_used[5], false); // cdf[2]
-        assert_eq!(compiler.reg_used[6], true); // dest
+        assert_eq!(compiler.reg_used[6], true);  // dest
     }
 }

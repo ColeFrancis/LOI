@@ -62,7 +62,7 @@ pub enum Expr {
     Tuple(Vec<Expr>),
     Block(BlockExpr),
     Cases(CasesExpr),      
-    Sample(SampleExpr), // TODO: Add struct with type
+    Sample(SampleExpr),
     Error,
 }
 
