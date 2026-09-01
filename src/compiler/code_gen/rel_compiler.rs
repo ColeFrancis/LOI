@@ -1074,7 +1074,7 @@ impl<'a> RelCompiler<'a> {
                 Instruction::IMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::IDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::IPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IABS{src, ..}        => 2 + Self::get_num_source_bytes(src),
+                Instruction::IABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
                 Instruction::MOD {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::FADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::FSUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
