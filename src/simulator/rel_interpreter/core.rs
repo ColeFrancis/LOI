@@ -339,13 +339,13 @@ impl RelInterpreter {
 
                 // Int comp jumps, jump
                 0b10000000 => {
-                    let offset = bytecode[inst_counter] as usize;
-                    inst_counter += 1;
+                    let offset = i16::from_le_bytes([bytecode[inst_counter], bytecode[inst_counter + 1]]);
+                    inst_counter += 2;
 
                     // No source JMP inst
                     match op {
-                        0b00000000 => {
-                            inst_counter += offset;
+                        0b00000000 => {  
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                             continue;
                         }
 
@@ -369,33 +369,33 @@ impl RelInterpreter {
                     match op {
                         // IJEQ
                         0b00001000 => if src1_val == src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
                         
 
                         // IJNE
                         0b00001100 => if src1_val != src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // IJLT
                         0b00010000 => if src1_val < src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // IJLE
                         0b00010100 => if src1_val <= src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // IJGT
                         0b00011000 => if src1_val > src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // IJGE
                         0b00011100 => if src1_val >= src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
@@ -441,8 +441,8 @@ impl RelInterpreter {
                         _ => {}
                     }
 
-                    let offset = bytecode[inst_counter] as usize;
-                    inst_counter += 1;
+                    let offset = i16::from_le_bytes([bytecode[inst_counter], bytecode[inst_counter + 1]]);
+                    inst_counter += 2;
 
                     let src1_val = f64::from_bits(Self::read_source(
                         registers,
@@ -461,33 +461,33 @@ impl RelInterpreter {
                     match op {
                         // FJEQ
                         0b00001000 => if src1_val == src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
                         
 
                         // FJNE
                         0b00001100 => if src1_val != src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // FJLT
                         0b00010000 => if src1_val < src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // FJLE
                         0b00010100 => if src1_val <= src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // FJGT
                         0b00011000 => if src1_val > src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         // FJGE
                         0b00011100 => if src1_val >= src2_val {
-                            inst_counter += offset;
+                            inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
                         _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
@@ -702,17 +702,17 @@ mod tests {
     fn int_jumps() {
         let bytecode = assemble("
             MOV r0 i3
-            IJEQ b9 r0 i3
+            IJEQ o9 r0 i3
             RET i0
-            IJNE b9 r0 i4
+            IJNE o9 r0 i4
             RET i1
-            IJLT b9 r0 i5
+            IJLT o9 r0 i5
             RET i2
-            IJGT b9 r0 i2
+            IJGT o9 r0 i2
             RET i3
-            IJLE b9 r0 i3
+            IJLE o9 r0 i3
             RET i4
-            IJGE b9 r0 i3
+            IJGE o9 r0 i3
             RET i5
             RET i6
         ").unwrap();
@@ -728,20 +728,20 @@ mod tests {
     #[test]
     fn float_jumps() {
         let bytecode = assemble("
-            JMP b9
+            JMP o9
             RET i0
             MOV r0 f3.0
-            FJEQ b9 r0 f3.0
+            FJEQ o9 r0 f3.0
             RET i1
-            FJNE b9 r0 f4.0
+            FJNE o9 r0 f4.0
             RET i2
-            FJLT b9 r0 f5.0
+            FJLT o9 r0 f5.0
             RET i3
-            FJGT b9 r0 f2.0
+            FJGT o9 r0 f2.0
             RET i4
-            FJLE b9 r0 f3.0
+            FJLE o9 r0 f3.0
             RET i5
-            FJGE b9 r0 f3.0
+            FJGE o9 r0 f3.0
             RET i6
             RET i7
         ").unwrap();
@@ -833,7 +833,7 @@ mod tests {
             RND r0
             MOV r1 i1
             I2F r1 r1
-            FJLE b9 r0 r1
+            FJLE o9 r0 r1
             RET i0
             RET i1
         ").unwrap();
@@ -887,7 +887,7 @@ mod tests {
     fn invalid_prob() {
         let bytecode = assemble("
             MOV r0 f1.1
-            FJLE b3 r0 f1.0
+            FJLE o3 r0 f1.0
             ERR b4 r0
             RET i1
         ").unwrap();

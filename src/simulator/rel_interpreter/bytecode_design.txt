@@ -56,11 +56,14 @@ Instructions:
     RET src
     ERR code, src // src is optional depending on ss bits
 
+    all encodings are little-endian
+
     RND dest // generates a random number in range [0,1)
 
 	sources can be literal or a virtual register
 
-    jump offsets and error codes are u8
+    jump offsets are i16 
+    error codes are u8
 
     There are 64 registers, all 64 bits, registers addressed with 8 bits but top 2 ignored
 

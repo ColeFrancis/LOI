@@ -104,12 +104,13 @@ impl<'a> RelCompiler<'a> {
                 }
             }
 
+            // TODO: custom types appear as idents
             Expr::Ident(Ident::Symbol(id)) => {
                 let Some(reg) = self.reg_map.get(&id) else {
                     return None;
                 };
                 let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
-                    return None; // not reachable
+                    return None; // TODO: custom types appear as idents and will go to here
                 };
                 (Source::RegVar(*reg as usize), ident_type)
             }
@@ -756,6 +757,16 @@ impl<'a> RelCompiler<'a> {
             //         scrutinee_types.push(sub_type);
             //     }
 
+            //     for arm in cases.arms {
+            //         // loop through all patterns. then append JMP inst to each and all patterns in the same arm jump to the same instruction
+            //         for simple_pattern in arm.pattern {
+            //             match simple_pattern {
+            //                 SimplePattern::Tuple(tuple_pattern) => {},
+            //                 _ => {},
+            //             }
+            //         }
+            //     }
+
             //     // for something like  
             //     //     cases (a, b) {
             //     //         (2, 3) | (3, 4): 1, 
@@ -895,7 +906,7 @@ impl<'a> RelCompiler<'a> {
                     let arm_expr_len = Self::get_num_bytes(&expr_bytecode);
 
                     bytecode.push(Instruction::FJGE {
-                        offset: arm_expr_len as u8,
+                        offset: arm_expr_len as i16,
                         src1: Source::RegInter(rnd),
                         src2: Source::RegInter(*cdf_val_reg),
                     });
@@ -910,7 +921,7 @@ impl<'a> RelCompiler<'a> {
                     let new_offset = Self::get_num_bytes(&bytecode[idx + 1..target_inst_idx]);
 
                     if let Instruction::JMP{ offset } = &mut bytecode[idx] {
-                        *offset = new_offset as u8;
+                        *offset = new_offset as i16;
                     };
                 }
 
@@ -1076,19 +1087,19 @@ impl<'a> RelCompiler<'a> {
                 Instruction::NOT {src, ..}         => 2 + Self::get_num_source_bytes(src),
                 Instruction::XOR {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::I2F {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::JMP {..}              => 2,
-                Instruction::IJEQ{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJNE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLT{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGT{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJEQ{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJNE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLT{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGT{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGE{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::JMP {..}              => 3,
+                Instruction::IJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::FJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::IEQ {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::INE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::ILT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
@@ -1662,7 +1673,7 @@ mod tests {
                 src: Some(Source::RegInter(5)),
             },
             Instruction::FJGE {
-                offset: 12,
+                offset: 13,
                 src1: Source::RegInter(2),
                 src2: Source::RegInter(3),
             },
@@ -1671,10 +1682,10 @@ mod tests {
                 src: Source::Int(2),
             },
             Instruction::JMP {
-                offset: 36
+                offset: 40
             },
             Instruction::FJGE {
-                offset: 5,
+                offset: 6,
                 src1: Source::RegInter(2),
                 src2: Source::RegInter(4),
             },
@@ -1683,10 +1694,10 @@ mod tests {
                 src: Source::RegVar(0),
             },
             Instruction::JMP {
-                offset: 27
+                offset: 29
             },
             Instruction::FJGE {
-                offset: 23,
+                offset: 24,
                 src1: Source::RegInter(2),
                 src2: Source::RegInter(5),
             },
