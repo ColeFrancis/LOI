@@ -196,8 +196,6 @@ impl<'a> RelCompiler<'a> {
 
     // Used in cases pattern matching to ensure the sources are the same type
     pub fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
-        println!("bytecode length before: {}", bytecode.len());
-        
         let (new_src_l, new_type) = match type_r {
             Type::Real => (self.coerce_real(bytecode, src_l, &type_l, true)?, Type::Real),
 
@@ -211,8 +209,6 @@ impl<'a> RelCompiler<'a> {
             _ => (src_l, type_l.clone()),
         };
 
-        println!("bytecode length middle: {}", bytecode.len());
-        
         let new_src_r = match new_type {
             Type::Real => self.coerce_real(bytecode, src_r, &type_r, true)?,
 
@@ -225,9 +221,7 @@ impl<'a> RelCompiler<'a> {
 
             _ => src_r,
         };
-
-        println!("bytecode length after: {}", bytecode.len());
-
+        
         Some((new_src_l, new_src_r, new_type))
     }
 
