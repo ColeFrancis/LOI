@@ -12,90 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # rel_compiler
+//! # expr_compiler
 //!
-//! compiles a single relation into bytecode
+//! compiles a single expression into bytecode
 //!
 //! ## Invariants
 //!
 //! - unary expr_type will always match the type of their sub-expression
 //! - in binary expressions, literal sources will have always been converted to match the expr_type (see fold_expr:63)
-//! - in cases expression, the scrutinee type will be such that it does not need to change to match the type of arm patterns
 //!
 //! Author: Cole Francis
 
 use std::collections::HashMap;
 
-use super::intermediate_rep::{Instruction, Source};
+use super::RelCompiler;
+use crate::compiler::code_gen::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 
-pub struct RelCompiler<'a> {
-    reg_map: HashMap<SymbolId, usize>,
-    reg_used: [bool; 64],
-
-    rel_symbol_id: SymbolId,
-    symbol_table: &'a [Symbol],
-    diagnostics: &'a mut Diagnostics,
-}
-
 impl<'a> RelCompiler<'a> {
-    pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
-        let rel_symbol_id = match relation.name {
-            Ident::Symbol(id) => id,
-            _ => return None,
-        };
-
-        let mut compiler = Self {
-            reg_map: HashMap::new(),
-            reg_used: [false; 64],
-            rel_symbol_id,
-            symbol_table,
-            diagnostics,
-        };
-
-        compiler.compile_relation(relation)
-    }
-
-    fn compile_relation(&mut self, relation: RelType) -> Option<CompiledRel> {
-        // setup initial registers, arguments, etc
-
-        // r0 and r1 are reserved for timestep and delay
-        self.reg_used[0] = true;
-        self.reg_used[1] = true;
-
-        // reserve registers for params
-        for param in relation.params {
-            if let Ident::Symbol(symbol_id) = param.name {
-                // This call allows us to catch and report errors
-                let idx = self.get_next_reg()?;
-
-                self.reg_map.insert(symbol_id, idx);
-            }
-        }
-
-        // call compile_expr
-
-        // remove deadcode
-            // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
-            //  if a variable is declared while not alive, remove that instruction
-            //
-            // Also remove all sample/cases arms past defaults?
-            //  take care to modify jump offsets if instructsions are removed between the jump and its target
-
-        // convert intermediate rep to u8
-
-        Some(CompiledRel {
-            complexity: 0,
-            bytecode: Vec::new(),
-        })
-    }
-
     // Returns the bytecode in intermediate representation, the source where the result is stored, and the type
-    fn compile_expr(&mut self, expr: Expr) -> Option<(Vec<Instruction>, Source, Type)> {
+    pub(super) fn compile_expr(&mut self, expr: Expr) -> Option<(Vec<Instruction>, Source, Type)> {
         let mut bytecode: Vec<Instruction> = Vec::new();
 
         // Refer to check_expr verify... functions to make sure all cases are covered
@@ -741,90 +681,93 @@ impl<'a> RelCompiler<'a> {
                 (src, sub_type)
             }
 
-            // Expr::Cases(cases) => {
-            //     let mut srcuitnee_sources = Vec::new();
-            //     let mut scrutinee_types = Vec::new();
+            Expr::Cases(cases) => {
+                let mut scrutinee_sources = Vec::new();
+                let mut scrutinee_types = Vec::new();
 
-            //     //                                                                        
-            //     if let Expr::Tuple(tuple_expr) = *cases.scrutinee {
-            //         for expr in tuple_expr {
-            //             let (expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
+                // Compile scrutinee
+                if let Expr::Tuple(tuple_expr) = *cases.scrutinee {
+                    for expr in tuple_expr {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
 
-            //             bytecode.extend(expr_bytecode);
+                        bytecode.extend(expr_bytecode);
 
-            //             scrutinee_sources.push(src);
-            //             scrutinee_types.push(sub_type);
-            //         }
-            //     } else {
-            //         let (expr_bytecode, src, sub_type) = self.compile_expr(*cases.scrutinee)?;
+                        scrutinee_sources.push(src);
+                        scrutinee_types.push(sub_type);
+                    }
+                } else {
+                    let (expr_bytecode, src, sub_type) = self.compile_expr(*cases.scrutinee)?;
 
-            //         bytecode.extend(expr_bytecode);
+                    bytecode.extend(expr_bytecode);
 
-            //         scrutinee_sources.push(src);
-            //         scrutinee_types.push(sub_type);
-            //     }
+                    scrutinee_sources.push(src);
+                    scrutinee_types.push(sub_type);
+                }
 
-            //     /*
-            //     loop for each arm
-            //         loop for each simple pattern
-            //             compile jump condition, multiple if tuple. Record indices of conditional jumps and add empty offsets
-            //             add jmp instruction
-            //             go back and add in conditianl jumps offsets to skip jmp
-            //         end loop
-            //         remove last jmp
-                    
-            //         compile arm expression and add to code
-            //         add jump with empty offset to fill in later
-            //         modify last conditional jumps to skip code section
-            //     endloop
+                // preallocate destination reg
+                let dest = self.get_next_reg()?;
+                let mut exit_jmp_indices: Vec<usize> = Vec::new();
 
-            //     */
+                for arm in cases.arms {
+                    let mut enter_jmp_indices: Vec<usize> = Vec::new();
+                    let mut last_cond_jmp_indices: Vec<usize> = Vec::new();
 
-            //     for arm in cases.arms {
-            //         let mut jmp_idx = Vec::new();
-            //         let mut num_last_cmp = 0;
-            //         // loop through all patterns. then append JMP inst to each and all patterns in the same arm jump to the same instruction
-            //         for simple_pattern in arm.pattern {
-            //             let sub_bytecode = Self::compile_pattern_comp(&mut srcuitnee_sources, &mut scrutinee_types, simple_pattern);
-            //             self.bytecode.extend(sub_bytecode);
-            //             jmp_idx.push(self.bytecode.len() - 1);
-            //         }
+                    for simple_pattern in arm.pattern {
+                        let (sub_bytecode, last_cond_jmp_indices) = self.compile_pattern_comp(&mut scrutinee_sources, &mut scrutinee_types, simple_pattern)?;
+                        bytecode.extend(sub_bytecode);
+                        enter_jmp_indices.push(bytecode.len() - 1);
+                    }
 
-            //         self.bytecode.pop();
-            //         jmp_idx.pop();
+                    // pop off last jmp
+                    bytecode.pop();
+                    enter_jmp_indices.pop();
 
-            //         // get indices of last conditional jumps
-            //         // Edit all jmp offsets to land here in bytecode
-            //         // compile arm expression with mov and jmp at end like sample
-            //         // modify last conditional jumps' offsets to skip arm bytecode
-            //     }
+                    // edit all enter_jmp_indices to land here
+                    let target_inst_idx = bytecode.len();
+                    for idx in enter_jmp_indices {
+                        let new_offset = Self::get_num_bytes(&bytecode[idx + 1..target_inst_idx]);
 
+                        if let Instruction::JMP{ offset } = &mut bytecode[idx] {
+                            *offset = new_offset as i16;
+                        };
+                    }
 
-            //     // for something like  
-            //     //     cases (a, b) {
-            //     //         (2, 3) | (3, 4): 1, 
-            //     //         (5, 6): 2,
-            //     //         _: 3
-            //     //     }, 
-            //     // compile to this pseudocode:
-            //     //     case_1:
-            //     //         JNE case_2 a 2
-            //     //         JNE case_2 b 3
-            //     //         JMP shared_arm_code
-            //     //     case_2:
-            //     //         JNE case_3 a 3
-            //     //         JNE case_3 b 4
-            //     //     shared_arm_code:
-            //     //         ...
-            //     //         JMP end
-            //     //     case_3:
-            //     //         JNE end a 5
-            //     //         JNE end b 6
-            //     //         ...
-            //     //         JMP end
-            //     //     end:
-            //     //         ...
-            // }
+                    let (mut expr_bytecode, src, sub_type) = self.compile_expr(arm.expr)?;
+
+                    // free register moved into dest
+                    if let Source::RegInter(src_reg) = src {
+                        self.reg_used[src_reg] = false;
+                    }
+                    expr_bytecode.push(Instruction::MOV {
+                        dest,
+                        src,
+                    });
+                    expr_bytecode.push(Instruction::JMP {
+                        offset: 0, // calculated later using jmp_inst_indices
+                    });
+
+                    // modify last_cond_jmp_indices' offsets to skip arm bytecode
+                    let added_length = expr_bytecode.len() - 3; // subtract 3 bytes for the jmp that was poped off
+                    for idx in last_cond_jmp_indices {
+                        Self::update_jmp_offset(&mut bytecode[idx], added_length as i16);
+                    }
+
+                    bytecode.extend(expr_bytecode);
+                    exit_jmp_indices.push(bytecode.len()-1);
+                }
+
+                // go back and fill in offsets
+                let target_inst_idx = bytecode.len();
+                for idx in exit_jmp_indices {
+                    let new_offset = Self::get_num_bytes(&bytecode[idx + 1..target_inst_idx]);
+
+                    if let Instruction::JMP{ offset } = &mut bytecode[idx] {
+                        *offset = new_offset as i16;
+                    };
+                }
+
+                (Source::RegInter(dest), cases.expr_type)
+            }
 
             Expr::Sample(sample) => {
                 // Generate random value
@@ -1059,22 +1002,21 @@ impl<'a> RelCompiler<'a> {
                     )?;
 
                     // pop jmp off of sub_bytecode
-                    // in the current bytecode and list of indices, modify all conditional jumps by adding length in bytes of sub_bytecode
-                    // update indices in new indices vector by adding length of old bytecode
-                    // push new indices to old indices vecyor
-                    // push new bytecode to old bhtecode
-
                     sub_bytecode.pop();
 
+                    // in the current bytecode and list of indices, modify all conditional jumps by adding length in bytes of sub_bytecode
                     let sub_num_bytes = Self::get_num_bytes(&sub_bytecode);
                     for index in &comp_jmp_incices {
                         Self::update_jmp_offset(&mut bytecode[*index], sub_num_bytes as i16);
                     }
 
+                    // update indices in new indices vector by adding length of old bytecode
                     for index in &mut indices {
                         *index += bytecode.len();
                     }
 
+                    // push new indices to old indices vecyor
+                    // push new bytecode to old bhtecode
                     comp_jmp_incices.extend(indices);
                     bytecode.extend(sub_bytecode);
                 }
@@ -1153,252 +1095,6 @@ impl<'a> RelCompiler<'a> {
         });
 
         Some((bytecode, comp_jmp_incices))
-    }
-
-    // Finds next available register, marks it as used, and returns its index
-    // reports error and returns none if there are no registers left
-    fn get_next_reg(&mut self) -> Option<usize> {
-        let idx_option = self.reg_used.iter().position(|&x| !x);
-
-        if let Some(idx) = idx_option {
-            self.reg_used[idx] = true;
-
-        } else {
-            self.diagnostics.error(CompilerError::TooManySymbols {
-                rel_name: self.symbol_table[self.rel_symbol_id].name.clone(),
-                rel_span: self.symbol_table[self.rel_symbol_id].span.clone(),
-            });
-        }
-
-        idx_option
-    }
-
-    fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type) -> Option<Source> {
-        match ty {
-            Type::Mod(n) => {
-                let dest = match src {
-                    Source::RegInter(reg) => reg,
-                    _ => self.get_next_reg()?,
-                };
-
-                bytecode.push(Instruction::MOD {
-                    dest,
-                    src1: src,
-                    src2: Source::Int(*n),
-                });
-
-                Some(Source::RegInter(dest))
-            }
-            Type::Int => Some(src),
-            _ => unreachable!("cannot coerce {:?} to Int", ty.clone())
-        }
-    }
-
-    // Reduce mod should be false for add/sub/mul because (a + b) mod n == (a mod n + b mod n) mod n but it is not true for div nor the right side of pow
-    fn coerce_real(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, reduce_mod: bool) -> Option<Source> {
-        match ty {
-            Type::Mod(n) => {
-                let src = if reduce_mod {
-                    let dest = match src {
-                        Source::RegInter(reg) => reg,
-                        _ => self.get_next_reg()?,
-                    };
-
-                    bytecode.push(Instruction::MOD {
-                        dest,
-                        src1: src,
-                        src2: Source::Int(*n),
-                    });
-
-                    Source::RegInter(dest)
-                } else {
-                    src
-                };
-
-                let dest = match src {
-                    Source::RegInter(reg) => reg,
-                    _ => self.get_next_reg()?,
-                };
-                bytecode.push(Instruction::I2F {
-                    dest,
-                    src,
-                });
-
-                Some(Source::RegInter(dest))
-            }
-            Type::Int => {
-                let dest = match src {
-                    Source::RegInter(reg) => reg,
-                    _ => self.get_next_reg()?,
-                };
-                bytecode.push(Instruction::I2F {
-                    dest,
-                    src,
-                });
-
-                Some(Source::RegInter(dest))
-            }
-            Type::Real => Some(src),
-            _ => unreachable!("cannot coerce {:?} to be Real", ty.clone()),
-        }
-    }
-
-    // Converts all impulse type to bool with an IEQ
-    fn coerce_bool(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, ) -> Option<Source> {
-        match ty {
-            Type::Impulse => {
-                let dest = match src {
-                    Source::RegInter(reg) => reg,
-                    _ => self.get_next_reg()?,
-                };
-                bytecode.push(Instruction::IEQ {
-                    dest,
-                    src1: src,
-                    src2: Source::RegVar(0), // sim timestep is always in reg 0
-                });
-                Some(Source::RegInter(dest))
-            }
-
-            Type::Bool => Some(src),
-            _ => unreachable!("cannot coerce {:?} into Bool", ty.clone()),
-        }
-    }
-
-    // Used in cases pattern matching to ensure the sources are the same type
-    fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
-        println!("bytecode length before: {}", bytecode.len());
-        
-        let (new_src_l, new_type) = match type_r {
-            Type::Real => (self.coerce_real(bytecode, src_l, &type_l, true)?, Type::Real),
-
-            // Need to be careful not to try and coerce real to be int (the next match will take that int to be real)
-            Type::Int if *type_l != Type::Real => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int),
-
-            Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
-
-            _ => (src_l, type_l.clone()),
-        };
-
-        println!("bytecode length middle: {}", bytecode.len());
-        
-        let new_src_r = match new_type {
-            Type::Real => self.coerce_real(bytecode, src_r, &type_r, true)?,
-
-            Type::Int => self.coerce_int(bytecode, src_r, &type_r)?,
-
-            Type::Bool => self.coerce_bool(bytecode, src_r, &type_r)?,
-
-            // Take modulus before comparison
-            Type::Mod(n) => self.coerce_int(bytecode, src_r, &type_r)?,
-
-            _ => src_r,
-        };
-
-        println!("bytecode length after: {}", bytecode.len());
-
-        Some((new_src_l, new_src_r, new_type))
-    }
-
-    fn get_binary_dest(&mut self, src1: Source, src2: Source) -> Option<usize> {
-        match (src1, src2) {
-            // When both are available, we should free one after the op
-            (Source::RegInter(reg1), Source::RegInter(reg2)) => {
-                self.reg_used[reg2] = false;
-                Some(reg1)
-            }, 
-            (Source::RegInter(reg), _) => Some(reg),
-            (_, Source::RegInter(reg)) => Some(reg),
-            _ => Some(self.get_next_reg()?),
-        }
-    }
-
-    fn get_num_bytes(instrcutions: &[Instruction]) -> usize {
-        let mut num = 0;
-        for instruction in instrcutions {
-            num += match instruction {
-                Instruction::IADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ISUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::MOD {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FSUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::AND {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::OR  {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::NOT {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::XOR {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::I2F {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::JMP {..}              => 3,
-                Instruction::IJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IEQ {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::INE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ILT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IGT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ILE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IGE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FEQ {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FNE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FLT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FGT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FLE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FGE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::MOV {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::RET {src, ..}         => 1 + Self::get_num_source_bytes(src),
-                Instruction::ERR {src, ..}         => 2 + match src {
-                    Some(src) => Self::get_num_source_bytes(src),
-                    None      => 0
-                },
-                Instruction::RND {..}              => 2,
-            }
-        }
-
-        num
-    }
-
-    fn get_num_source_bytes(source: &Source) -> usize {
-        match source {
-            Source::RegInter(_) | Source::RegVar(_) => 1,
-            _ => 8,
-        }
-    }
-
-    fn update_jmp_offset(inst: &mut Instruction, change: i16) {
-        match inst {
-            Instruction::JMP { offset } => *offset += change,
-            
-            Instruction::IJEQ { offset, .. } => *offset += change,
-            Instruction::IJNE { offset, .. } => *offset += change,
-            Instruction::IJLT { offset, .. } => *offset += change,
-            Instruction::IJGT { offset, .. } => *offset += change,
-            Instruction::IJLE { offset, .. } => *offset += change,
-            Instruction::IJGE { offset, .. } => *offset += change,
-            
-            Instruction::FJEQ { offset, .. } => *offset += change,
-            Instruction::FJNE { offset, .. } => *offset += change,
-            Instruction::FJLT { offset, .. } => *offset += change,
-            Instruction::FJGT { offset, .. } => *offset += change,
-            Instruction::FJLE { offset, .. } => *offset += change,
-            Instruction::FJGE { offset, .. } => *offset += change,
-
-            _ => {}
-        }
     }
 }
 
@@ -2103,4 +1799,30 @@ mod tests {
     }
 
     // TODO: test cases with custom types (enum types)
+    //  like matching an arm for every variant of a custom type
+
+    // Test for something like  
+    //     cases (a, b) {
+    //         (2, 3) | (3, 4): 1, 
+    //         (5, 6): 2,
+    //         _: 3
+    //     }, 
+    // compile to this pseudocode:
+    //     case_1:
+    //         JNE case_2 a 2
+    //         JNE case_2 b 3
+    //         JMP shared_arm_code
+    //     case_2:
+    //         JNE case_3 a 3
+    //         JNE case_3 b 4
+    //     shared_arm_code:
+    //         ...
+    //         JMP end
+    //     case_3:
+    //         JNE end a 5
+    //         JNE end b 6
+    //         ...
+    //         JMP end
+    //     end:
+    //         ...
 }
