@@ -117,7 +117,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Cases(mut cases_expr) => {
-                // Check for duplicate arms
+                // Check for duplicate arm patterns
                 let mut has_errors = false;
                 let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
 

@@ -88,6 +88,11 @@ pub enum CompilerError {
         span: Span,
     },
 
+    // No nesting tuples in cases
+    NestedTupleExpr {
+        span: Span,
+    },
+
     ////////////////////
     // Semantic Analysis
     ////////////////////

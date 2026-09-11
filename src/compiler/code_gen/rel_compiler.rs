@@ -20,6 +20,7 @@
 //!
 //! - unary expr_type will always match the type of their sub-expression
 //! - in binary expressions, literal sources will have always been converted to match the expr_type (see fold_expr:63)
+//! - in cases expression, the scrutinee type will be such that it does not need to change to match the type of arm patterns
 //!
 //! Author: Cole Francis
 
@@ -79,6 +80,11 @@ impl<'a> RelCompiler<'a> {
         // call compile_expr
 
         // remove deadcode
+            // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
+            //  if a variable is declared while not alive, remove that instruction
+            //
+            // Also remove all sample/cases arms past defaults?
+            //  take care to modify jump offsets if instructsions are removed between the jump and its target
 
         // convert intermediate rep to u8
 
@@ -104,13 +110,13 @@ impl<'a> RelCompiler<'a> {
                 }
             }
 
-            // TODO: custom types appear as idents
+                                                                                             // TODO: custom types appear as idents
             Expr::Ident(Ident::Symbol(id)) => {
                 let Some(reg) = self.reg_map.get(&id) else {
                     return None;
                 };
                 let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
-                    return None; // TODO: custom types appear as idents and will go to here
+                    return None;                                                                // TODO: custom types appear as idents and will go to here
                 };
                 (Source::RegVar(*reg as usize), ident_type)
             }
@@ -269,8 +275,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                        let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -289,7 +295,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -360,8 +366,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                        let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -380,7 +386,7 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -400,8 +406,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, false)?;
+                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -420,8 +426,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, false)?;
+                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -440,8 +446,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, false)?;
+                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -460,8 +466,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -480,8 +486,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -504,8 +510,8 @@ impl<'a> RelCompiler<'a> {
                         match (&left_sub_type, &right_sub_type) {
                             // if one is real, make both real
                             (&Type::Real, _) | (_, &Type::Real) => {
-                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
-                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                                let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -519,8 +525,8 @@ impl<'a> RelCompiler<'a> {
                             }
 
                             _ => {
-                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -544,8 +550,8 @@ impl<'a> RelCompiler<'a> {
                         match (&left_sub_type, &right_sub_type) {
                             // if one is real, make both real
                             (&Type::Real, _) | (_, &Type::Real) => {
-                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
-                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                                let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -559,8 +565,8 @@ impl<'a> RelCompiler<'a> {
                             }
 
                             _ => {
-                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -584,8 +590,8 @@ impl<'a> RelCompiler<'a> {
                         match (&left_sub_type, &right_sub_type) {
                             // if one is real, make both real
                             (&Type::Real, _) | (_, &Type::Real) => {
-                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
-                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                                let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -599,8 +605,8 @@ impl<'a> RelCompiler<'a> {
                             }
 
                             _ => {
-                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -624,8 +630,8 @@ impl<'a> RelCompiler<'a> {
                         match (&left_sub_type, &right_sub_type) {
                             // if one is real, make both real
                             (&Type::Real, _) | (_, &Type::Real) => {
-                                let src1 = self.coerce_real(&mut bytecode, src1, left_sub_type, true)?;
-                                let src2 = self.coerce_real(&mut bytecode, src2, right_sub_type, true)?;
+                                let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -639,8 +645,8 @@ impl<'a> RelCompiler<'a> {
                             }
 
                             _ => {
-                                let src1 = self.coerce_int(&mut bytecode, src1, left_sub_type)?;
-                                let src2 = self.coerce_int(&mut bytecode, src2, right_sub_type)?;
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -661,8 +667,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_bool(&mut bytecode, src1, left_sub_type)?;
-                        let src2 = self.coerce_bool(&mut bytecode, src2, right_sub_type)?;
+                        let src1 = self.coerce_bool(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_bool(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -681,8 +687,8 @@ impl<'a> RelCompiler<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_bool(&mut bytecode, src1, left_sub_type)?;
-                        let src2 = self.coerce_bool(&mut bytecode, src2, right_sub_type)?;
+                        let src1 = self.coerce_bool(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_bool(&mut bytecode, src2, &right_sub_type)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -739,6 +745,7 @@ impl<'a> RelCompiler<'a> {
             //     let mut srcuitnee_sources = Vec::new();
             //     let mut scrutinee_types = Vec::new();
 
+            //     //                                                                        
             //     if let Expr::Tuple(tuple_expr) = *cases.scrutinee {
             //         for expr in tuple_expr {
             //             let (expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
@@ -757,15 +764,41 @@ impl<'a> RelCompiler<'a> {
             //         scrutinee_types.push(sub_type);
             //     }
 
+            //     /*
+            //     loop for each arm
+            //         loop for each simple pattern
+            //             compile jump condition, multiple if tuple. Record indices of conditional jumps and add empty offsets
+            //             add jmp instruction
+            //             go back and add in conditianl jumps offsets to skip jmp
+            //         end loop
+            //         remove last jmp
+                    
+            //         compile arm expression and add to code
+            //         add jump with empty offset to fill in later
+            //         modify last conditional jumps to skip code section
+            //     endloop
+
+            //     */
+
             //     for arm in cases.arms {
+            //         let mut jmp_idx = Vec::new();
+            //         let mut num_last_cmp = 0;
             //         // loop through all patterns. then append JMP inst to each and all patterns in the same arm jump to the same instruction
             //         for simple_pattern in arm.pattern {
-            //             match simple_pattern {
-            //                 SimplePattern::Tuple(tuple_pattern) => {},
-            //                 _ => {},
-            //             }
+            //             let sub_bytecode = Self::compile_pattern_comp(&mut srcuitnee_sources, &mut scrutinee_types, simple_pattern);
+            //             self.bytecode.extend(sub_bytecode);
+            //             jmp_idx.push(self.bytecode.len() - 1);
             //         }
+
+            //         self.bytecode.pop();
+            //         jmp_idx.pop();
+
+            //         // get indices of last conditional jumps
+            //         // Edit all jmp offsets to land here in bytecode
+            //         // compile arm expression with mov and jmp at end like sample
+            //         // modify last conditional jumps' offsets to skip arm bytecode
             //     }
+
 
             //     // for something like  
             //     //     cases (a, b) {
@@ -820,7 +853,7 @@ impl<'a> RelCompiler<'a> {
 
                             bytecode.extend(expr_bytecode);
 
-                            let src = self.coerce_real(&mut bytecode, src, sub_type, true)?;
+                            let src = self.coerce_real(&mut bytecode, src, &sub_type, true)?;
 
                             match last_prob_reg {
                                 Some(last_reg) => {
@@ -943,6 +976,185 @@ impl<'a> RelCompiler<'a> {
         Some((bytecode, source, ret_type))
     }
 
+    // series of comparison jumps, ending with an unconditional jmp, where their offsets point to right after the jmp
+    // if scrutinee value is type converted, scrutinee_types is modified accordingly
+    fn compile_pattern_comp(&mut self, scrutinee_sources: &mut [Source], scrutinee_types: &mut [Type], pattern: SimplePattern) -> Option<(Vec<Instruction>, Vec<usize>)> {
+        let mut bytecode = Vec::new();
+        let mut comp_jmp_incices = Vec::new();
+
+        match pattern {
+            // for default pattern, don't do anything
+            SimplePattern::Default => {}
+
+            // for literal pattern, if scrutinee value doesn't match literal, then skip jmp
+            SimplePattern::Literal(literal) => {
+                let (mut lit_src, mut lit_type) = match literal {
+                    Literal::Bool(b) => (Source::Bool(b), Type::Bool),
+
+                    Literal::Int(i) => (Source::Int(i), Type::Int),
+
+                    Literal::Real(r) => (Source::Float(r), Type::Real),
+                };
+
+                (scrutinee_sources[0], lit_src, scrutinee_types[0]) = self.coerce_equal(&mut bytecode, scrutinee_sources[0], &scrutinee_types[0], lit_src, &lit_type)?;
+
+                match scrutinee_types[0] {
+                    Type::Real => {
+                        bytecode.push(Instruction::FJNE {
+                            offset: 3, // Jump to right past the
+                            src1: scrutinee_sources[0],
+                            src2: lit_src,
+                        });
+                    }
+
+                    _ => {
+                        bytecode.push(Instruction::IJNE {
+                            offset: 3, // Jump to right past the
+                            src1: scrutinee_sources[0],
+                            src2: lit_src,
+                        });
+                    }
+                }
+
+                comp_jmp_incices.push(bytecode.len() - 1);
+            }
+
+            // for ident pattern, if scrutinee value doesn't match ident value, then skip jmp
+            SimplePattern::Ident(Ident::Symbol(id)) => {
+                let Some(reg) = self.reg_map.get(&id) else {
+                    return None;
+                };
+                let SymbolKind::Variable(mut ident_type) = self.symbol_table[id].kind.clone() else {
+                    return None;                                                                                        // TODO: custom types appear as idents and will go to here
+                };
+                let mut ident_src = Source::RegVar(*reg as usize);
+
+                (scrutinee_sources[0], ident_src, scrutinee_types[0]) = self.coerce_equal(&mut bytecode, scrutinee_sources[0], &scrutinee_types[0], ident_src, &ident_type)?;
+
+                match scrutinee_types[0] {
+                    Type::Real => bytecode.push(Instruction::FJNE {
+                        offset: 3, // Jump to right past the
+                        src1: scrutinee_sources[0],
+                        src2: ident_src,
+                    }),
+
+                    _ => bytecode.push(Instruction::IJNE {
+                        offset: 3, // Jump to right past the
+                        src1: scrutinee_sources[0],
+                        src2: ident_src,
+                    }),
+                }
+
+                comp_jmp_incices.push(bytecode.len() - 1);
+            }
+
+            // for tuple pattern, there will be several comparisons, and if any arent met then skip jmp
+            // nested tuples aren't allowed
+            SimplePattern::Tuple(tuple_pattern) => {
+                for ((scrutinee_source, scrutinee_type), simple_pattern) in scrutinee_sources.iter_mut().zip(scrutinee_types.iter_mut()).zip(tuple_pattern.into_iter()) {
+                    let (mut sub_bytecode, mut indices) = self.compile_pattern_comp(
+                        std::slice::from_mut(scrutinee_source), 
+                        std::slice::from_mut(scrutinee_type), 
+                        simple_pattern,
+                    )?;
+
+                    // pop jmp off of sub_bytecode
+                    // in the current bytecode and list of indices, modify all conditional jumps by adding length in bytes of sub_bytecode
+                    // update indices in new indices vector by adding length of old bytecode
+                    // push new indices to old indices vecyor
+                    // push new bytecode to old bhtecode
+
+                    sub_bytecode.pop();
+
+                    let sub_num_bytes = Self::get_num_bytes(&sub_bytecode);
+                    for index in &comp_jmp_incices {
+                        Self::update_jmp_offset(&mut bytecode[*index], sub_num_bytes as i16);
+                    }
+
+                    for index in &mut indices {
+                        *index += bytecode.len();
+                    }
+
+                    comp_jmp_incices.extend(indices);
+                    bytecode.extend(sub_bytecode);
+                }
+            }
+
+            // for comparison pattern, if the scrutinee value doesn't match the comparison, then skip jmp
+            SimplePattern::Comparison(comp_pattern) => {
+                let (expr_bytecode, mut comp_src, mut comp_type) = self.compile_expr(*comp_pattern.expr)?;
+
+                bytecode.extend(expr_bytecode);
+
+                (scrutinee_sources[0], comp_src, scrutinee_types[0]) = self.coerce_equal(&mut bytecode, scrutinee_sources[0], &scrutinee_types[0], comp_src, &comp_type)?;
+
+                match scrutinee_types[0] {
+                    Type::Real => match comp_pattern.op {
+                        CompOp::Lt => bytecode.push(Instruction::FJGE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Gt => bytecode.push(Instruction::FJLE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Le => bytecode.push(Instruction::FJGT {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Ge => bytecode.push(Instruction::FJLT {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+                    }
+
+                    _ => match comp_pattern.op {
+                        CompOp::Lt => bytecode.push(Instruction::IJGE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Gt => bytecode.push(Instruction::IJLE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Le => bytecode.push(Instruction::IJGT {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Ge => bytecode.push(Instruction::IJLT {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+                    }
+                }
+
+                comp_jmp_incices.push(bytecode.len() - 1);
+            }
+
+            _ => {},
+        }
+
+        bytecode.push(Instruction::JMP {
+            offset: 0,
+        });
+
+        Some((bytecode, comp_jmp_incices))
+    }
+
     // Finds next available register, marks it as used, and returns its index
     // reports error and returns none if there are no registers left
     fn get_next_reg(&mut self) -> Option<usize> {
@@ -961,7 +1173,7 @@ impl<'a> RelCompiler<'a> {
         idx_option
     }
 
-    fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type) -> Option<Source> {
+    fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type) -> Option<Source> {
         match ty {
             Type::Mod(n) => {
                 let dest = match src {
@@ -972,18 +1184,18 @@ impl<'a> RelCompiler<'a> {
                 bytecode.push(Instruction::MOD {
                     dest,
                     src1: src,
-                    src2: Source::Int(n),
+                    src2: Source::Int(*n),
                 });
 
                 Some(Source::RegInter(dest))
             }
             Type::Int => Some(src),
-            _ => unreachable!("cannot coerde {:?} to Int", ty)
+            _ => unreachable!("cannot coerce {:?} to Int", ty.clone())
         }
     }
 
     // Reduce mod should be false for add/sub/mul because (a + b) mod n == (a mod n + b mod n) mod n but it is not true for div nor the right side of pow
-    fn coerce_real(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type, reduce_mod: bool) -> Option<Source> {
+    fn coerce_real(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, reduce_mod: bool) -> Option<Source> {
         match ty {
             Type::Mod(n) => {
                 let src = if reduce_mod {
@@ -995,7 +1207,7 @@ impl<'a> RelCompiler<'a> {
                     bytecode.push(Instruction::MOD {
                         dest,
                         src1: src,
-                        src2: Source::Int(n),
+                        src2: Source::Int(*n),
                     });
 
                     Source::RegInter(dest)
@@ -1027,12 +1239,12 @@ impl<'a> RelCompiler<'a> {
                 Some(Source::RegInter(dest))
             }
             Type::Real => Some(src),
-            _ => unreachable!("cannot coerce {:?} to be Real", ty),
+            _ => unreachable!("cannot coerce {:?} to be Real", ty.clone()),
         }
     }
 
     // Converts all impulse type to bool with an IEQ
-    fn coerce_bool (&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: Type, ) -> Option<Source> {
+    fn coerce_bool(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, ) -> Option<Source> {
         match ty {
             Type::Impulse => {
                 let dest = match src {
@@ -1048,8 +1260,43 @@ impl<'a> RelCompiler<'a> {
             }
 
             Type::Bool => Some(src),
-            _ => unreachable!("cannot coerce {:?} into Bool", ty),
+            _ => unreachable!("cannot coerce {:?} into Bool", ty.clone()),
         }
+    }
+
+    // Used in cases pattern matching to ensure the sources are the same type
+    fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
+        println!("bytecode length before: {}", bytecode.len());
+        
+        let (new_src_l, new_type) = match type_r {
+            Type::Real => (self.coerce_real(bytecode, src_l, &type_l, true)?, Type::Real),
+
+            // Need to be careful not to try and coerce real to be int (the next match will take that int to be real)
+            Type::Int if *type_l != Type::Real => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int),
+
+            Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
+
+            _ => (src_l, type_l.clone()),
+        };
+
+        println!("bytecode length middle: {}", bytecode.len());
+        
+        let new_src_r = match new_type {
+            Type::Real => self.coerce_real(bytecode, src_r, &type_r, true)?,
+
+            Type::Int => self.coerce_int(bytecode, src_r, &type_r)?,
+
+            Type::Bool => self.coerce_bool(bytecode, src_r, &type_r)?,
+
+            // Take modulus before comparison
+            Type::Mod(n) => self.coerce_int(bytecode, src_r, &type_r)?,
+
+            _ => src_r,
+        };
+
+        println!("bytecode length after: {}", bytecode.len());
+
+        Some((new_src_l, new_src_r, new_type))
     }
 
     fn get_binary_dest(&mut self, src1: Source, src2: Source) -> Option<usize> {
@@ -1129,6 +1376,28 @@ impl<'a> RelCompiler<'a> {
         match source {
             Source::RegInter(_) | Source::RegVar(_) => 1,
             _ => 8,
+        }
+    }
+
+    fn update_jmp_offset(inst: &mut Instruction, change: i16) {
+        match inst {
+            Instruction::JMP { offset } => *offset += change,
+            
+            Instruction::IJEQ { offset, .. } => *offset += change,
+            Instruction::IJNE { offset, .. } => *offset += change,
+            Instruction::IJLT { offset, .. } => *offset += change,
+            Instruction::IJGT { offset, .. } => *offset += change,
+            Instruction::IJLE { offset, .. } => *offset += change,
+            Instruction::IJGE { offset, .. } => *offset += change,
+            
+            Instruction::FJEQ { offset, .. } => *offset += change,
+            Instruction::FJNE { offset, .. } => *offset += change,
+            Instruction::FJLT { offset, .. } => *offset += change,
+            Instruction::FJGT { offset, .. } => *offset += change,
+            Instruction::FJLE { offset, .. } => *offset += change,
+            Instruction::FJGE { offset, .. } => *offset += change,
+
+            _ => {}
         }
     }
 }
@@ -1722,4 +1991,116 @@ mod tests {
         assert_eq!(compiler.reg_used[5], false); // cdf[2]
         assert_eq!(compiler.reg_used[6], true);  // dest
     }
+
+    #[test]
+    fn compile_pattern_comp() {
+        
+        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is real reg_inter, d is mod(4) reg_inter, e is impuse reg_var
+        //     (1, f, >5, 2, true) : ... // f is real, 2 is mod(4)
+        // }
+        let mut scrutinee_sources = vec![Source::RegVar(1), Source::RegInter(4), Source::RegInter(5), Source::RegInter(6), Source::RegVar(2)];
+        let mut scrutinee_types = vec![Type::Int, Type::Int, Type::Real, Type::Mod(4), Type::Impulse];
+
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "e".to_string(),
+                kind: SymbolKind::Variable(Type::Impulse),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "f".to_string(),
+                kind: SymbolKind::Variable(Type::Real),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_used[0] = true; // sim_timestep
+        compiler.reg_map.insert(0, 1); // a
+        compiler.reg_used[1] = true;
+        compiler.reg_map.insert(1, 2); // e
+        compiler.reg_used[2] = true;
+        compiler.reg_map.insert(2, 3); // f
+        compiler.reg_used[3] = true;
+        compiler.reg_used[4] = true; // b
+        compiler.reg_used[5] = true; // c
+        compiler.reg_used[6] = true; // d
+
+        let result = compiler.compile_pattern_comp(&mut scrutinee_sources, &mut scrutinee_types, SimplePattern::Tuple(vec![
+            SimplePattern::Literal(Literal::Int(1)),
+            SimplePattern::Ident(Ident::Symbol(2)),
+            SimplePattern::Comparison(ComparisonPattern {
+                op: CompOp::Gt,
+                expr: Box::new(Expr::Literal(Literal::Int(5))),
+            }),
+            SimplePattern::Literal(Literal::Int(2)),
+            SimplePattern::Literal(Literal::Bool(true)),
+        ]));
+
+        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is real reg_inter, d is mod(4) reg_inter, e is impuse reg_var
+        //     (1, f, >5, 2, true) : ... // f is real, 2 is mod(4)
+        // }
+        assert_eq!(result, Some((vec![
+            Instruction::IJNE {
+                offset: 65,
+                src1: Source::RegVar(1),
+                src2: Source::Int(1),
+            },
+            Instruction::I2F {
+                dest: 4,
+                src: Source::RegInter(4),
+            },
+            Instruction::FJNE {
+                offset: 57,
+                src1: Source::RegInter(4),
+                src2: Source::RegVar(3),
+            },
+            Instruction::I2F {
+                dest: 7,
+                src: Source::Int(5),
+            },
+            Instruction::FJLE {
+                offset: 42,
+                src1: Source::RegInter(5),
+                src2: Source::RegInter(7),
+            },
+            Instruction::MOD {
+                dest: 6,
+                src1: Source::RegInter(6),
+                src2: Source::Int(4),
+            },
+            Instruction::IJNE {
+                offset: 19,
+                src1: Source::RegInter(6),
+                src2: Source::Int(2),
+            },
+            Instruction::IEQ {
+                dest: 8,
+                src1: Source::RegVar(2),
+                src2: Source::RegVar(0),
+            },
+            Instruction::IJNE {
+                offset: 3,
+                src1: Source::RegInter(8),
+                src2: Source::Bool(true),
+            },
+            Instruction::JMP {
+                offset: 0
+            },
+        ], vec![0, 2, 4, 6, 8])));
+        assert_eq!(scrutinee_types, vec![Type::Int, Type::Real, Type::Real, Type::Int, Type::Bool]);
+    }
+
+    // TODO: test cases with custom types (enum types)
 }

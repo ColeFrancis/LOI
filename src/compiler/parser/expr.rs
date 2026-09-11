@@ -139,14 +139,32 @@ impl<'a> Parser<'a> {
                         }];
 
                         elements.push( match self.parse_expr(0) {
-                            Some(expr) => expr,
+                            Some(expr) => match expr {
+                                Expr::Tuple(_) => {
+                                    self.diagnostics.error(CompilerError::NestedTupleExpr {
+                                        span: token.span,
+                                    });
+
+                                    Expr::Error
+                                },
+                                _ => expr,
+                            },
                             None => Expr::Error,
                         });
 
                         while self.peek().kind == TokenKind::Comma {
                             self.next();
                             elements.push( match self.parse_expr(0) {
-                                Some(expr) => expr,
+                                Some(expr) => match expr {
+                                    Expr::Tuple(_) => {
+                                        self.diagnostics.error(CompilerError::NestedTupleExpr {
+                                            span: token.span,
+                                        });
+
+                                        Expr::Error
+                                    },
+                                    _ => expr,
+                                },
                                 None => Expr::Error,
                             });
                         }
@@ -791,7 +809,7 @@ mod tests {
 
     #[test]
     fn tuple_expr_2() {    
-        // (1, (2, 3))
+        // (1, (2, 3))   // no nested tuples
         let kinds: Vec<TokenKind> = vec![LParen, IntLiteral(1), Comma, 
             LParen, IntLiteral(2), Comma,
             IntLiteral(3), RParen, RParen, Eof];
@@ -800,11 +818,13 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let mut parser = Parser::new(tokens, &mut diagnostics);
 
-        let result= parser.parse_expr(0).unwrap();
+        let result= parser.parse_expr(0);
 
-        let result_str: String = build_s_expr(&result);
-
-        assert_eq!(result_str, "(tuple 1 (tuple 2 3))".to_string()); 
+        assert_eq!(result, Some(Expr::Tuple(vec![
+            Expr::Literal(Literal::Int(1)),
+            Expr::Error,
+        ]))); 
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
