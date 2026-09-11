@@ -756,6 +756,10 @@ impl<'a> RelCompiler<'a> {
                     exit_jmp_indices.push(bytecode.len()-1);
                 }
 
+                // remove last unnecessary jmp
+                bytecode.pop();
+                exit_jmp_indices.pop();
+
                 // go back and fill in offsets
                 let target_inst_idx = bytecode.len();
                 for idx in exit_jmp_indices {
@@ -890,6 +894,10 @@ impl<'a> RelCompiler<'a> {
                     bytecode.extend(expr_bytecode);
                     jmp_inst_indices.push(bytecode.len()-1);
                 }
+
+                // remove last unnecessary jmp
+                bytecode.pop();
+                jmp_inst_indices.pop();
                 
                 // go back and fill in offsets
                 let target_inst_idx = bytecode.len();
@@ -1647,7 +1655,7 @@ mod tests {
                 src: Source::Int(2),
             },
             Instruction::JMP {
-                offset: 40
+                offset: 37
             },
             Instruction::FJGE {
                 offset: 6,
@@ -1659,7 +1667,7 @@ mod tests {
                 src: Source::RegVar(0),
             },
             Instruction::JMP {
-                offset: 29
+                offset: 26
             },
             Instruction::FJGE {
                 offset: 24,
@@ -1674,9 +1682,6 @@ mod tests {
             Instruction::MOV {
                 dest: 6,
                 src: Source::RegInter(7),
-            },
-            Instruction::JMP {
-                offset: 0
             },
         ], Source::RegInter(6), Type::Int)));
         assert_eq!(compiler.reg_used[0], true);  // "n"
