@@ -23,6 +23,7 @@
 //! Author: Cole Francis
 
 pub struct CompiledRel {
+    pub name: String,
     pub complexity: usize,
     pub bytecode: Vec<u8>,
 }

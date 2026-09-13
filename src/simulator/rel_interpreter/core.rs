@@ -903,6 +903,7 @@ mod tests {
     fn test_evaluate() {
         let relations = vec![
             CompiledRel {
+                name: "".to_string(),
                 complexity: 0,
                 bytecode: assemble("
                     FADD r0 r2 r3

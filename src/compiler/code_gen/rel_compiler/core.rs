@@ -20,6 +20,7 @@
 //!
 //! - unary expr_type will always match the type of their sub-expression
 //! - in binary expressions, literal sources will have always been converted to match the expr_type (see fold_expr:63)
+//! - booleans must be encoded as int 64 with 1 for true, 0 for false (these values matter in coerce_impulse)
 //!
 //! Author: Cole Francis
 
@@ -68,7 +69,28 @@ impl<'a> RelCompiler<'a> {
             }
         }
 
-        // call compile_expr
+        let (mut ir_bytecode, mut src, mut result_type) = self.compile_expr(relation.body)?;
+
+        // coerce to match return type
+        let src = match relation.return_type {
+            Type::Bool => self.coerce_bool(&mut ir_bytecode, src, &result_type)?,
+
+            Type::Impulse => self.coerce_impulse(&mut ir_bytecode, src, &result_type)?,
+
+            Type::Int => self.coerce_int(&mut ir_bytecode, src, &result_type)?,
+
+            Type::Real => self.coerce_real(&mut ir_bytecode, src, &result_type, true)?,
+
+            Type::Mod(n) => self.coerce_int(&mut ir_bytecode, src, &result_type)?, // handles taking modulus
+
+            Type::Custom(Ident::Symbol(id)) => src,
+
+            _ => return None,
+        };
+
+        ir_bytecode.push(Instruction::RET {
+            src,
+        });
 
         // remove deadcode
             // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
@@ -80,6 +102,7 @@ impl<'a> RelCompiler<'a> {
         // convert intermediate rep to u8
 
         Some(CompiledRel {
+            name: self.symbol_table[self.rel_symbol_id].name.clone(),
             complexity: 0,
             bytecode: Vec::new(),
         })
@@ -120,6 +143,7 @@ impl<'a> RelCompiler<'a> {
                 Some(Source::RegInter(dest))
             }
             Type::Int => Some(src),
+            Type::Custom(_) => Some(src), // custom types stored internally as ints which are mapped to the values the type takes
             _ => unreachable!("cannot coerce {:?} to Int", ty.clone())
         }
     }
@@ -190,6 +214,47 @@ impl<'a> RelCompiler<'a> {
             }
 
             Type::Bool => Some(src),
+            _ => unreachable!("cannot coerce {:?} into Bool", ty.clone()),
+        }
+    }
+
+    pub fn coerce_impulse(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, ) -> Option<Source> {
+        match ty {
+            Type::Impulse => {
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => self.get_next_reg()?,
+                };
+                bytecode.push(Instruction::IADD {
+                    dest,
+                    src1: src,
+                    src2: Source::RegVar(1), // add relation delay
+                });
+                Some(Source::RegInter(dest))
+            }
+
+            // if true, return relation delay added to current timestep else return 0
+            // comparison is simply done through multiplying by src because boolean is encoded as 1 for true, 0 for false
+            Type::Bool => {
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => self.get_next_reg()?,
+                };
+                let time_reg = self.get_next_reg()?;
+
+                bytecode.push(Instruction::IADD {
+                    dest: time_reg,
+                    src1: Source::RegVar(0),
+                    src2: Source::RegVar(1),
+                });
+                bytecode.push(Instruction::IMUL {
+                    dest, 
+                    src1: src,
+                    src2: Source::RegInter(time_reg),
+                });
+
+                Some(Source::RegInter(dest))
+            },
             _ => unreachable!("cannot coerce {:?} into Bool", ty.clone()),
         }
     }

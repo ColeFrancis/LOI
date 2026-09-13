@@ -52,13 +52,27 @@ impl<'a> RelCompiler<'a> {
 
                                                                                              // TODO: custom types appear as idents
             Expr::Ident(Ident::Symbol(id)) => {
-                let Some(reg) = self.reg_map.get(&id) else {
-                    return None;
-                };
-                let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
-                    return None;                                                                // TODO: custom types appear as idents and will go to here
-                };
-                (Source::RegVar(*reg as usize), ident_type)
+                match self.symbol_table[id].kind.clone() {
+                    SymbolKind::Variable(ident_type) => {
+                        let Some(reg) = self.reg_map.get(&id) else {
+                            return None;
+                        };
+                        (Source::RegVar(*reg as usize), ident_type)
+                    },
+
+                    SymbolKind::EntMember {parent, mapping} => {
+                        (Source::Int(mapping as i64), Type::Custom(Ident::Symbol(parent)))
+                    },
+
+                    _ => return None,
+                }
+                // let Some(reg) = self.reg_map.get(&id) else {
+                //     return None;
+                // };
+                // let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
+                //     return None;                                                                // TODO: custom types appear as idents and will go to here
+                // };
+                // (Source::RegVar(*reg as usize), ident_type)
             }
 
             Expr::Unary(unary) => {
@@ -697,7 +711,7 @@ impl<'a> RelCompiler<'a> {
                     }
                 } else {
                     let (expr_bytecode, src, sub_type) = self.compile_expr(*cases.scrutinee)?;
-
+                    
                     bytecode.extend(expr_bytecode);
 
                     scrutinee_sources.push(src);
@@ -713,7 +727,10 @@ impl<'a> RelCompiler<'a> {
                     let mut last_cond_jmp_indices: Vec<usize> = Vec::new();
 
                     for simple_pattern in arm.pattern {
-                        let (sub_bytecode, last_cond_jmp_indices) = self.compile_pattern_comp(&mut scrutinee_sources, &mut scrutinee_types, simple_pattern)?;
+                        let (sub_bytecode, cond_jmp_indices) = self.compile_pattern_comp(&mut scrutinee_sources, &mut scrutinee_types, simple_pattern)?;
+
+                        last_cond_jmp_indices = cond_jmp_indices.iter().map(|x| x + bytecode.len()).collect();
+
                         bytecode.extend(sub_bytecode);
                         enter_jmp_indices.push(bytecode.len() - 1);
                     }
@@ -747,7 +764,7 @@ impl<'a> RelCompiler<'a> {
                     });
 
                     // modify last_cond_jmp_indices' offsets to skip arm bytecode
-                    let added_length = expr_bytecode.len() - 3; // subtract 3 bytes for the jmp that was poped off
+                    let added_length = Self::get_num_bytes(&expr_bytecode) - 3; // subtract 3 bytes for the jmp that was poped off
                     for idx in last_cond_jmp_indices {
                         Self::update_jmp_offset(&mut bytecode[idx], added_length as i16);
                     }
@@ -768,6 +785,13 @@ impl<'a> RelCompiler<'a> {
                     if let Instruction::JMP{ offset } = &mut bytecode[idx] {
                         *offset = new_offset as i16;
                     };
+                }
+
+                // free registers from scrutinee
+                for src in scrutinee_sources {
+                    if let Source::RegInter(src_reg) = src {
+                        self.reg_used[src_reg] = false;
+                    }
                 }
 
                 (Source::RegInter(dest), cases.expr_type)
@@ -972,13 +996,28 @@ impl<'a> RelCompiler<'a> {
 
             // for ident pattern, if scrutinee value doesn't match ident value, then skip jmp
             SimplePattern::Ident(Ident::Symbol(id)) => {
-                let Some(reg) = self.reg_map.get(&id) else {
-                    return None;
+                let (mut ident_src, ident_type) = match self.symbol_table[id].kind.clone() {
+                    SymbolKind::Variable(ident_type) => {
+                        let Some(reg) = self.reg_map.get(&id) else {
+                            return None;
+                        };
+                        (Source::RegVar(*reg as usize), ident_type)
+                    },
+
+                    SymbolKind::EntMember {mapping, ..} => {
+                        (Source::Int(mapping as i64), Type::Int)
+                    },
+
+                    _ => return None,
                 };
-                let SymbolKind::Variable(mut ident_type) = self.symbol_table[id].kind.clone() else {
-                    return None;                                                                                        // TODO: custom types appear as idents and will go to here
-                };
-                let mut ident_src = Source::RegVar(*reg as usize);
+
+                // let Some(reg) = self.reg_map.get(&id) else {
+                //     return None;
+                // };
+                // let SymbolKind::Variable(mut ident_type) = self.symbol_table[id].kind.clone() else {
+                //     return None;                                                                                        // TODO: custom types appear as idents and will go to here
+                // };
+                // let mut ident_src = Source::RegVar(*reg as usize);
 
                 (scrutinee_sources[0], ident_src, scrutinee_types[0]) = self.coerce_equal(&mut bytecode, scrutinee_sources[0], &scrutinee_types[0], ident_src, &ident_type)?;
 
@@ -1111,7 +1150,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn literal_expr() {
+    fn literal_expr_1() {
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
         let mut compiler = RelCompiler {
@@ -1128,7 +1167,47 @@ mod tests {
     }
 
     #[test]
-    fn ident_expr() {
+    fn literal_expr_2() {
+        // T // second member of ent_t coin = {H, T};
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "coin".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "T".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 1,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Ident(Ident::Symbol(2)));
+
+        assert_eq!(ir, Some((vec![], Source::Int(1), Type::Custom(Ident::Symbol(0)))));
+    }
+
+    #[test]
+    fn ident_expr_1() {
         let mut diagnostics = Diagnostics::new();
         let symbol_table = vec![Symbol {
             name: "".to_string(),
@@ -1148,6 +1227,53 @@ mod tests {
         let ir = compiler.compile_expr(Expr::Ident(Ident::Symbol(0)));
 
         assert_eq!(ir, Some((vec![], Source::RegVar(0), Type::Int)));
+    }
+
+    #[test]
+    fn ident_expr_2() {
+        // c   // type is  ent_t coin = {H, T};
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "coin".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "T".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "c".to_string(),
+                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 1,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(3, 0);
+        compiler.reg_used[0] = true;
+
+        let ir = compiler.compile_expr(Expr::Ident(Ident::Symbol(3)));
+
+        assert_eq!(ir, Some((vec![], Source::RegVar(0), Type::Custom(Ident::Symbol(0)))));
     }
 
     #[test]
@@ -1803,31 +1929,234 @@ mod tests {
         assert_eq!(scrutinee_types, vec![Type::Int, Type::Real, Type::Real, Type::Int, Type::Bool]);
     }
 
-    // TODO: test cases with custom types (enum types)
-    //  like matching an arm for every variant of a custom type
+    #[test]
+    fn cases_1() {
+        // cases (a, b*2) {
+        //     (1, 2) | (3, 4): 1, 
+        //     (5, 6): 2,
+        //     _: 3
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 0);
+        compiler.reg_used[0] = true;
+        compiler.reg_map.insert(1, 1);
+        compiler.reg_used[1] = true;
 
-    // Test for something like  
-    //     cases (a, b) {
-    //         (2, 3) | (3, 4): 1, 
-    //         (5, 6): 2,
-    //         _: 3
-    //     }, 
-    // compile to this pseudocode:
-    //     case_1:
-    //         JNE case_2 a 2
-    //         JNE case_2 b 3
-    //         JMP shared_arm_code
-    //     case_2:
-    //         JNE case_3 a 3
-    //         JNE case_3 b 4
-    //     shared_arm_code:
-    //         ...
-    //         JMP end
-    //     case_3:
-    //         JNE end a 5
-    //         JNE end b 6
-    //         ...
-    //         JMP end
-    //     end:
-    //         ...
+        let ir = compiler.compile_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Int(2))),
+                    op: BinaryOp::Mul,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Int,
+                }),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Int(2)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(3)),
+                            SimplePattern::Literal(Literal::Int(4)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Int(1)),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(5)),
+                            SimplePattern::Literal(Literal::Int(6)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Int(2)),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Literal(Literal::Int(3)),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::IMUL {
+                dest: 2,
+                src1: Source::RegVar(1),
+                src2: Source::Int(2),
+            },
+            Instruction::IJNE {
+                offset: 15, // past next JMP
+                src1: Source::RegVar(0),
+                src2: Source::Int(1),
+            },
+            Instruction::IJNE {
+                offset: 3, // past next JMP
+                src1: Source::RegInter(2),
+                src2: Source::Int(2),
+            },
+            Instruction::JMP {
+                offset: 24, // past next conditional jumps
+            },
+            Instruction::IJNE {
+                offset: 25, // past next JMP
+                src1: Source::RegVar(0),
+                src2: Source::Int(3),
+            },
+            Instruction::IJNE {
+                offset: 13, // past next JMP
+                src1: Source::RegInter(2),
+                src2: Source::Int(4),
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Int(1),
+            },
+            Instruction::JMP {
+                offset: 47, // After last inst
+            },
+            Instruction::IJNE {
+                offset: 25, // past next JMP
+                src1: Source::RegVar(0),
+                src2: Source::Int(5),
+            },
+            Instruction::IJNE {
+                offset: 13, // past next JMP
+                src1: Source::RegInter(2),
+                src2: Source::Int(6),
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Int(2),
+            },
+            Instruction::JMP {
+                offset: 10, // After last inst
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Int(3),
+            },
+        ], Source::RegInter(3), Type::Int)));
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[2], false);
+        assert_eq!(compiler.reg_used[3], true);
+    }
+
+    #[test]
+    fn cases_2() {
+        // cases c { // type of c is ent_t coin = {H, T};
+        //     H : true, 
+        //     _ : false,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "coin".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "T".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "c".to_string(),
+                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(3, 0);
+        compiler.reg_used[0] = true;
+
+        let ir = compiler.compile_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(3))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(1)),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Default,
+                    ],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::IJNE {
+                offset: 13,
+                src1: Source::RegVar(0),
+                src2: Source::Int(0),
+            },
+            Instruction::MOV {
+                dest: 1,
+                src: Source::Bool(true),
+            },
+            Instruction::JMP {
+                offset: 10,
+            },
+            Instruction::MOV {
+                dest: 1,
+                src: Source::Bool(false),
+            },
+        ], Source::RegInter(1), Type::Bool)));
+    }
 }

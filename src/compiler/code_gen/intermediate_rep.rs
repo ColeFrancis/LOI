@@ -27,7 +27,7 @@ pub enum Source {
     RegInter(usize), // Registers for intermediate values that can be overridden
     RegVar(usize), // Registers that should not be overridden
     Bool(bool),
-    Int(i64),
+    Int(i64), // mod and custom types encoded as ints as well
     Float(f64),
 }
 
