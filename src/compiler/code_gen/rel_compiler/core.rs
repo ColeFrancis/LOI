@@ -259,6 +259,7 @@ impl<'a> RelCompiler<'a> {
         }
     }
 
+    // TODO: make work for impulses as well
     // Used in cases pattern matching to ensure the sources are the same type
     pub fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
@@ -397,4 +398,5 @@ impl<'a> RelCompiler<'a> {
 mod tests {
     use super::*;
 
+    // test a relation that returns impulse for the two cases of passing impulse straight throguh or converting bool to impulse
 }
