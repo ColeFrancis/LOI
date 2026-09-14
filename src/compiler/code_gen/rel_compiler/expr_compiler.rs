@@ -66,13 +66,6 @@ impl<'a> RelCompiler<'a> {
 
                     _ => return None,
                 }
-                // let Some(reg) = self.reg_map.get(&id) else {
-                //     return None;
-                // };
-                // let SymbolKind::Variable(ident_type) = self.symbol_table[id].kind.clone() else {
-                //     return None;                                                                // TODO: custom types appear as idents and will go to here
-                // };
-                // (Source::RegVar(*reg as usize), ident_type)
             }
 
             Expr::Unary(unary) => {
@@ -763,7 +756,7 @@ impl<'a> RelCompiler<'a> {
                         offset: 0, // calculated later using jmp_inst_indices
                     });
 
-                    // modify last_cond_jmp_indices' offsets to skip arm bytecode
+                    // modify last_cond_jmp_indices' offsets to skip arm bytecode, and 
                     let added_length = Self::get_num_bytes(&expr_bytecode) - 3; // subtract 3 bytes for the jmp that was poped off
                     for idx in last_cond_jmp_indices {
                         Self::update_jmp_offset(&mut bytecode[idx], added_length as i16);
@@ -892,6 +885,7 @@ impl<'a> RelCompiler<'a> {
                 // select arm if rnd < cdf[i]
                 // offsets are set to zero and afterwards we go back and fill in the offsets.
                 let mut jmp_inst_indices: Vec<usize> = Vec::new();
+                let mut last_comp_jmp_idx = 0;
                 for (expr, cdf_val_reg) in arm_exprs.into_iter().zip(cdf.iter()) {
                     let (mut expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
 
@@ -915,6 +909,8 @@ impl<'a> RelCompiler<'a> {
                         src2: Source::RegInter(*cdf_val_reg),
                     });
 
+                    last_comp_jmp_idx = bytecode.len() - 1;
+
                     bytecode.extend(expr_bytecode);
                     jmp_inst_indices.push(bytecode.len()-1);
                 }
@@ -922,6 +918,11 @@ impl<'a> RelCompiler<'a> {
                 // remove last unnecessary jmp
                 bytecode.pop();
                 jmp_inst_indices.pop();
+
+                // correct last FJGE's offset to correct for removed HMP
+                if let Instruction::FJGE {offset,..} = &mut bytecode[last_comp_jmp_idx] {
+                    *offset -= 3;
+                }
                 
                 // go back and fill in offsets
                 let target_inst_idx = bytecode.len();
@@ -1010,14 +1011,6 @@ impl<'a> RelCompiler<'a> {
 
                     _ => return None,
                 };
-
-                // let Some(reg) = self.reg_map.get(&id) else {
-                //     return None;
-                // };
-                // let SymbolKind::Variable(mut ident_type) = self.symbol_table[id].kind.clone() else {
-                //     return None;                                                                                        // TODO: custom types appear as idents and will go to here
-                // };
-                // let mut ident_src = Source::RegVar(*reg as usize);
 
                 (scrutinee_sources[0], ident_src, scrutinee_types[0]) = self.coerce_equal(&mut bytecode, scrutinee_sources[0], &scrutinee_types[0], ident_src, &ident_type)?;
 
@@ -1796,7 +1789,7 @@ mod tests {
                 offset: 26
             },
             Instruction::FJGE {
-                offset: 24,
+                offset: 21,
                 src1: Source::RegInter(2),
                 src2: Source::RegInter(5),
             },
@@ -2158,5 +2151,380 @@ mod tests {
                 src: Source::Bool(false),
             },
         ], Source::RegInter(1), Type::Bool)));
+    }
+
+    #[test]
+    fn cases_3() {
+        // cases var {
+        //     A: sample {
+        //         0.5: A,
+        //         0.3: B,
+        //         _  : C,
+        //     },
+        //     B: sample {
+        //         0.1: A,
+        //         0.4: B,
+        //         _  : C,
+        //     },
+        //     C: sample {
+        //         0.4: A,
+        //         0.0: B,
+        //         _  : C,
+        //     },
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "trio".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "B".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "C".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 2,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "var".to_string(),
+                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+        let mut compiler = RelCompiler {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(4, 0);
+        compiler.reg_used[0] = true;
+
+        let ir = compiler.compile_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(4))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(1)),
+                    ],
+                    expr: Expr::Sample(SampleExpr {
+                        arms: vec![
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                                expr: Expr::Ident(Ident::Symbol(1)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.3))),
+                                expr: Expr::Ident(Ident::Symbol(2)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Default,
+                                expr: Expr::Ident(Ident::Symbol(3)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                        ],
+                        expr_type: Type::Custom(Ident::Symbol(0)),
+                        span: Span{line: 0, col: 0},
+                    }),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(2)),
+                    ],
+                    expr: Expr::Sample(SampleExpr {
+                        arms: vec![
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.1))),
+                                expr: Expr::Ident(Ident::Symbol(1)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.4))),
+                                expr: Expr::Ident(Ident::Symbol(2)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Default,
+                                expr: Expr::Ident(Ident::Symbol(3)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                        ],
+                        expr_type: Type::Custom(Ident::Symbol(0)),
+                        span: Span{line: 0, col: 0},
+                    }),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Ident(Ident::Symbol(3)),
+                    ],
+                    expr: Expr::Sample(SampleExpr {
+                        arms: vec![
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.4))),
+                                expr: Expr::Ident(Ident::Symbol(1)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
+                                expr: Expr::Ident(Ident::Symbol(2)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                            SampleArm {
+                                prob: Prob::Default,
+                                expr: Expr::Ident(Ident::Symbol(3)),
+                                arm_span: Span{line: 0, col: 0},
+                            },
+                        ],
+                        expr_type: Type::Custom(Ident::Symbol(0)),
+                        span: Span{line: 0, col: 0},
+                    }),
+                    arm_span: Span{line: 0, col: 0} 
+                },
+            ],
+            expr_type: Type::Custom(Ident::Symbol(0)),
+            span: Span{line: 0, col: 0},
+        }));
+
+        assert_eq!(ir, Some((vec![
+            Instruction::IJNE {
+                offset: 105,
+                src1: Source::RegVar(0),
+                src2: Source::Int(0),
+            },
+            Instruction::RND {
+                dest: 2,
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Float(0.5),
+            },
+            Instruction::FADD {
+                dest: 4,
+                src1: Source::Float(0.3),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 5,
+                src: Source::Float(1.0),
+            },
+            Instruction::FJEQ {
+                offset: 3,
+                src1: Source::RegInter(5),
+                src2: Source::Float(1.0),
+            },
+            Instruction::ERR {
+                code: 4,
+                src: Some(Source::RegInter(5)),
+            },
+            Instruction::FJGE {
+                offset:  13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(0),
+            },
+            Instruction::JMP {
+                offset: 33,
+            },
+            Instruction::FJGE {
+                offset: 13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(4),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(1),
+            },
+            Instruction::JMP {
+                offset: 15,
+            },
+            Instruction::FJGE {
+                offset: 10,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(5),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(2),
+            },
+            Instruction::MOV {
+                dest: 1,
+                src: Source::RegInter(6),
+            },
+            Instruction::JMP {
+                offset: 231,
+            },
+
+
+            Instruction::IJNE {
+                offset: 105,
+                src1: Source::RegVar(0),
+                src2: Source::Int(1),
+            },
+            Instruction::RND {
+                dest: 2,
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Float(0.1),
+            },
+            Instruction::FADD {
+                dest: 4,
+                src1: Source::Float(0.4),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 5,
+                src: Source::Float(1.0),
+            },
+            Instruction::FJEQ {
+                offset: 3,
+                src1: Source::RegInter(5),
+                src2: Source::Float(1.0),
+            },
+            Instruction::ERR {
+                code: 4,
+                src: Some(Source::RegInter(5)),
+            },
+            Instruction::FJGE {
+                offset:  13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(0),
+            },
+            Instruction::JMP {
+                offset: 33,
+            },
+            Instruction::FJGE {
+                offset: 13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(4),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(1),
+            },
+            Instruction::JMP {
+                offset: 15,
+            },
+            Instruction::FJGE {
+                offset: 10,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(5),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(2),
+            },
+            Instruction::MOV {
+                dest: 1,
+                src: Source::RegInter(6),
+            },
+            Instruction::JMP {
+                offset: 114,
+            },
+            Instruction::IJNE {
+                offset: 105,
+                src1: Source::RegVar(0),
+                src2: Source::Int(2),
+            },
+            Instruction::RND {
+                dest: 2,
+            },
+            Instruction::MOV {
+                dest: 3,
+                src: Source::Float(0.4),
+            },
+            Instruction::FADD {
+                dest: 4,
+                src1: Source::Float(0.0),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 5,
+                src: Source::Float(1.0),
+            },
+            Instruction::FJEQ {
+                offset: 3,
+                src1: Source::RegInter(5),
+                src2: Source::Float(1.0),
+            },
+            Instruction::ERR {
+                code: 4,
+                src: Some(Source::RegInter(5)),
+            },
+            Instruction::FJGE {
+                offset:  13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(3),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(0),
+            },
+            Instruction::JMP {
+                offset: 33,
+            },
+            Instruction::FJGE {
+                offset: 13,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(4),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(1),
+            },
+            Instruction::JMP {
+                offset: 15,
+            },
+            Instruction::FJGE {
+                offset: 10,
+                src1: Source::RegInter(2),
+                src2: Source::RegInter(5),
+            },
+            Instruction::MOV {
+                dest: 6,
+                src: Source::Int(2),
+            },
+            Instruction::MOV {
+                dest: 1,
+                src: Source::RegInter(6),
+            },
+        ], Source::RegInter(1), Type::Custom(Ident::Symbol(0)))));
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true); 
+        assert_eq!(compiler.reg_used[2], false);
+        assert_eq!(compiler.reg_used[3], false);
+        assert_eq!(compiler.reg_used[4], false);
+        assert_eq!(compiler.reg_used[5], false);
+        assert_eq!(compiler.reg_used[6], false);  
     }
 }

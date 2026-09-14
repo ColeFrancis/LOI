@@ -206,6 +206,10 @@ pub enum CompilerError {
         arm_span: Span,
     },
 
+    NoDefaultPattern {
+        cases_span: Span,
+    },
+
     ProbOutOfRange {
         total_prob: bool,
         val: f64,

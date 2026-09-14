@@ -145,6 +145,14 @@ impl <'a> SemAnalyzer<'a> {
                         seen_patterns.push((pattern, arm.arm_span));
                     }
                 }
+                // All cases must have a default arm
+                if !seen_patterns.iter().any(|(pattern, _)| matches!(pattern, SimplePattern::Default)) {
+                    self.diagnostics.error(CompilerError::NoDefaultPattern {
+                        cases_span: cases_expr.span.clone(),
+                    });
+                    
+                    has_errors = true;
+                }
                 if has_errors {
                     return Expr::Error;
                 }
@@ -1475,6 +1483,48 @@ mod tests {
         }), true);
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
+    }
+
+    #[test]
+    fn test_cases_8() {
+        // cases 1 {    
+        //     1: true,
+        //     0 : false, // no default arm
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Literal(Literal::Int(1))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Literal(Literal::Int(1)),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Literal(Literal::Int(0)),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span{line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span{line: 0, col: 0},
+        }), true);
+
+        assert_eq!(result, Expr::Error);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]

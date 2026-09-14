@@ -268,9 +268,9 @@ impl<'a> RelCompiler<'a> {
             // Need to be careful not to try and coerce real to be int (the next match will take that int to be real)
             Type::Int if *type_l != Type::Real => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int),
 
-            Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
-
             Type::Mod(n) if (*type_l != Type::Real && *type_l != Type::Int) => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Mod(*n)),
+
+            Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
 
             _ => (src_l, type_l.clone()),
         };
