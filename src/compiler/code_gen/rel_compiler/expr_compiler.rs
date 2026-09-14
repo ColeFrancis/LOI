@@ -714,10 +714,10 @@ impl<'a> RelCompiler<'a> {
                 // preallocate destination reg
                 let dest = self.get_next_reg()?;
                 let mut exit_jmp_indices: Vec<usize> = Vec::new();
+                let mut last_cond_jmp_indices: Vec<usize> = Vec::new();
 
                 for arm in cases.arms {
                     let mut enter_jmp_indices: Vec<usize> = Vec::new();
-                    let mut last_cond_jmp_indices: Vec<usize> = Vec::new();
 
                     for simple_pattern in arm.pattern {
                         let (sub_bytecode, cond_jmp_indices) = self.compile_pattern_comp(&mut scrutinee_sources, &mut scrutinee_types, simple_pattern)?;
@@ -758,8 +758,8 @@ impl<'a> RelCompiler<'a> {
 
                     // modify last_cond_jmp_indices' offsets to skip arm bytecode, and 
                     let added_length = Self::get_num_bytes(&expr_bytecode) - 3; // subtract 3 bytes for the jmp that was poped off
-                    for idx in last_cond_jmp_indices {
-                        Self::update_jmp_offset(&mut bytecode[idx], added_length as i16);
+                    for idx in &last_cond_jmp_indices {
+                        Self::update_jmp_offset(&mut bytecode[*idx], added_length as i16);
                     }
 
                     bytecode.extend(expr_bytecode);
@@ -770,14 +770,17 @@ impl<'a> RelCompiler<'a> {
                 bytecode.pop();
                 exit_jmp_indices.pop();
 
+                // correct last conditional jump's offset to correct for removed JMP
+                for idx in &last_cond_jmp_indices {
+                    Self::update_jmp_offset(&mut bytecode[*idx], -3);
+                }
+
                 // go back and fill in offsets
                 let target_inst_idx = bytecode.len();
                 for idx in exit_jmp_indices {
                     let new_offset = Self::get_num_bytes(&bytecode[idx + 1..target_inst_idx]);
 
-                    if let Instruction::JMP{ offset } = &mut bytecode[idx] {
-                        *offset = new_offset as i16;
-                    };
+                    Self::update_jmp_offset(&mut bytecode[idx], new_offset as i16);
                 }
 
                 // free registers from scrutinee
@@ -919,10 +922,8 @@ impl<'a> RelCompiler<'a> {
                 bytecode.pop();
                 jmp_inst_indices.pop();
 
-                // correct last FJGE's offset to correct for removed HMP
-                if let Instruction::FJGE {offset,..} = &mut bytecode[last_comp_jmp_idx] {
-                    *offset -= 3;
-                }
+                // correct last conditional jump's offset to correct for removed JMP
+                Self::update_jmp_offset(&mut bytecode[last_comp_jmp_idx], -3);
                 
                 // go back and fill in offsets
                 let target_inst_idx = bytecode.len();
@@ -2452,7 +2453,7 @@ mod tests {
                 offset: 114,
             },
             Instruction::IJNE {
-                offset: 105,
+                offset: 102,
                 src1: Source::RegVar(0),
                 src2: Source::Int(2),
             },
