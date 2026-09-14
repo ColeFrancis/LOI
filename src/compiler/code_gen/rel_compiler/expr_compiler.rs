@@ -1455,7 +1455,7 @@ mod tests {
         }));
 
         assert_eq!(ir, Some((vec![
-            Instruction::MOD {
+            Instruction::IMOD {
                 dest: 2,
                 src1: Source::RegVar(1),
                 src2: Source::Int(10),
@@ -1539,7 +1539,7 @@ mod tests {
         }));
 
         assert_eq!(ir, Some((vec![
-            Instruction::MOD {
+            Instruction::IMOD {
                 dest: 2,
                 src1: Source::RegVar(1),
                 src2: Source::Int(10),
@@ -1581,7 +1581,7 @@ mod tests {
         }));
 
         assert_eq!(ir, Some((vec![
-            Instruction::MOD {
+            Instruction::IMOD {
                 dest: 2,
                 src1: Source::RegVar(1),
                 src2: Source::Int(10),
@@ -1896,7 +1896,7 @@ mod tests {
                 src1: Source::RegInter(5),
                 src2: Source::RegInter(7),
             },
-            Instruction::MOD {
+            Instruction::IMOD {
                 dest: 6,
                 src1: Source::RegInter(6),
                 src2: Source::Int(4),
@@ -2528,4 +2528,7 @@ mod tests {
         assert_eq!(compiler.reg_used[5], false);
         assert_eq!(compiler.reg_used[6], false);  
     }
+
+    // test adding two cases together
+    // corner cases with mod/impulse/custom type
 }

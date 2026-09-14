@@ -134,7 +134,7 @@ impl<'a> RelCompiler<'a> {
                     _ => self.get_next_reg()?,
                 };
 
-                bytecode.push(Instruction::MOD {
+                bytecode.push(Instruction::IMOD {
                     dest,
                     src1: src,
                     src2: Source::Int(*n),
@@ -158,7 +158,7 @@ impl<'a> RelCompiler<'a> {
                         _ => self.get_next_reg()?,
                     };
 
-                    bytecode.push(Instruction::MOD {
+                    bytecode.push(Instruction::IMOD {
                         dest,
                         src1: src,
                         src2: Source::Int(*n),
@@ -259,7 +259,6 @@ impl<'a> RelCompiler<'a> {
         }
     }
 
-    // TODO: make work for impulses as well
     // Used in cases pattern matching to ensure the sources are the same type
     pub fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
@@ -314,7 +313,7 @@ impl<'a> RelCompiler<'a> {
                 Instruction::IDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::IPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::IABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::MOD {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
+                Instruction::IMOD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::FADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::FSUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
                 Instruction::FMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),

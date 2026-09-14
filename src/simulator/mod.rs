@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod rel_interpreter;
+pub mod rel_interpreter;
 mod runtime_diagnostics;

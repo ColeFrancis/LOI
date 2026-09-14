@@ -62,7 +62,7 @@ pub enum Instruction {
         dest: usize,
         src: Source,
     },
-    MOD {
+    IMOD {
         dest: usize,
         src1: Source,
         src2: Source,

@@ -14,6 +14,7 @@
 
 mod core;
 mod expr_compiler;
+mod lower_ir;
 
 use std::collections::HashMap;
 

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 mod core;
-mod test_assembler;
+pub mod test_assembler;
 
 use crate::compiler::compiled_rel::CompiledRel;
 
