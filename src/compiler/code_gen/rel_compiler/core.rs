@@ -55,7 +55,7 @@ impl<'a> RelCompiler<'a> {
     fn compile_relation(&mut self, relation: RelType) -> Option<CompiledRel> {
         // setup initial registers, arguments, etc
 
-        // r0 and r1 are reserved for timestep and delay
+        // r0 and r1 are reserved for timestep and delay, respectively
         self.reg_used[0] = true;
         self.reg_used[1] = true;
 
@@ -396,6 +396,419 @@ impl<'a> RelCompiler<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::simulator::rel_interpreter::test_assembler::assemble;
 
-    // test a relation that returns impulse for the two cases of passing impulse straight throguh or converting bool to impulse
+    #[test]
+    fn simple_adder() {
+        // rel_t ADD: (a: Int, b: Int) -> Int {
+        //     a + b
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "ADD".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int, Type::Int],
+                    return_type: Type::Int,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let relation = RelType {
+            name: Ident::Symbol(0),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Int,
+                },
+                Param {
+                    name: Ident::Symbol(2),
+                    param_type: Type::Int,
+                },
+            ],
+            return_type: Type::Int,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Ident(Ident::Symbol(2))),
+                op: BinaryOp::Add,
+                op_span: Span {line: 0, col: 0},
+                expr_type: Type::Int,
+            }),
+        };
+
+        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+
+        let bytecode = assemble("
+            IADD r4 r2 r3
+            RET r4
+        ").unwrap();
+
+        assert_eq!(result, Some(CompiledRel {
+            name: "ADD".to_string(),
+            complexity: 0,
+            bytecode,
+        }));
+    }
+
+    #[test]
+    fn impulse_delay() {
+        // rel_t DELAY: (a: Impulse) -> Impulse {
+        //     a
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "DELAY".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Impulse],
+                    return_type: Type::Impulse,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Impulse),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let relation = RelType {
+            name: Ident::Symbol(0),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Impulse,
+                },
+            ],
+            return_type: Type::Impulse,
+            body: Expr::Ident(Ident::Symbol(1)),
+        };
+
+        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+
+        let bytecode = assemble("
+            IADD r3 r2 r1
+            RET r3
+        ").unwrap();
+
+        assert_eq!(result, Some(CompiledRel {
+            name: "DELAY".to_string(),
+            complexity: 0,
+            bytecode,
+        }));
+    }
+
+    #[test]
+    fn impulse_and() {
+        // rel_t DELAY: (a: Impulse, b: Impulse) -> Impulse {
+        //     a & b
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "AND".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Impulse, Type::Impulse],
+                    return_type: Type::Impulse,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Impulse),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Impulse),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let relation = RelType {
+            name: Ident::Symbol(0),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Impulse,
+                },
+                Param {
+                    name: Ident::Symbol(2),
+                    param_type: Type::Impulse,
+                },
+            ],
+            return_type: Type::Impulse,
+            body: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                right: Box::new(Expr::Ident(Ident::Symbol(2))),
+                op: BinaryOp::And,
+                op_span: Span {line: 0, col: 0},
+                expr_type: Type::Bool,
+            }),
+        };
+
+        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+
+        let bytecode = assemble("
+            IEQ r4 r2 r0
+            IEQ r5 r3 r0
+            AND r4 r4 r5
+            IADD r5 r0 r1
+            IMUL r4 r4 r5
+            RET r4
+        ").unwrap();
+
+        assert_eq!(result, Some(CompiledRel {
+            name: "AND".to_string(),
+            complexity: 0,
+            bytecode,
+        }));
+    }
+
+    #[test]
+    fn custom_cases() {
+        // ent_t coin = {H, T};
+        // rel_t REVERSE : (a: coin) -> coin = cases a { 
+        //     H : T,
+        //     _ : H,
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "coin".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "T".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "REVERSE".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Custom(Ident::Symbol(0))],
+                    return_type: Type::Custom(Ident::Symbol(0)),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let relation = RelType {
+            name: Ident::Symbol(3),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(4),
+                    param_type: Type::Custom(Ident::Symbol(0)),
+                },
+            ],
+            return_type: Type::Custom(Ident::Symbol(0)),
+            body: Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Ident(Ident::Symbol(4))),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![
+                            SimplePattern::Ident(Ident::Symbol(1)),
+                        ],
+                        expr: Expr::Ident(Ident::Symbol(2)),
+                        arm_span: Span{line: 0, col: 0},
+                    },
+                    CasesArm {
+                        pattern: vec![
+                            SimplePattern::Default,
+                        ],
+                        expr: Expr::Ident(Ident::Symbol(1)),
+                        arm_span: Span{line: 0, col: 0},
+                    },
+                ],
+                expr_type: Type::Custom(Ident::Symbol(0)),
+                span: Span{line: 0, col: 0},
+            }),
+        };
+
+        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+
+        let bytecode = assemble("
+            IJNE o13 r2 i0
+            MOV r3 i1
+            JMP o10
+            MOV r3 i0
+            RET r3
+        ").unwrap();
+
+        assert_eq!(result, Some(CompiledRel {
+            name: "REVERSE".to_string(),
+            complexity: 0,
+            bytecode,
+        }));
+    }
+
+    #[test]
+    fn block_and_sample() {
+        // rel_t RND : (a: Int) -> Real {
+        //     let b = 1;
+        //     let c = (a + sample {
+        //         0.5 : 3,
+        //         _   : 4
+        //     }) + b;
+
+        //     c / 1.5;
+        // };
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "RND".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int],
+                    return_type: Type::Real,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "c".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let relation = RelType {
+            name: Ident::Symbol(0),
+            params: vec![
+                Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Int,
+                },
+            ],
+            return_type: Type::Real,
+            body: Expr::Block(BlockExpr {
+                statements: vec![
+                    Statement::Let(LetStatement {
+                        name: Ident::Symbol(2),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Statement::Let(LetStatement {
+                        name: Ident::Symbol(3),
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Binary(BinaryExpr {
+                                left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                                right: Box::new(Expr::Sample(SampleExpr {
+                                    arms: vec![
+                                        SampleArm {
+                                            prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                                            expr: Expr::Literal(Literal::Int(3)),
+                                            arm_span: Span{line: 0, col: 0},
+                                        },
+                                        SampleArm {
+                                            prob: Prob::Default,
+                                            expr: Expr::Literal(Literal::Int(4)),
+                                            arm_span: Span{line: 0, col: 0},
+                                        },
+                                    ],
+                                    expr_type: Type::Int,
+                                    span: Span{line: 0, col: 0},
+                                })),
+                                op: BinaryOp::Add,
+                                op_span: Span{line: 0, col: 0},
+                                expr_type: Type::Int,
+                            })),
+                            right: Box::new(Expr::Ident(Ident::Symbol(2))),
+                            op: BinaryOp::Add,
+                            op_span: Span{line: 0, col: 0},
+                            expr_type: Type::Int,
+                        }),
+                    }),
+                ],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(3))),
+                    right: Box::new(Expr::Literal(Literal::Real(1.5))),
+                    op: BinaryOp::Div,
+                    op_span: Span{line: 0, col: 0},
+                    expr_type: Type::Real,
+                })),
+                expr_type: Type::Real,
+            }),
+        };
+
+        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+
+        // r0: timestamp
+        // r1: delay
+        // r2: a
+        // r3: b
+        // r4: random var, c
+        // r5: 1st element of cdf
+        // r6: 2nd element of cdf
+        // r7: ret of sample
+        let bytecode = assemble("
+            # let b = 1;
+            MOV r3 i1
+
+            # sample {}
+            RND r4
+            MOV r5 f0.5
+            MOV r6 f1.0
+            FJEQ o3 r6 f1.0
+            ERR b4 r6
+            FJGE o13 r4 r5
+            MOV r7 i3
+            JMP o15
+            FJGE o10 r4 r6
+            MOV r7 i4
+
+            # (a + sample) + b
+            IADD r7 r2 r7
+            IADD r7 r7 r3
+
+            # c / 1.5
+            I2F r4 r7
+            FDIV r4 r4 f1.5
+
+            RET r4
+        ").unwrap();
+
+        assert_eq!(result, Some(CompiledRel {
+            name: "RND".to_string(),
+            complexity: 0,
+            bytecode,
+        }));
+    }
+
+    // do a test with a block expr, and adding to a sample
 }

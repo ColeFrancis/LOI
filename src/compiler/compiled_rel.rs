@@ -22,6 +22,8 @@
 //!
 //! Author: Cole Francis
 
+
+#[derive(PartialEq, Debug)]
 pub struct CompiledRel {
     pub name: String,
     pub complexity: usize,
