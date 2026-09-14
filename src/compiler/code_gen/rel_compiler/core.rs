@@ -99,12 +99,12 @@ impl<'a> RelCompiler<'a> {
             // Also remove all sample/cases arms past defaults?
             //  take care to modify jump offsets if instructsions are removed between the jump and its target
 
-        // convert intermediate rep to u8
+        let bytecode = Self::lower_ir(ir_bytecode);
 
         Some(CompiledRel {
             name: self.symbol_table[self.rel_symbol_id].name.clone(),
             complexity: 0,
-            bytecode: Vec::new(),
+            bytecode,
         })
     }
 
