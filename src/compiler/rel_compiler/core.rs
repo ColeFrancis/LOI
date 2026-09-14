@@ -396,7 +396,12 @@ impl<'a> RelCompiler<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulator::rel_interpreter::test_assembler::assemble;
+    use crate::compiler::{
+        lexer::Lexer,
+        parser::Parser,
+        sem_analyzer::SemAnalyzer,
+    };
+    use crate::simulator::rel_interpreter::{RelInterpreter, test_assembler::assemble};
 
     #[test]
     fn simple_adder() {
@@ -808,5 +813,74 @@ mod tests {
             complexity: 0,
             bytecode,
         }));
+    }
+
+    #[test]
+    fn integrate_frontent_and_interpreter() {
+        let code = "
+        ent_t SET = {A, B, C};
+
+        rel_t ROTATE: (in: SET) -> SET = {
+            cases in {
+                A : B,
+                B : C,
+                _ : A,
+            }
+        };
+
+        rel_t NAND: (a: Bool, b: Bool) -> Bool = {
+            let c = a & b;
+
+            ~c
+        };
+        ";
+        let mut diagnostics = Diagnostics::new();
+
+        // Front end
+        let tokens = Lexer::new(code, &mut diagnostics).tokenize();
+        let program = Parser::new(tokens, &mut diagnostics).parse();
+        let (validated_program, symbols) = SemAnalyzer::new(program, &mut diagnostics).analyze();
+
+        // Back End
+        let mut compiled_relations = Vec::new();
+        for item in validated_program.items {
+            if let Item::Rel(relation) = item {
+                let compiled_relation = RelCompiler::compile(relation, &symbols, &mut diagnostics).unwrap();
+
+                compiled_relations.push(compiled_relation);
+            }
+        } 
+        
+        // Interpreter
+        let mut interpreter = RelInterpreter::new(compiled_relations);
+
+        // ROTATE args
+        let args_1 = vec![0];
+        let args_2 = vec![1];
+        let args_3 = vec![2];
+        
+        // NAND args
+        let args_4 = vec![false as u64, false as u64];
+        let args_5 = vec![true as u64, false as u64];
+        let args_6 = vec![false as u64, true as u64];
+        let args_7 = vec![true as u64, true as u64];
+    
+
+        let result_1 = interpreter.evaluate(0, &args_1, 0, 1);
+        let result_2 = interpreter.evaluate(0, &args_2, 0, 1);
+        let result_3 = interpreter.evaluate(0, &args_3, 0, 1);
+        let result_4 = interpreter.evaluate(1, &args_4, 0, 1);
+        let result_5 = interpreter.evaluate(1, &args_5, 0, 1);
+        let result_6 = interpreter.evaluate(1, &args_6, 0, 1);
+        let result_7 = interpreter.evaluate(1, &args_7, 0, 1);
+
+        assert_eq!(result_1, 1);
+        assert_eq!(result_2, 2);
+        assert_eq!(result_3, 0);
+
+        assert_eq!(result_4, true as u64);
+        assert_eq!(result_5, true as u64);
+        assert_eq!(result_6, true as u64);
+        assert_eq!(result_7, false as u64);
     }
 }
