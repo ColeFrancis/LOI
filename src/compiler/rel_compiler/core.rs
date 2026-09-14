@@ -27,7 +27,7 @@
 use std::collections::HashMap;
 
 use super::RelCompiler;
-use crate::compiler::code_gen::intermediate_rep::{Instruction, Source};
+use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
@@ -53,8 +53,8 @@ impl<'a> RelCompiler<'a> {
     }
 
     fn compile_relation(&mut self, relation: RelType) -> Option<CompiledRel> {
-        // setup initial registers, arguments, etc
-
+        // TODO: algebraically optimize relation body:
+        
         // r0 and r1 are reserved for timestep and delay, respectively
         self.reg_used[0] = true;
         self.reg_used[1] = true;
@@ -92,7 +92,7 @@ impl<'a> RelCompiler<'a> {
             src,
         });
 
-        // remove deadcode
+        // TODO: remove deadcode
             // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
             //  if a variable is declared while not alive, remove that instruction
             //
@@ -809,6 +809,4 @@ mod tests {
             bytecode,
         }));
     }
-
-    // do a test with a block expr, and adding to a sample
 }

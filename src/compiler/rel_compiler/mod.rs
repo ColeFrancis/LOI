@@ -13,12 +13,20 @@
 // limitations under the License.
 
 mod core;
-mod algebraic_trans;
-mod rel_compiler;
 mod intermediate_rep;
+mod expr_compiler;
+mod lower_ir;
 
-use crate::compiler::ast::RelType;
+use std::collections::HashMap;
 
-pub struct CodeGen {
-    relations: Vec<RelType>,
+use crate::compiler::symbol::{Symbol, SymbolId};
+use crate::compiler::diagnostics::{Diagnostics};
+
+pub struct RelCompiler<'a> {
+    reg_map: HashMap<SymbolId, usize>,
+    reg_used: [bool; 64],
+
+    rel_symbol_id: SymbolId,
+    symbol_table: &'a [Symbol],
+    diagnostics: &'a mut Diagnostics,
 }

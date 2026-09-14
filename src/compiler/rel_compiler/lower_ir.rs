@@ -21,7 +21,7 @@
 //! Author: Cole Francis
 
 use super::RelCompiler;
-use crate::compiler::code_gen::intermediate_rep::{Instruction, Source};
+use super::intermediate_rep::{Instruction, Source};
 
 impl<'a> RelCompiler<'a> {
     pub(super) fn lower_ir(ir_bytecode: Vec<Instruction>) -> Vec<u8> {

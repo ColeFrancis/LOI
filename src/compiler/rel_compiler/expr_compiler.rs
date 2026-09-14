@@ -26,7 +26,7 @@
 use std::collections::HashMap;
 
 use super::RelCompiler;
-use crate::compiler::code_gen::intermediate_rep::{Instruction, Source};
+use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
