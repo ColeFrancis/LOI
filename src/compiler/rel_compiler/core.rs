@@ -833,6 +833,8 @@ mod tests {
 
             ~c
         };
+
+        rel_t P: (x: Real) -> Real = 3 * (x * x) + 4 * x + 5;
         ";
         let mut diagnostics = Diagnostics::new();
 
@@ -864,7 +866,10 @@ mod tests {
         let args_5 = vec![true as u64, false as u64];
         let args_6 = vec![false as u64, true as u64];
         let args_7 = vec![true as u64, true as u64];
-    
+
+        // P
+        let args_8 = vec![(1.0_f64).to_bits() as u64];
+        let args_9 = vec![(2.5_f64).to_bits() as u64];
 
         let result_1 = interpreter.evaluate(0, &args_1, 0, 1);
         let result_2 = interpreter.evaluate(0, &args_2, 0, 1);
@@ -873,6 +878,8 @@ mod tests {
         let result_5 = interpreter.evaluate(1, &args_5, 0, 1);
         let result_6 = interpreter.evaluate(1, &args_6, 0, 1);
         let result_7 = interpreter.evaluate(1, &args_7, 0, 1);
+        let result_8 = interpreter.evaluate(2, &args_8, 0, 1);
+        let result_9 = interpreter.evaluate(2, &args_9, 0, 1);
 
         assert_eq!(result_1, 1);
         assert_eq!(result_2, 2);
@@ -882,5 +889,10 @@ mod tests {
         assert_eq!(result_5, true as u64);
         assert_eq!(result_6, true as u64);
         assert_eq!(result_7, false as u64);
+
+        assert_eq!(result_8, (12.0_f64).to_bits() as u64);
+        assert_eq!(result_9, (33.75_f64).to_bits() as u64);
     }
+
+    // TODO: test runtime errors
 }
