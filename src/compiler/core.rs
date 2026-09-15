@@ -69,7 +69,7 @@ impl Compiler {
 
                     let Some(compiled_relation) = CodeGen::compile(relation, &symbols, &mut diagnostics) else {
                         continue;
-                    }
+                    };
 
                     let idx = compiled_relations.len();
 
