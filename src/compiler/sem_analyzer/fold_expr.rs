@@ -32,7 +32,7 @@ use super::types::Type;
 use crate::compiler::{
     ast::*,
     symbol::SymbolKind,
-    diagnostics::{Span, CompilerError},
+    diagnostics::{Span, Diagnostic},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -122,7 +122,7 @@ impl <'a> SemAnalyzer<'a> {
                 let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
 
                 if cases_expr.arms.len() == 0 {
-                    self.diagnostics.error(CompilerError::NoReturnArm {
+                    self.diagnostics.error(Diagnostic::NoReturnArm {
                         span: cases_expr.span,
                     });
 
@@ -134,7 +134,7 @@ impl <'a> SemAnalyzer<'a> {
                         *pattern = self.fold_pattern(owned_pattern, fold_sample);
 
                         if let Some((_, old_span)) = seen_patterns.iter().find(|(p, _)| *p == pattern) {
-                            self.diagnostics.error(CompilerError::DuplicatePattern {
+                            self.diagnostics.error(Diagnostic::DuplicatePattern {
                                 old_arm_span: old_span.clone(),
                                 arm_span: arm.arm_span,
                             });
@@ -147,7 +147,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
                 // All cases must have a default arm
                 if !seen_patterns.iter().any(|(pattern, _)| matches!(pattern, SimplePattern::Default)) {
-                    self.diagnostics.error(CompilerError::NoDefaultPattern {
+                    self.diagnostics.error(Diagnostic::NoDefaultPattern {
                         cases_span: cases_expr.span.clone(),
                     });
                     
@@ -189,7 +189,7 @@ impl <'a> SemAnalyzer<'a> {
                 let mut running_prob = 0.0;
 
                 if sample_expr.arms.len() == 0 {
-                    self.diagnostics.error(CompilerError::NoReturnArm {
+                    self.diagnostics.error(Diagnostic::NoReturnArm {
                         span: sample_expr.span,
                     });
 
@@ -212,7 +212,7 @@ impl <'a> SemAnalyzer<'a> {
                             match expr {
                                 Expr::Literal(Literal::Real(prob)) => {
                                     if *prob < 0.0 || *prob > 1.0 {
-                                        self.diagnostics.error(CompilerError::ProbOutOfRange {
+                                        self.diagnostics.error(Diagnostic::ProbOutOfRange {
                                             total_prob: false,
                                             val: *prob,
                                             span: arm.arm_span.clone(),
@@ -230,7 +230,7 @@ impl <'a> SemAnalyzer<'a> {
 
                         Prob::Default => {
                             if has_default {
-                                self.diagnostics.error(CompilerError::MultipleDefaultProb {
+                                self.diagnostics.error(Diagnostic::MultipleDefaultProb {
                                     arm_span: arm.arm_span.clone(),
                                 });
                                 has_errors = true;
@@ -242,7 +242,7 @@ impl <'a> SemAnalyzer<'a> {
                     }
                 }
                 if running_prob < 0.0 || running_prob > 1.0 {
-                    self.diagnostics.error(CompilerError::ProbOutOfRange {
+                    self.diagnostics.error(Diagnostic::ProbOutOfRange {
                         total_prob: true,
                         val: running_prob,
                         span: sample_expr.span,
@@ -308,7 +308,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b != 0 {
                     Some(Literal::Int(a / b))
                 } else {
-                    self.diagnostics.error(CompilerError::DivideByZero {
+                    self.diagnostics.error(Diagnostic::DivideByZero {
                         op_span, 
                     });
 
@@ -318,7 +318,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b >= 0 {
                     Some(Literal::Int(a.pow(*b as u32)))
                 } else { // negative exponent not allowed for ints
-                    self.diagnostics.error(CompilerError::NegExpOnInt {
+                    self.diagnostics.error(Diagnostic::NegExpOnInt {
                         op_span,
                     });
 
@@ -336,7 +336,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b != 0.0 {
                     Some(Literal::Real(a / b))
                 } else {
-                    self.diagnostics.error(CompilerError::DivideByZero {
+                    self.diagnostics.error(Diagnostic::DivideByZero {
                         op_span, 
                     });
 
