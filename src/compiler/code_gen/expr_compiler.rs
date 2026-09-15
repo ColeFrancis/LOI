@@ -31,7 +31,7 @@ use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
+use crate::compiler::diagnostics::{Diagnostics, Span, Diagnostic};
 
 impl<'a> CodeGen<'a> {
     // Returns the bytecode in intermediate representation, the source where the result is stored, and the type

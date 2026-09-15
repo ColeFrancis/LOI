@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - All compiler errors will be defined in the CompilerError enum
+//! - All compiler errors will be defined in the Diagnostic enum
 //!
 //! Author: Cole Francis
 
@@ -27,7 +27,7 @@ use super::sem_analyzer::types::Type;
 use super::symbol::SymbolKind;
 
 pub struct Diagnostics {
-    errors: Vec<CompilerError>,
+    errors: Vec<Diagnostic>,
 }
 
 impl Diagnostics {
@@ -37,7 +37,7 @@ impl Diagnostics {
         }
     }
 
-    pub fn error(&mut self, error: CompilerError) {
+    pub fn error(&mut self, error: Diagnostic) {
         self.errors.push(error);
     }
 
@@ -49,7 +49,7 @@ impl Diagnostics {
         self.errors.len()
     }
 
-    pub fn errors(&self) -> &[CompilerError] {
+    pub fn errors(&self) -> &[Diagnostic] {
         &self.errors
     }
 
@@ -63,7 +63,7 @@ impl Diagnostics {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum CompilerError {
+pub enum Diagnostic {
     ////////////////////
     // Lexer
     ////////////////////
@@ -310,14 +310,14 @@ mod tests {
         ", &mut diagnostics).tokenize();
 
         assert_eq!(diagnostics.errors, vec![
-            CompilerError::UnknownToken{
+            Diagnostic::UnknownToken{
                 lexeme: "@".to_string(),
                 span: Span {
                     line: 1,
                     col: 1
                 }
             },
-            CompilerError::InvalidNum{
+            Diagnostic::InvalidNum{
                 lexeme: "9a".to_string(),
                 span: Span {
                     line: 1,
@@ -337,7 +337,7 @@ mod tests {
         Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Token(TokenKind::Colon)],
                 found: TokenKind::LParen,
                 span: Span {
@@ -359,7 +359,7 @@ mod tests {
         Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Pattern],
                 found: TokenKind::Let,
                 span: Span {
@@ -386,21 +386,21 @@ let n = @;", &mut diagnostics).tokenize();
         Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
-            CompilerError::InvalidNum {
+            Diagnostic::InvalidNum {
                 lexeme: "9n".to_string(),
                 span: Span {
                     line: 4,
                     col: 5,
                 }
             },
-            CompilerError::UnknownToken {
+            Diagnostic::UnknownToken {
                 lexeme: "@".to_string(),
                 span: Span {
                     line: 8,
                     col: 9,
                 }
             },
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![
                     Expected::Token(TokenKind::Let),
                     Expected::Token(TokenKind::Ent_t),
@@ -413,7 +413,7 @@ let n = @;", &mut diagnostics).tokenize();
                     col: 1,
                 }
             },
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Ident],
                 found: TokenKind::ErrorToken,
                 span: Span {
@@ -421,7 +421,7 @@ let n = @;", &mut diagnostics).tokenize();
                     col: 5,
                 }
             },
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Token(TokenKind::Semicolon)],
                 found: TokenKind::Let,
                 span: Span {
@@ -429,7 +429,7 @@ let n = @;", &mut diagnostics).tokenize();
                     col: 1,
                 }
             },
-            CompilerError::UnexpectedToken {
+            Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Expr],
                 found: TokenKind::ErrorToken,
                 span: Span {

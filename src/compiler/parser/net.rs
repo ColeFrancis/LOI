@@ -27,7 +27,7 @@ use super::sync::SyncRule;
 use crate::compiler::{
     ast::*,
     lexer::token::TokenKind,
-    diagnostics::{CompilerError, Expected},
+    diagnostics::{Diagnostic, Expected},
 };
 
 impl<'a> Parser<'a> {
@@ -95,7 +95,7 @@ impl<'a> Parser<'a> {
             },
 
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![
                         Expected::Token(TokenKind::Input),
                         Expected::Token(TokenKind::Output),

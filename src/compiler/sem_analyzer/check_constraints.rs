@@ -29,7 +29,7 @@ use super::SemAnalyzer;
 use crate::compiler::{
     ast::*,
     symbol::{SymbolId, SymbolKind},
-    diagnostics::{CompilerError, Span},
+    diagnostics::{Diagnostic, Span},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -66,7 +66,7 @@ impl <'a> SemAnalyzer<'a> {
                     };
 
                     if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == symbol_id) {
-                        self.diagnostics.error(CompilerError::MultipleEntDrivers {
+                        self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                             name: self.symbols[symbol_id].name.to_string(),
                             first_span: old_span.clone(),
                             last_span: input_ent.span.clone(),
@@ -83,7 +83,7 @@ impl <'a> SemAnalyzer<'a> {
                     };
 
                     if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == asignee_symbol_id) {
-                        self.diagnostics.error(CompilerError::MultipleEntDrivers {
+                        self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                             name: self.symbols[asignee_symbol_id].name.to_string(),
                             first_span: old_span.clone(),
                             last_span: rel_inst.span.clone(),
@@ -118,7 +118,7 @@ impl <'a> SemAnalyzer<'a> {
                             };
 
                             if let Some((_, old_span)) = driven_ents.iter().find(|(id, _)| *id == ent_symbol_id) {
-                                self.diagnostics.error(CompilerError::MultipleEntDrivers {
+                                self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                                     name: self.symbols[ent_symbol_id].name.to_string(),
                                     first_span: old_span.clone(),
                                     last_span: connection.span.clone(),

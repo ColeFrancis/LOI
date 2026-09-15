@@ -28,7 +28,7 @@ use crate::compiler::{
     ast::*,
     lexer::token::{Token, TokenKind},
     sem_analyzer::types::Type,
-    diagnostics::{Diagnostics, CompilerError, Expected},
+    diagnostics::{Diagnostics, Diagnostic, Expected},
 };
 
 
@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
                 }
 
                 other => {
-                    self.diagnostics.error(CompilerError::UnexpectedToken {
+                    self.diagnostics.error(Diagnostic::UnexpectedToken {
                         expected: vec![
                             Expected::Token(TokenKind::Let), 
                             Expected::Token(TokenKind::Ent_t), 
@@ -113,14 +113,14 @@ impl<'a> Parser<'a> {
             self.next();
             Some(())
         } else if token.kind == TokenKind::Eof {
-            self.diagnostics.error(CompilerError::UnexpectedToken {
+            self.diagnostics.error(Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Token(expected)],
                 found: TokenKind::Eof,
                 span: token.span.clone(),
             });
             None
         } else {
-            self.diagnostics.error(CompilerError::UnexpectedToken {
+            self.diagnostics.error(Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Token(expected)],
                 found: token.kind.clone(),
                 span: token.span.clone(),
@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
                 })
             },
             TokenKind::Eof => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![Expected::Ident],
                     found: TokenKind::Eof,
                     span: token.span.clone(),
@@ -153,7 +153,7 @@ impl<'a> Parser<'a> {
                 None
             }
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![Expected::Ident],
                     found: other,
                     span: token.span.clone(),
@@ -179,7 +179,7 @@ impl<'a> Parser<'a> {
                 let n = match token.kind {
                     TokenKind::IntLiteral(n) => n,
                     other => {
-                        self.diagnostics.error(CompilerError::UnexpectedToken {
+                        self.diagnostics.error(Diagnostic::UnexpectedToken {
                             expected: vec![Expected::IntLiteral],
                             found: other,
                             span: token.span,
@@ -196,7 +196,7 @@ impl<'a> Parser<'a> {
             TokenKind::Ident(name) => Some(Type::Custom(Ident::Str{ val: name, span: token.span })),
             
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![
                         Expected::Token(TokenKind::Bool), 
                         Expected::Token(TokenKind::Impulse), 

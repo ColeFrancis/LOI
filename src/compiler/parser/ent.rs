@@ -27,7 +27,7 @@ use super::sync::SyncRule;
 use crate::compiler::{
     ast::*,
     lexer::token::TokenKind,
-    diagnostics::{CompilerError, Expected},
+    diagnostics::{Diagnostic, Expected},
 };
 
 impl<'a> Parser<'a> {

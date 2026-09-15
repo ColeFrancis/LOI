@@ -32,7 +32,7 @@ use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
 use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
+use crate::compiler::diagnostics::{Diagnostics, Span, Diagnostic};
 
 impl<'a> CodeGen<'a> {
     pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
@@ -117,7 +117,7 @@ impl<'a> CodeGen<'a> {
             self.reg_used[idx] = true;
 
         } else {
-            self.diagnostics.error(CompilerError::TooManySymbols {
+            self.diagnostics.error(Diagnostic::TooManySymbols {
                 rel_name: self.symbol_table[self.rel_symbol_id].name.clone(),
                 rel_span: self.symbol_table[self.rel_symbol_id].span.clone(),
             });

@@ -20,20 +20,78 @@
 //!
 //! Author: Cole Francis
 
+use std::fs;
+use std::path::PathBuf;
+
+use std::collections::HashMap;
+
 use super::Compiler;
 use crate::compiler::{
     lexer::Lexer,
     parser::Parser,
     sem_analyzer::SemAnalyzer,
-    symbol::Symbol,
-    ast::Program,
+    code_gen::CodeGen,
+    symbol::{Symbol, SymbolId},
+    ast::{Program, Item, Ident},
     diagnostics::Diagnostics,
+    compiled_rel::CompiledRel,
+    netlist::Netlist,
 };
 
-impl Compiler {
-    // pub fn compile(file_path: &str, <args>) {
+pub enum CompileError {
+    Io(std::io::Error),
+    Diagnostics(Diagnostics),
+}
 
-    // }
+impl Compiler {
+    // return netlist and vector of compiled relations or panic
+    pub fn compile(file_path: &str, top_net: &str) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
+        let path = PathBuf::from(file_path);
+        let code = match fs::read_to_string(&path) {
+            Ok(code) => code,
+            Err(err) => return Err(CompileError::Io(err)),
+        };
+
+        let mut diagnostics = Diagnostics::new();
+
+        let (ast, symbols) = Self::front_end(&code,&mut diagnostics);
+
+        let mut compiled_relations = Vec::new();
+        let mut rel_map = HashMap::<SymbolId, usize>::new();
+        let mut nets = Vec::new();
+
+        for item in ast.items {
+            match item {
+                Item::Rel(relation) => {
+                    let Ident::Symbol(id) = relation.name else {
+                        panic!("relation name must be ident::symbol by this point"); // unreachable
+                    };
+
+                    if let Some(compiled_relation) = CodeGen::compile(relation, &symbols, &mut diagnostics) {
+                        let idx = compiled_relations.len();
+
+                        compiled_relations.push(compiled_relation);
+                        rel_map.insert(id, idx);
+                    }
+                }
+
+                Item::Net(net) => nets.push(net),
+
+                _ => {}
+            }
+        }
+
+        // syntehsyze nets here or after returning error
+
+        if diagnostics.has_errors() {
+            return Err(CompileError::Diagnostics(diagnostics));
+        }
+
+        Ok((Netlist {
+            relations: vec![],
+            ents: vec![],
+        }, compiled_relations))
+    }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
         let tokens = Lexer::new(code, diagnostics).tokenize();

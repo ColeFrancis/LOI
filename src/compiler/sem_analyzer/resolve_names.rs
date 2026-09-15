@@ -31,7 +31,7 @@ use super::types::Type;
 use crate::compiler::{
     ast::*,
     symbol::{Symbol, SymbolKind, SymbolId, NetPort},
-    diagnostics::{CompilerError, Span, Expected},
+    diagnostics::{Diagnostic, Span, Expected},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -261,7 +261,7 @@ impl <'a> SemAnalyzer<'a> {
 
                     // Verify port hasn't been used already
                     if !used_ports.insert(port_id) {
-                        self.diagnostics.error(CompilerError::DuplicatePort {
+                        self.diagnostics.error(Diagnostic::DuplicatePort {
                             name: name.to_string(),
                             span: span,
                         });
@@ -294,7 +294,7 @@ impl <'a> SemAnalyzer<'a> {
             SymbolKind::Net { ports } =>  match ports.get(name) {
                 Some(port) => Some(port.symbol),
                 None => {
-                    self.diagnostics.error(CompilerError::UndefinedPort {
+                    self.diagnostics.error(Diagnostic::UndefinedPort {
                         name: name.to_string(),
                         span,
                     });
@@ -303,7 +303,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
             },
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedIdent {
+                self.diagnostics.error(Diagnostic::UnexpectedIdent {
                     expected: vec![SymbolKind::Net { ports: HashMap::new() }],
                     found: other.clone(),
                     span,
@@ -362,7 +362,7 @@ impl <'a> SemAnalyzer<'a> {
                 return Some(*id);
             }
         }
-        self.diagnostics.error(CompilerError::UndefinedIdent {
+        self.diagnostics.error(Diagnostic::UndefinedIdent {
             name: name.to_string(),
             span,
         });
@@ -377,7 +377,7 @@ impl <'a> SemAnalyzer<'a> {
         if let Some(&old_id) = current.symbols.get(&name) {
             let old_span = self.symbols[old_id].span;
 
-            self.diagnostics.error(CompilerError::DuplicateDefinition {
+            self.diagnostics.error(Diagnostic::DuplicateDefinition {
                 name,
                 old_span,
                 new_span: span,

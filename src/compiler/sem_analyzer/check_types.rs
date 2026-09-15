@@ -27,7 +27,7 @@ use super::types::Type;
 use crate::compiler::{
     symbol::{SymbolId, SymbolKind},
     ast::*,
-    diagnostics::{CompilerError, Span},
+    diagnostics::{Diagnostic, Span},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -192,7 +192,7 @@ impl <'a> SemAnalyzer<'a> {
                     SymbolKind::Rel_t {input_types, return_type} => (input_types.clone(), return_type.clone()),
 
                     other => {
-                        self.diagnostics.error(CompilerError::UnexpectedIdent {
+                        self.diagnostics.error(Diagnostic::UnexpectedIdent {
                             expected: vec![SymbolKind::Rel_t{input_types: Vec::new(), return_type: Type::Unknown}],
                             found: other.clone(),
                             span: self.symbols[rel_id].span.clone(),
@@ -203,7 +203,7 @@ impl <'a> SemAnalyzer<'a> {
                 };
 
                 if rel_inst.args.len() != input_types.len() {
-                    self.diagnostics.error(CompilerError::IncorrectNumberOfArgs {
+                    self.diagnostics.error(Diagnostic::IncorrectNumberOfArgs {
                         expected_len: input_types.len(),
                         actual_len: rel_inst.args.len(),
                         rel_span: self.symbols[rel_id].span.clone(),
@@ -259,7 +259,7 @@ impl <'a> SemAnalyzer<'a> {
                             let (connection_ent_type, _connection_ent_span) = self.get_ent_type(connection_ent_id)?;
 
                             if inst_port_type != connection_ent_type {
-                                self.diagnostics.error(CompilerError::MismatchedEntType {
+                                self.diagnostics.error(Diagnostic::MismatchedEntType {
                                     expected: connection_ent_type,
                                     found: inst_port_type,
                                     span: inst_port_span,
@@ -269,7 +269,7 @@ impl <'a> SemAnalyzer<'a> {
                             }
                         }
                         _ => {
-                            self.diagnostics.error(CompilerError::NonexistantNetPort {
+                            self.diagnostics.error(Diagnostic::NonexistantNetPort {
                                 name: connection_port_name.to_string(),
                                 span: connection_port_span.clone(),
                             });
@@ -299,7 +299,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(Type::Mod(*val_l))
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncompatibleReturnType {
+                    self.diagnostics.error(Diagnostic::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
                         rel_span: rel_span.clone(),
@@ -327,7 +327,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(Type::Custom(Ident::Symbol(parent_l)))
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncompatibleReturnType {
+                    self.diagnostics.error(Diagnostic::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
                         rel_span: rel_span.clone(),
@@ -338,7 +338,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             _ => {
-                self.diagnostics.error(CompilerError::IncompatibleReturnType {
+                self.diagnostics.error(Diagnostic::IncompatibleReturnType {
                     return_type: return_type.clone(),
                     expr_type: expr_type.clone(),
                     rel_span: rel_span.clone(),
@@ -369,7 +369,7 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             _ => {
-                self.diagnostics.error(CompilerError::MismatchedEntType {
+                self.diagnostics.error(Diagnostic::MismatchedEntType {
                     expected: object_type,
                     found: symbol_type,
                     span,

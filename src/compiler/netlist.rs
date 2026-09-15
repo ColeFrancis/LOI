@@ -12,18 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-mod lexer;
-mod parser;
-mod sem_analyzer;
-mod code_gen;
-mod synthesis;
-mod diagnostics;
+//! # netlist
+//!
+//! Defines netlist structure
+//!
+//! ## Invariants
+//!
+//! - 
+//!
+//! Author: Cole Francis
 
-mod ast;
-mod symbol;
-pub mod compiled_rel;
-pub mod netlist;
+#[derive(PartialEq, Debug)]
+pub struct Netlist {
+    pub relations: Vec<Relation>,
+    pub ents: Vec<Entity>,
+}
 
+pub type EntId = usize;
 
-pub struct Compiler;
+#[derive(PartialEq, Debug)]
+pub struct Relation {
+    pub id: usize,
+    pub input_ents: Vec<EntId>,
+    pub output_ent: EntId,
+}
+
+pub type RelId = usize;
+
+#[derive(PartialEq, Debug)]
+pub struct Entity {
+    pub val: Option<u64>,
+    pub sinks: Vec<RelId>,
+}

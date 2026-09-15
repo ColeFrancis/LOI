@@ -28,7 +28,7 @@ use super::types::Type;
 use crate::compiler::{
     symbol::SymbolKind,
     ast::*,
-    diagnostics::{CompilerError, Operation, Span, ExprType},
+    diagnostics::{Diagnostic, Operation, Span, ExprType},
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -152,7 +152,7 @@ impl <'a> SemAnalyzer<'a> {
                         let prob_type = self.get_expr_type(&expr);
 
                         if prob_type != Type::Int && prob_type != Type::Real {
-                            self.diagnostics.error(CompilerError::NonRealProb {
+                            self.diagnostics.error(Diagnostic::NonRealProb {
                                 prob_type,
                                 arm_span: arm.arm_span.clone(),
                             });
@@ -279,7 +279,7 @@ impl <'a> SemAnalyzer<'a> {
                     UnaryOp::Neg => Operation::Sub,
                 };
 
-                self.diagnostics.error(CompilerError::IncompatibleOp {
+                self.diagnostics.error(Diagnostic::IncompatibleOp {
                     expr_type: expr_type.clone(),
                     op: diagnostics_op,
                     op_span: op_span.clone(),
@@ -303,7 +303,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
                 else {
                     // Cannot combine mod types that are different
-                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    self.diagnostics.error(Diagnostic::IncompatibleTypes {
                         left: left.clone(),
                         right: right.clone(),
                         op_span: op_span.clone(),
@@ -332,7 +332,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(Type::Custom(Ident::Symbol(parent_l)))
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    self.diagnostics.error(Diagnostic::IncompatibleTypes {
                         left: Type::Custom(Ident::Symbol(parent_l)),
                         right: Type::Custom(Ident::Symbol(parent_r)),
                         op_span: op_span.clone(),
@@ -347,7 +347,7 @@ impl <'a> SemAnalyzer<'a> {
             (_, Type::Error) => None,
 
             _ => {
-                self.diagnostics.error(CompilerError::IncompatibleTypes {
+                self.diagnostics.error(Diagnostic::IncompatibleTypes {
                     left: left.clone(),
                     right: right.clone(),
                     op_span: op_span.clone(),
@@ -411,7 +411,7 @@ impl <'a> SemAnalyzer<'a> {
                     BinaryOp::And => Operation::And,
                 };
 
-                self.diagnostics.error(CompilerError::IncompatibleOp {
+                self.diagnostics.error(Diagnostic::IncompatibleOp {
                     expr_type: expr_type.clone(),
                     op: diagnostics_op,
                     op_span: op_span.clone(),
@@ -431,7 +431,7 @@ impl <'a> SemAnalyzer<'a> {
 
                 (Expr::Tuple(tuple_expr), SimplePattern::Tuple(tuple_pattern)) => {
                     if tuple_expr.len() != tuple_pattern.len() {
-                        self.diagnostics.error(CompilerError::UnequalTupleLength {
+                        self.diagnostics.error(Diagnostic::UnequalTupleLength {
                             left_len: tuple_expr.len(),
                             right_len: tuple_pattern.len(),
                             right_span: arm_span.clone(),
@@ -467,7 +467,7 @@ impl <'a> SemAnalyzer<'a> {
                         _ => ExprType::Error, //unreachable
                     };
 
-                    self.diagnostics.error(CompilerError::IllegalScrutineeExpr {
+                    self.diagnostics.error(Diagnostic::IllegalScrutineeExpr {
                         expected: vec![
                             ExprType::Ident, 
                             ExprType::Unary, 
@@ -482,7 +482,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
 
                 (_other_scrutinee, _other_pattern) => {
-                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    self.diagnostics.error(Diagnostic::IncompatibleTypes {
                         left: self.get_expr_type(scrutinee),
                         right: self.get_simple_pattern_type(simple_pattern),
                         op_span: arm_span.clone(),
@@ -516,7 +516,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
                 else {
                     // Cannot combine mod types that are different
-                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    self.diagnostics.error(Diagnostic::IncompatibleTypes {
                         left: scrutinee_type.clone(),
                         right: pattern_type.clone(),
                         op_span: arm_span.clone(),
@@ -545,7 +545,7 @@ impl <'a> SemAnalyzer<'a> {
                     Some(())
                 }
                 else {
-                    self.diagnostics.error(CompilerError::IncompatibleTypes {
+                    self.diagnostics.error(Diagnostic::IncompatibleTypes {
                         left: Type::Custom(Ident::Symbol(parent_l)),
                         right: Type::Custom(Ident::Symbol(parent_r)),
                         op_span: arm_span.clone(),
@@ -560,7 +560,7 @@ impl <'a> SemAnalyzer<'a> {
             (_, Type::Error) => None,
 
             _ => {
-                self.diagnostics.error(CompilerError::IncompatibleTypes {
+                self.diagnostics.error(Diagnostic::IncompatibleTypes {
                     left: scrutinee_type.clone(),
                     right: pattern_type.clone(),
                     op_span: arm_span.clone(),

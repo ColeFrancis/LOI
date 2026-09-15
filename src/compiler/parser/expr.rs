@@ -28,7 +28,7 @@ use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::{
     ast::*,
     lexer::token::{Token, TokenKind},
-    diagnostics::{CompilerError, Expected, Span},
+    diagnostics::{Diagnostic, Expected, Span},
 };
 
 impl<'a> Parser<'a> {
@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
                         elements.push( match self.parse_expr(0) {
                             Some(expr) => match expr {
                                 Expr::Tuple(_) => {
-                                    self.diagnostics.error(CompilerError::NestedTupleExpr {
+                                    self.diagnostics.error(Diagnostic::NestedTupleExpr {
                                         span: token.span,
                                     });
 
@@ -157,7 +157,7 @@ impl<'a> Parser<'a> {
                             elements.push( match self.parse_expr(0) {
                                 Some(expr) => match expr {
                                     Expr::Tuple(_) => {
-                                        self.diagnostics.error(CompilerError::NestedTupleExpr {
+                                        self.diagnostics.error(Diagnostic::NestedTupleExpr {
                                             span: token.span,
                                         });
 
@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
                     }
 
                     other => {
-                        self.diagnostics.error(CompilerError::UnexpectedToken {
+                        self.diagnostics.error(Diagnostic::UnexpectedToken {
                             expected: vec![
                                 Expected::Token(TokenKind::RParen),
                                 Expected::Token(TokenKind::Comma),
@@ -208,7 +208,7 @@ impl<'a> Parser<'a> {
             }
 
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![
                         Expected::Expr,
                     ],
@@ -346,7 +346,7 @@ impl<'a> Parser<'a> {
             TokenKind::Le => self.parse_comparison_pattern(CompOp::Le),
 
             other => {
-                self.diagnostics.error(CompilerError::UnexpectedToken {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![
                         Expected::Pattern,
                     ],

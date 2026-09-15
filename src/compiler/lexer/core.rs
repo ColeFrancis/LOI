@@ -27,7 +27,7 @@
 
 use super::Lexer;
 use super::token::{Token, TokenKind};
-use crate::compiler::diagnostics::{Diagnostics, CompilerError, Span};
+use crate::compiler::diagnostics::{Diagnostics, Diagnostic, Span};
 
 impl<'a> Lexer<'a> {
     pub fn new(code: &'a str, diagnostics: &'a mut Diagnostics) -> Self {
@@ -153,7 +153,7 @@ impl<'a> Lexer<'a> {
 
                 // Unknown
                 _ => {
-                    self.diagnostics.error(CompilerError::UnknownToken {
+                    self.diagnostics.error(Diagnostic::UnknownToken {
                         lexeme: (c as char).to_string(),
                         span: Span {line, col},
                     });
@@ -291,7 +291,7 @@ impl<'a> Lexer<'a> {
         }
 
         if !is_valid {
-            self.diagnostics.error(CompilerError::InvalidNum {
+            self.diagnostics.error(Diagnostic::InvalidNum {
                 lexeme: buf.clone(),
                 span: Span {line, col},
             });
@@ -300,7 +300,7 @@ impl<'a> Lexer<'a> {
             match buf.parse::<f64>() {
                 Ok(n) => TokenKind::RealLiteral(n),
                 Err(_) => {
-                    self.diagnostics.error(CompilerError::InvalidNum {
+                    self.diagnostics.error(Diagnostic::InvalidNum {
                         lexeme: buf.clone(),
                         span: Span {line, col},
                     });
@@ -311,7 +311,7 @@ impl<'a> Lexer<'a> {
             match buf.parse::<i64>() {
                 Ok(n) => TokenKind::IntLiteral(n),
                 Err(_) => {
-                    self.diagnostics.error(CompilerError::InvalidNum {
+                    self.diagnostics.error(Diagnostic::InvalidNum {
                         lexeme: buf.clone(),
                         span: Span {line, col},
                     });
