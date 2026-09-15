@@ -30,9 +30,9 @@ use super::token::{Token, TokenKind};
 use crate::compiler::diagnostics::{Diagnostics, CompilerError, Span};
 
 impl<'a> Lexer<'a> {
-    pub fn new(source: &'a str, diagnostics: &'a mut Diagnostics) -> Self {
+    pub fn new(code: &'a str, diagnostics: &'a mut Diagnostics) -> Self {
         Self {
-            input: source.as_bytes(),
+            input: code.as_bytes(),
             pos: 0,
             curr_line: 1,
             curr_col: 0,
