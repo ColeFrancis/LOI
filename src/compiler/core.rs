@@ -54,8 +54,19 @@ impl Compiler {
 
         let mut diagnostics = Diagnostics::new();
 
-        let (ast, symbols) = Self::front_end(&code,&mut diagnostics);
+        let (ast, symbols) = Self::front_end(&code, &mut diagnostics);
 
+        Self::back_end(ast, &symbols, diagnostics)
+    }
+
+    fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
+        let tokens = Lexer::new(code, diagnostics).tokenize();
+        let program = Parser::new(tokens, diagnostics).parse();
+
+        SemAnalyzer::new(program, diagnostics).analyze()
+    }
+
+    fn back_end(ast: Program, symbols: &[Symbol], mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
         let mut compiled_relations = Vec::new();
         let mut rel_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
@@ -67,7 +78,7 @@ impl Compiler {
                         unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
 
-                    let Some(compiled_relation) = CodeGen::compile(relation, &symbols, &mut diagnostics) else {
+                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, &mut diagnostics) else {
                         continue;
                     };
 
@@ -89,17 +100,9 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        // TODO: return syntehsyzed netlists after its implemented
         Ok((Netlist {
             relations: vec![],
             ents: vec![],
         }, compiled_relations))
-    }
-
-    fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
-        let tokens = Lexer::new(code, diagnostics).tokenize();
-        let program = Parser::new(tokens, diagnostics).parse();
-
-        SemAnalyzer::new(program, diagnostics).analyze()
     }
 }
