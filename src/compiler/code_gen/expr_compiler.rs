@@ -25,7 +25,7 @@
 
 use std::collections::HashMap;
 
-use super::RelCompiler;
+use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
@@ -33,7 +33,7 @@ use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 
-impl<'a> RelCompiler<'a> {
+impl<'a> CodeGen<'a> {
     // Returns the bytecode in intermediate representation, the source where the result is stored, and the type
     pub(super) fn compile_expr(&mut self, expr: Expr) -> Option<(Vec<Instruction>, Source, Type)> {
         let mut bytecode: Vec<Instruction> = Vec::new();
@@ -1147,7 +1147,7 @@ mod tests {
     fn literal_expr_1() {
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1187,7 +1187,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 1,
@@ -1208,7 +1208,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Int),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 1,
@@ -1255,7 +1255,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 1,
@@ -1275,7 +1275,7 @@ mod tests {
         // -(3)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1304,7 +1304,7 @@ mod tests {
         // ~(false)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = Vec::new();
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1336,7 +1336,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Impulse),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1372,7 +1372,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Int),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1435,7 +1435,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Mod(10)),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1477,7 +1477,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Impulse),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1519,7 +1519,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Mod(10)),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1561,7 +1561,7 @@ mod tests {
             kind: SymbolKind::Variable(Type::Mod(10)),
             span: Span{line: 0, col: 0},
         }];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1624,7 +1624,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1688,7 +1688,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1840,7 +1840,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -1943,7 +1943,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -2102,7 +2102,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,
@@ -2210,7 +2210,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
         ];
-        let mut compiler = RelCompiler {
+        let mut compiler = CodeGen {
             reg_map: HashMap::new(),
             reg_used: [false; 64],
             rel_symbol_id: 0,

@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use crate::compiler::symbol::{Symbol, SymbolId};
 use crate::compiler::diagnostics::{Diagnostics};
 
-pub struct RelCompiler<'a> {
+pub struct CodeGen<'a> {
     reg_map: HashMap<SymbolId, usize>,
     reg_used: [bool; 64],
 

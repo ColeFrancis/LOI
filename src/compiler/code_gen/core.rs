@@ -26,7 +26,7 @@
 
 use std::collections::HashMap;
 
-use super::RelCompiler;
+use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
@@ -34,7 +34,7 @@ use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
 use crate::compiler::sem_analyzer::types::Type;
 use crate::compiler::diagnostics::{Diagnostics, Span, CompilerError};
 
-impl<'a> RelCompiler<'a> {
+impl<'a> CodeGen<'a> {
     pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
         let rel_symbol_id = match relation.name {
             Ident::Symbol(id) => id,
@@ -452,7 +452,7 @@ mod tests {
             }),
         };
 
-        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+        let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
         let bytecode = assemble("
             IADD r4 r2 r3
@@ -500,7 +500,7 @@ mod tests {
             body: Expr::Ident(Ident::Symbol(1)),
         };
 
-        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+        let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
         let bytecode = assemble("
             IADD r3 r2 r1
@@ -563,7 +563,7 @@ mod tests {
             }),
         };
 
-        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+        let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
         let bytecode = assemble("
             IEQ r4 r2 r0
@@ -658,7 +658,7 @@ mod tests {
             }),
         };
 
-        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+        let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
         let bytecode = assemble("
             IJNE o13 r2 i0
@@ -771,7 +771,7 @@ mod tests {
             }),
         };
 
-        let result = RelCompiler::compile(relation, &symbol_table, &mut diagnostics);
+        let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
         // r0: timestamp
         // r1: delay
@@ -847,7 +847,7 @@ mod tests {
         let mut compiled_relations = Vec::new();
         for item in validated_program.items {
             if let Item::Rel(relation) = item {
-                let compiled_relation = RelCompiler::compile(relation, &symbols, &mut diagnostics).unwrap();
+                let compiled_relation = CodeGen::compile(relation, &symbols, &mut diagnostics).unwrap();
 
                 compiled_relations.push(compiled_relation);
             }

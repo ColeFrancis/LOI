@@ -20,10 +20,10 @@
 //!
 //! Author: Cole Francis
 
-use super::RelCompiler;
+use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
 
-impl<'a> RelCompiler<'a> {
+impl<'a> CodeGen<'a> {
     pub(super) fn lower_ir(ir_bytecode: Vec<Instruction>) -> Vec<u8> {
         let mut bytes = Vec::new();
 
@@ -675,7 +675,7 @@ mod tests {
 
     #[test]
     fn test_all_instructions() {
-        let result = RelCompiler::lower_ir(vec![
+        let result = CodeGen::lower_ir(vec![
             Instruction::IADD {
                 dest: 1,
                 src1: Source::RegInter(0),
@@ -769,7 +769,7 @@ ERR b3
 
     #[test]
     fn exaustive_test() {
-        let result = RelCompiler::lower_ir(vec![
+        let result = CodeGen::lower_ir(vec![
             Instruction::IADD {
                 dest: 0,
                 src1: Source::RegInter(0),

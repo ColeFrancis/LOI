@@ -15,7 +15,7 @@
 mod lexer;
 mod parser;
 mod sem_analyzer;
-mod rel_compiler;
+mod code_gen;
 mod synthesis;
 mod diagnostics;
 
