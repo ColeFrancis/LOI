@@ -64,15 +64,17 @@ impl Compiler {
             match item {
                 Item::Rel(relation) => {
                     let Ident::Symbol(id) = relation.name else {
-                        panic!("relation name must be ident::symbol by this point"); // unreachable
+                        unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
 
-                    if let Some(compiled_relation) = CodeGen::compile(relation, &symbols, &mut diagnostics) {
-                        let idx = compiled_relations.len();
-
-                        compiled_relations.push(compiled_relation);
-                        rel_map.insert(id, idx);
+                    let Some(compiled_relation) = CodeGen::compile(relation, &symbols, &mut diagnostics) else {
+                        continue;
                     }
+
+                    let idx = compiled_relations.len();
+
+                    compiled_relations.push(compiled_relation);
+                    rel_map.insert(id, idx);
                 }
 
                 Item::Net(net) => nets.push(net),
@@ -87,6 +89,7 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
+        // TODO: return syntehsyzed netlists after its implemented
         Ok((Netlist {
             relations: vec![],
             ents: vec![],
