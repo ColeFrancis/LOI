@@ -12,37 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # netlist
+//! # core
 //!
-//! Defines netlist structure
+//! syntehsyzes a set of nets into a netlist of entities and relations
 //!
 //! ## Invariants
 //!
-//! - 
-//!
 //! Author: Cole Francis
 
-pub type EntId = usize;
+use std::collections::HashMap;
 
-#[derive(PartialEq, Debug)]
-pub struct Netlist {
-    pub inputs: Vec<EntId>,
-    pub outputs: Vec<EntId>,
-    pub relations: Vec<Relation>,
-    pub ents: Vec<Entity>,
-}
+use super::Synthesis;
+use crate::compiler::{
+    symbol::SymbolId,
+    ast::{Net, Ident},
+    netlist::Netlist,
+};
 
-#[derive(PartialEq, Debug)]
-pub struct Relation {
-    pub id: usize,
-    pub input_ents: Vec<EntId>,
-    pub output_ent: EntId,
-}
+impl Synthesis {
+    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, rel_map: HashMap::<SymbolId, usize>, net_map: HashMap::<SymbolId, usize>) -> Netlist{
 
-pub type RelId = usize;
-
-#[derive(PartialEq, Debug)]
-pub struct Entity {
-    pub val: Option<u64>,
-    pub sinks: Vec<RelId>,
+        Netlist {
+            inputs: vec![],
+            outputs: vec![],
+            relations: vec![],
+            ents: vec![],
+        }
+    }
 }

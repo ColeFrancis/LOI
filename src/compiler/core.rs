@@ -31,9 +31,10 @@ use crate::compiler::{
     parser::Parser,
     sem_analyzer::SemAnalyzer,
     code_gen::CodeGen,
+    synthesis::Synthesis,
     symbol::{Symbol, SymbolId},
     ast::{Program, Item, Ident},
-    diagnostics::Diagnostics,
+    diagnostics::{Diagnostics, Diagnostic},
     compiled_rel::CompiledRel,
     netlist::Netlist,
 };
@@ -56,7 +57,7 @@ impl Compiler {
 
         let (ast, symbols) = Self::front_end(&code, &mut diagnostics);
 
-        Self::back_end(ast, &symbols, diagnostics)
+        Self::back_end(ast, &symbols, top_net, diagnostics)
     }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
@@ -66,14 +67,18 @@ impl Compiler {
         SemAnalyzer::new(program, diagnostics).analyze()
     }
 
-    fn back_end(ast: Program, symbols: &[Symbol], mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
+    fn back_end(ast: Program, symbols: &[Symbol], top_net: &str, mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
         let mut compiled_relations = Vec::new();
         let mut rel_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
+        let mut net_map = HashMap::<SymbolId, usize>::new();
 
+        let mut top_net_idx_option: Option<usize> = None;
         for item in ast.items {
             match item {
                 Item::Rel(relation) => {
+                    let idx = compiled_relations.len();
+
                     let Ident::Symbol(id) = relation.name else {
                         unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
@@ -82,27 +87,43 @@ impl Compiler {
                         continue;
                     };
 
-                    let idx = compiled_relations.len();
-
                     compiled_relations.push(compiled_relation);
                     rel_map.insert(id, idx);
                 }
 
-                Item::Net(net) => nets.push(net),
+                Item::Net(net) => {
+                    let idx = nets.len();
+
+                    let Ident::Symbol(id) = net.name else {
+                        unreachable!("net name must be ident::symbol by this point");
+                    };
+                    
+                    if symbols[id].name == top_net {
+                        top_net_idx_option = Some(id);
+                    }
+
+                    nets.push(net);
+                    net_map.insert(id, idx);
+                },
 
                 _ => {}
             }
         }
 
-        // syntehsyze nets here or after returning error
+        let Some(top_net_idx) = top_net_idx_option else {
+            diagnostics.error(Diagnostic::NonexistantTopLevelNet {
+                name: top_net.to_string(),
+            });
+
+            return Err(CompileError::Diagnostics(diagnostics));
+        };
 
         if diagnostics.has_errors() {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        Ok((Netlist {
-            relations: vec![],
-            ents: vec![],
-        }, compiled_relations))
+        let netlist = Synthesis::synthesize(nets, top_net_idx, rel_map, net_map);
+
+        Ok((netlist, compiled_relations))
     }
 }

@@ -235,6 +235,14 @@ pub enum Diagnostic {
         rel_name: String,
         rel_span: Span,
     },
+
+    ////////////////
+    // Synthesize
+    ////////////////
+
+    NonexistantTopLevelNet {
+        name: String,
+    },
 }
 
 #[derive(Debug, PartialEq)]
