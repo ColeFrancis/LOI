@@ -31,12 +31,20 @@ use crate::compiler::{
 
 impl Synthesis {
     pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, rel_map: HashMap::<SymbolId, usize>, net_map: HashMap::<SymbolId, usize>) -> Netlist{
+        let mut inputs = Vec::new();
+        let mut outputs = Vec::new();
+        let mut ents = Vec::new();
+        let mut relations = Vec::new();
+
+        // create a hashmap that maps idents (or just ids) to an index of the ent in ents
+        //  if the ident is not in the hashmap, then I push a new ent to ents
+        //  initilize net statemetns will set the value of the net to be Some(value) rather than None
 
         Netlist {
-            inputs: vec![],
-            outputs: vec![],
-            relations: vec![],
-            ents: vec![],
+            inputs,
+            outputs,
+            relations,
+            ents,
         }
     }
 }
