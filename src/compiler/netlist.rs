@@ -26,8 +26,8 @@ pub type EntId = usize;
 
 #[derive(PartialEq, Debug)]
 pub struct Netlist {
-    pub inputs: Vec<EntId>,
-    pub outputs: Vec<EntId>,
+    pub inputs: Vec<(String, EntId)>, // name of port needed for taking inputs in the simulator
+    pub outputs: Vec<(String, EntId)>, // name of port needed for reporting outputs in the simulator
     pub relations: Vec<Relation>,
     pub ents: Vec<Entity>,
 }

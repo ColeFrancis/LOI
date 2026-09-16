@@ -36,6 +36,8 @@ impl Synthesis {
         let mut ents = Vec::new();
         let mut relations = Vec::new();
 
+        let mut ent_map = HashMap::<(SymbolId, usize)>::new();
+
         // create a hashmap that maps idents (or just ids) to an index of the ent in ents
         //  if the ident is not in the hashmap, then I push a new ent to ents
         //  initilize net statemetns will set the value of the net to be Some(value) rather than None
