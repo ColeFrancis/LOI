@@ -31,7 +31,7 @@ use crate::compiler::{
 };
 
 impl Synthesis {
-    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, mut obj_map: HashMap::<SymbolId, usize>, symbol_table: &[Symbol], diagnostics: &mut Diagnostics) -> Netlist{
+    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, mut obj_map: HashMap::<SymbolId, usize>, symbols: &[Symbol], diagnostics: &mut Diagnostics) -> Netlist{
         let mut inputs = Vec::new();
         let mut outputs = Vec::new();
         let mut ents = Vec::new();
@@ -47,7 +47,7 @@ impl Synthesis {
 
                     let idx = ents.len();
 
-                    inputs.push((symbol_table[id].name.to_string(), idx));
+                    inputs.push((symbols[id].name.to_string(), idx));
                     ent_map.insert(id, idx);
                     ents.push(Entity {
                         val: None,
@@ -62,7 +62,7 @@ impl Synthesis {
 
                     let idx = ents.len();
 
-                    outputs.push((symbol_table[id].name.to_string(), idx));
+                    outputs.push((symbols[id].name.to_string(), idx));
                     ent_map.insert(id, idx);
                     ents.push(Entity {
                         val: None,
@@ -112,9 +112,12 @@ impl Synthesis {
                         unreachable!("should not be ident string");
                     };
 
-                    // fold expression
+                    let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
 
-                    // ents[idx].val = Some(folded_val);
+                    // fold expression
+                    let folded_val = 0;
+
+                    ents[idx].val = Some(folded_val);
                 }
 
                 NetItem::RelInst(rel) => {
