@@ -135,6 +135,8 @@ impl Synthesis {
 
                         let arg_idx = Self::insert_or_get_ent(*arg_id, obj_map, ents);
 
+                        // if the same ent is used as multiple inputs to a relation, this if check prevents 
+                        //  the relation from occuring multiple times in the sinks of the ent
                         if !ents[arg_idx].sinks.contains(&rel_idx) {
                             ents[arg_idx].sinks.push(rel_idx);
                         }
