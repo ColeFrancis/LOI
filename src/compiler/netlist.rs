@@ -34,7 +34,7 @@ pub struct Netlist {
 
 #[derive(PartialEq, Debug)]
 pub struct Relation {
-    pub id: usize,
+    pub idx: usize,
     pub input_ents: Vec<EntId>,
     pub output_ent: EntId,
 }

@@ -69,9 +69,8 @@ impl Compiler {
 
     fn back_end(ast: Program, symbols: &[Symbol], top_net: &str, mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
         let mut compiled_relations = Vec::new();
-        let mut rel_map = HashMap::<SymbolId, usize>::new();
+        let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
-        let mut net_map = HashMap::<SymbolId, usize>::new();
 
         let mut top_net_idx_option: Option<usize> = None;
         for item in ast.items {
@@ -88,7 +87,7 @@ impl Compiler {
                     };
 
                     compiled_relations.push(compiled_relation);
-                    rel_map.insert(id, idx);
+                    obj_map.insert(id, idx);
                 }
 
                 Item::Net(net) => {
@@ -103,7 +102,7 @@ impl Compiler {
                     }
 
                     nets.push(net);
-                    net_map.insert(id, idx);
+                    obj_map.insert(id, idx);
                 },
 
                 _ => {}
@@ -118,11 +117,11 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         };
 
+        let netlist = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, &mut diagnostics);
+
         if diagnostics.has_errors() {
             return Err(CompileError::Diagnostics(diagnostics));
         }
-
-        let netlist = Synthesis::synthesize(nets, top_net_idx, rel_map, net_map);
 
         Ok((netlist, compiled_relations))
     }
