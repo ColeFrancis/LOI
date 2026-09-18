@@ -206,7 +206,151 @@ mod tests {
     use crate::compiler::ast::*;
     use crate::compiler::diagnostics::Span;
 
-    
+    #[test]
+    fn rel_inst() {
+        // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
+
+        // net ADD_NET {
+        //     input A: Int;
+        //     input B: Int;
+        //     input C: Int;
+        //     output S: Int;
+
+        //     S = ADD(A, B);
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut ents: Vec<Entity> = Vec::new();
+        let mut relations: Vec<Relation> = Vec::new();
+
+        let symbol_table = vec![
+            Symbol {
+                name: "REL".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int, Type::Int],
+                    return_type: Type::Int,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "ADD_NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            input: true,
+                        }),
+                        ("B".to_string(), NetPort {
+                            symbol: 3,
+                            input: true,
+                        }),
+                        ("C".to_string(), NetPort {
+                            symbol: 4,
+                            input: true,
+                        }),
+                        ("S".to_string(), NetPort {
+                            symbol: 5,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "B".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "C".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "S".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Int,
+                    },
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(5),
+                    rel: Ident::Symbol(0),
+                    args: vec![
+                        Ident::Symbol(2),
+                        Ident::Symbol(3),
+                    ],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        };
+        let mut obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+
+        Synthesis::synthesize_net(&vec![net], 0, &mut obj_map, &mut ents, &mut relations);
+
+        assert_eq!(ents, vec![
+            Entity {
+                val: None,
+                sinks: vec![0],
+            },
+            Entity {
+                val: None,
+                sinks: vec![0],
+            },
+            Entity {
+                val: None,
+                sinks: vec![],
+            },
+            Entity {
+                val: None,
+                sinks: vec![],
+            },
+        ]);
+        assert_eq!(relations, vec![
+            Relation {
+                idx: 0,
+                input_ents: vec![0, 1],
+                output_ent: 3,
+            },
+        ]);
+    }
     
     #[test]
     fn net_inst() {
