@@ -81,10 +81,10 @@ impl Synthesis {
         }
     }
 
-    fn synthesize_net(net: &Net, obj_map: &mut HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>, relations: &mut Vec<Relation>) {
+    fn synthesize_net(nets: &[Net], target_net_idx: usize, obj_map: &mut HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>, relations: &mut Vec<Relation>) {
         // fold expressions. 
 
-        for item in &net.items {
+        for item in &nets[target_net_idx].items {
             match item {
                 NetItem::Input(input) => {
                     let Ident::Symbol(id) = input.param.name else {
@@ -135,7 +135,9 @@ impl Synthesis {
 
                         let arg_idx = Self::insert_or_get_ent(*arg_id, obj_map, ents);
 
-                        ents[arg_idx].sinks.push(rel_idx);
+                        if !ents[arg_idx].sinks.contains(&rel_idx) {
+                            ents[arg_idx].sinks.push(rel_idx);
+                        }
 
                         input_indices.push(arg_idx);
                     }
@@ -148,7 +150,28 @@ impl Synthesis {
                 }
 
                 NetItem::NetInst(net) => {
+                    let Ident::Symbol(net_id) = net.net else {
+                        unreachable!("should not be ident string");
+                    };
+                    let Some(&net_idx) = obj_map.get(&net_id) else {
+                        unreachable!("net should be in obj_map");
+                    };
 
+                    for connection in &net.connections {
+                        let Ident::Symbol(ent_id) = connection.ent else {
+                            unreachable!("should not be ident string");
+                        };
+                        let Ident::Symbol(port_id) = connection.port else {
+                            unreachable!("should not be ident string");
+                        };
+
+                        let ent_idx = Self::insert_or_get_ent(ent_id, obj_map, ents);
+
+                        // both the port and the connected ent are the same ent in the netlist
+                        obj_map.insert(port_id, ent_idx);
+                    }
+
+                    Self::synthesize_net(nets, net_idx, obj_map, ents, relations);
                 }
 
                 NetItem::Error => {}
@@ -183,7 +206,10 @@ mod tests {
     use crate::compiler::ast::*;
     use crate::compiler::diagnostics::Span;
 
-    fn input_item() {
+    
+    
+    #[test]
+    fn net_inst() {
         // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
 
         // net ADD_NET {
@@ -194,8 +220,18 @@ mod tests {
 
         //     S = ADD(A, B);
         // }
+
+        // net ADD_TO_SELF {
+        //     input IN: Int;
+        //     output OUT: Int;
+
+        //     ADD_NET {
+        //         A := IN,
+        //         B := IN,
+        //         S := OUT,
+        //     };
+        // }
         let mut diagnostics = Diagnostics::new();
-        let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut ents: Vec<Entity> = Vec::new();
         let mut relations: Vec<Relation> = Vec::new();
 
@@ -252,9 +288,35 @@ mod tests {
                 kind: SymbolKind::Ent(Type::Int),
                 span: Span{line: 0, col: 0},
             },
+            Symbol {
+                name: "ADD_TO_SELF".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("IN".to_string(), NetPort {
+                            symbol: 7,
+                            input: true,
+                        }),
+                        ("OUT".to_string(), NetPort {
+                            symbol: 8,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "IN".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "OUT".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
         ];
 
-        let net = Net {
+        let net1 = Net {
             name: Ident::Symbol(1),
             items: vec![
                 NetItem::Input(InputEnt {
@@ -295,23 +357,63 @@ mod tests {
                 }),
             ],
         };
+        let net2 = Net {
+            name: Ident::Symbol(6),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(8),
+                        param_type: Type::Int,
+                    },
+                }),
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(1),
+                    connections: vec![
+                        Connection {
+                            port: Ident::Symbol(2),
+                            ent: Ident::Symbol(7),
+                            span: Span{line: 0, col: 0},
+                        },
+                        Connection {
+                            port: Ident::Symbol(3),
+                            ent: Ident::Symbol(7),
+                            span: Span{line: 0, col: 0},
+                        },
+                        Connection {
+                            port: Ident::Symbol(5),
+                            ent: Ident::Symbol(8),
+                            span: Span{line: 0, col: 0},
+                        },
+                    ],
+                }),
+            ],
+        };
+        
+        let mut obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+            (6, 1),
+        ]);
 
-        Synthesis::synthesize_net(&net, &mut obj_map, &mut ents, &mut relations);
+        Synthesis::synthesize_net(&vec![net1, net2], 1, &mut obj_map, &mut ents, &mut relations);
 
         assert_eq!(ents, vec![
-            Entity {
+            Entity { // IN, A, B
                 val: None,
                 sinks: vec![0],
             },
-            Entity {
+            Entity { // OUT, S
                 val: None,
-                sinks: vec![0],
+                sinks: vec![],
             },
-            Entity {
-                val: None,
-                sinks: vec![0],
-            },
-            Entity {
+            Entity { // C
                 val: None,
                 sinks: vec![],
             },
@@ -319,9 +421,20 @@ mod tests {
         assert_eq!(relations, vec![
             Relation {
                 idx: 0,
-                input_ents: vec![0, 1],
-                output_ent: 3,
+                input_ents: vec![0, 0],
+                output_ent: 1,
             },
         ]);
+        assert_eq!(obj_map, HashMap::from([
+            (0, 0),
+            (1, 0),
+            (6, 1),
+            (7, 0),
+            (8, 1),
+            (2, 0),
+            (3, 0),
+            (4, 2),
+            (5, 1),
+        ]));
     }
 }
