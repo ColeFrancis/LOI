@@ -27,7 +27,8 @@ use super::SemAnalyzer;
 
 use crate::compiler::{
     ast::*,
-    symbol::SymbolKind,
+    symbol::{Symbol, SymbolKind},
+    diagnostics::Diagnostics,
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -54,11 +55,15 @@ impl <'a> SemAnalyzer<'a> {
 
     // returning None means the statement was sucessfully folded
     pub(super) fn fold_let(&mut self, mut stmt: LetStatement, fold_sample: bool) -> Option<LetStatement> {
-        stmt.expr = self.fold_expr(stmt.expr, fold_sample);
+        Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, &mut self.diagnostics)
+    }
+
+    pub(super) fn fold_let_inner(mut stmt: LetStatement, fold_sample: bool, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> Option<LetStatement> {
+        stmt.expr = Self::fold_expr_inner(stmt.expr, fold_sample, symbols, diagnostics);
 
         if let Expr::Literal(literal) = stmt.expr {
             if let Ident::Symbol(id) = stmt.name {
-                self.symbols[id].kind = SymbolKind::Const(literal);
+                symbols[id].kind = SymbolKind::Const(literal);
             }
             
             return None;

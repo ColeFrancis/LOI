@@ -53,7 +53,7 @@ pub enum Ident {
     Symbol(SymbolId),
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Expr {
     Literal(Literal), 
     Ident(Ident),
@@ -73,7 +73,7 @@ pub enum Literal {
     Real(f64),
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct UnaryExpr {
     pub expr: Box<Expr>,
     pub op: UnaryOp,
@@ -81,13 +81,13 @@ pub struct UnaryExpr {
     pub expr_type: Type,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum UnaryOp {
     Neg,    // -
     BitNot, // ~
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct BinaryExpr {
     pub left: Box<Expr>,
     pub right: Box<Expr>,
@@ -96,7 +96,7 @@ pub struct BinaryExpr {
     pub expr_type: Type,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum BinaryOp {
     Lt,         // <
     Gt,         // >
@@ -111,7 +111,7 @@ pub enum BinaryOp {
     And,        // &
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum CompOp {
     Lt,         // <
     Gt,         // >
@@ -119,14 +119,14 @@ pub enum CompOp {
     Ge,         // >=
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct BlockExpr {
     pub statements: Vec<Statement>,
     pub expr: Box<Expr>,
     pub expr_type: Type,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct CasesExpr {
     pub scrutinee: Box<Expr>,
     pub arms: Vec<CasesArm>,
@@ -134,14 +134,14 @@ pub struct CasesExpr {
     pub span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct CasesArm {
     pub pattern: Vec<SimplePattern>,
     pub expr: Expr,
     pub arm_span: Span
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum SimplePattern {
     Default,
     Literal(Literal),
@@ -151,27 +151,27 @@ pub enum SimplePattern {
     Error,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct ComparisonPattern {
     pub op: CompOp,
     pub expr: Box<Expr>,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct SampleExpr {
     pub arms: Vec<SampleArm>,
     pub expr_type: Type,
     pub span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct SampleArm {
     pub prob: Prob,
     pub expr: Expr,
     pub arm_span: Span,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Prob {
     Default,
     Expr(Expr),
@@ -187,13 +187,13 @@ pub struct Param {
 /// Statements
 ////////////////////////////////////////////////////////////////////////////////
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum Statement {
     Let(LetStatement),
     Error,
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct LetStatement {
     pub name: Ident,
     pub expr: Expr,

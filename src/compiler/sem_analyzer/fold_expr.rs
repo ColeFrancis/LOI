@@ -31,25 +31,29 @@ use super::SemAnalyzer;
 use super::types::Type;
 use crate::compiler::{
     ast::*,
-    symbol::SymbolKind,
-    diagnostics::{Span, Diagnostic},
+    symbol::{Symbol, SymbolKind},
+    diagnostics::{Span, Diagnostics, Diagnostic},
 };
 
 impl <'a> SemAnalyzer<'a> {
     pub(super) fn fold_expr (&mut self, expr: Expr, fold_sample: bool) -> Expr {
+        Self::fold_expr_inner(expr, fold_sample, &mut self.symbols, &mut self.diagnostics)
+    }
+
+    pub fn fold_expr_inner(expr: Expr, fold_sample: bool, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> Expr {
         match expr {
             Expr::Literal(literal) => Expr::Literal(literal),
 
-            Expr::Ident(Ident::Symbol(id)) => match &self.symbols[id].kind {
+            Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
                 SymbolKind::Const(literal) => Expr::Literal(literal.clone()),
                 _ => Expr::Ident(Ident::Symbol(id)),
             }
 
             Expr::Unary(mut unary) => {
-                unary.expr = Box::new(self.fold_expr(*unary.expr, fold_sample));
+                unary.expr = Box::new(Self::fold_expr_inner(*unary.expr, fold_sample, symbols, diagnostics));
 
                 if let Expr::Literal(literal) = &*unary.expr {
-                    if let Some(result) = self.eval_unary(&unary.op, literal) {
+                    if let Some(result) = Self::eval_unary(&unary.op, literal) {
                         return Expr::Literal(result);
                     }
                 }
@@ -58,8 +62,8 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Binary(mut binary) => {
-                let mut expr_left = self.fold_expr(*binary.left, fold_sample);
-                let mut expr_right = self.fold_expr(*binary.right, fold_sample);
+                let mut expr_left = Self::fold_expr_inner(*binary.left, fold_sample, symbols, diagnostics);
+                let mut expr_right = Self::fold_expr_inner(*binary.right, fold_sample, symbols, diagnostics);
 
                 // if you have int + real convert to real + real to simplify eval_binary
                 if binary.expr_type == Type::Real {
@@ -76,7 +80,7 @@ impl <'a> SemAnalyzer<'a> {
                 binary.right = Box::new(expr_right);
 
                 if let (Expr::Literal(left), Expr::Literal(right)) = (&*binary.left, &*binary.right) {
-                    if let Some(result) = self.eval_binary(&binary.op, left, right,binary.op_span) {
+                    if let Some(result) = Self::eval_binary(&binary.op, left, right,binary.op_span, diagnostics) {
                         return Expr::Literal(result);
                     }
                 }
@@ -88,7 +92,7 @@ impl <'a> SemAnalyzer<'a> {
                 for expr in &mut exprs {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
 
-                    *expr = self.fold_expr(owned_expr, fold_sample);
+                    *expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
                 }
 
                 Expr::Tuple(exprs)
@@ -99,13 +103,13 @@ impl <'a> SemAnalyzer<'a> {
 
                 for statement in owned_statements {
                     if let Statement::Let(let_statement) = statement {
-                        if let Some(folded_let_statement) = self.fold_let(let_statement, fold_sample) {
+                        if let Some(folded_let_statement) = Self::fold_let_inner(let_statement, fold_sample, symbols, diagnostics) {
                             block_expr.statements.push(Statement::Let(folded_let_statement));
                         }
                     }
                 }
 
-                match self.fold_expr(*block_expr.expr, fold_sample) {
+                match Self::fold_expr_inner(*block_expr.expr, fold_sample, symbols, diagnostics) {
                     Expr::Literal(literal) => Expr::Literal(literal),
 
                     other => {
@@ -122,7 +126,7 @@ impl <'a> SemAnalyzer<'a> {
                 let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
 
                 if cases_expr.arms.len() == 0 {
-                    self.diagnostics.error(Diagnostic::NoReturnArm {
+                    diagnostics.error(Diagnostic::NoReturnArm {
                         span: cases_expr.span,
                     });
 
@@ -131,10 +135,10 @@ impl <'a> SemAnalyzer<'a> {
                 for arm in &mut cases_expr.arms {
                     for pattern in &mut arm.pattern {
                         let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
-                        *pattern = self.fold_pattern(owned_pattern, fold_sample);
+                        *pattern = Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
 
                         if let Some((_, old_span)) = seen_patterns.iter().find(|(p, _)| *p == pattern) {
-                            self.diagnostics.error(Diagnostic::DuplicatePattern {
+                            diagnostics.error(Diagnostic::DuplicatePattern {
                                 old_arm_span: old_span.clone(),
                                 arm_span: arm.arm_span,
                             });
@@ -147,7 +151,7 @@ impl <'a> SemAnalyzer<'a> {
                 }
                 // All cases must have a default arm
                 if !seen_patterns.iter().any(|(pattern, _)| matches!(pattern, SimplePattern::Default)) {
-                    self.diagnostics.error(Diagnostic::NoDefaultPattern {
+                    diagnostics.error(Diagnostic::NoDefaultPattern {
                         cases_span: cases_expr.span.clone(),
                     });
                     
@@ -157,12 +161,12 @@ impl <'a> SemAnalyzer<'a> {
                     return Expr::Error;
                 }
 
-                cases_expr.scrutinee = Box::new(self.fold_expr(*cases_expr.scrutinee, fold_sample));
+                cases_expr.scrutinee = Box::new(Self::fold_expr_inner(*cases_expr.scrutinee, fold_sample, symbols, diagnostics));
 
                 let mut foldable = true;
                 for arm in &mut cases_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                    arm.expr = self.fold_expr(owned_expr, fold_sample);
+                    arm.expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
 
                     let matches = arm.pattern.iter_mut().any(|pattern| {
                         match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern){
@@ -189,7 +193,7 @@ impl <'a> SemAnalyzer<'a> {
                 let mut running_prob = 0.0;
 
                 if sample_expr.arms.len() == 0 {
-                    self.diagnostics.error(Diagnostic::NoReturnArm {
+                    diagnostics.error(Diagnostic::NoReturnArm {
                         span: sample_expr.span,
                     });
 
@@ -197,12 +201,12 @@ impl <'a> SemAnalyzer<'a> {
                 }
                 for arm in &mut sample_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                    arm.expr = self.fold_expr(owned_expr, fold_sample);
+                    arm.expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
 
                     match &mut arm.prob {
                         Prob::Expr(expr) => {
                             let owned_expr = std::mem::replace(expr, Expr::Error);
-                            let mut folded_expr = self.fold_expr(owned_expr, fold_sample);
+                            let mut folded_expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
                             // Convert prob to real number 
                             if let Expr::Literal(Literal::Int(int)) = folded_expr {
                                 folded_expr = Expr::Literal(Literal::Real(int as f64));
@@ -212,7 +216,7 @@ impl <'a> SemAnalyzer<'a> {
                             match expr {
                                 Expr::Literal(Literal::Real(prob)) => {
                                     if *prob < 0.0 || *prob > 1.0 {
-                                        self.diagnostics.error(Diagnostic::ProbOutOfRange {
+                                        diagnostics.error(Diagnostic::ProbOutOfRange {
                                             total_prob: false,
                                             val: *prob,
                                             span: arm.arm_span.clone(),
@@ -230,7 +234,7 @@ impl <'a> SemAnalyzer<'a> {
 
                         Prob::Default => {
                             if has_default {
-                                self.diagnostics.error(Diagnostic::MultipleDefaultProb {
+                                diagnostics.error(Diagnostic::MultipleDefaultProb {
                                     arm_span: arm.arm_span.clone(),
                                 });
                                 has_errors = true;
@@ -242,7 +246,7 @@ impl <'a> SemAnalyzer<'a> {
                     }
                 }
                 if running_prob < 0.0 || running_prob > 1.0 {
-                    self.diagnostics.error(Diagnostic::ProbOutOfRange {
+                    diagnostics.error(Diagnostic::ProbOutOfRange {
                         total_prob: true,
                         val: running_prob,
                         span: sample_expr.span,
@@ -280,7 +284,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn eval_unary(&self, op: &UnaryOp, literal: &Literal) -> Option<Literal> {
+    fn eval_unary(op: &UnaryOp, literal: &Literal) -> Option<Literal> {
         match (op, literal) {
             (UnaryOp::BitNot, Literal::Bool(x)) => Some(Literal::Bool(!x)),
 
@@ -292,7 +296,7 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn eval_binary(&mut self, op: &BinaryOp, left: &Literal, right: &Literal, op_span: Span) -> Option<Literal> {
+    fn eval_binary(op: &BinaryOp, left: &Literal, right: &Literal, op_span: Span, diagnostics: &mut Diagnostics) -> Option<Literal> {
         match (op, left, right) {
             (BinaryOp::Or, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a || *b)),
             (BinaryOp::And, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a && *b)),
@@ -308,7 +312,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b != 0 {
                     Some(Literal::Int(a / b))
                 } else {
-                    self.diagnostics.error(Diagnostic::DivideByZero {
+                    diagnostics.error(Diagnostic::DivideByZero {
                         op_span, 
                     });
 
@@ -318,7 +322,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b >= 0 {
                     Some(Literal::Int(a.pow(*b as u32)))
                 } else { // negative exponent not allowed for ints
-                    self.diagnostics.error(Diagnostic::NegExpOnInt {
+                    diagnostics.error(Diagnostic::NegExpOnInt {
                         op_span,
                     });
 
@@ -336,7 +340,7 @@ impl <'a> SemAnalyzer<'a> {
                 if *b != 0.0 {
                     Some(Literal::Real(a / b))
                 } else {
-                    self.diagnostics.error(Diagnostic::DivideByZero {
+                    diagnostics.error(Diagnostic::DivideByZero {
                         op_span, 
                     });
 
@@ -348,13 +352,13 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn fold_pattern(&mut self, pattern: SimplePattern, fold_sample: bool) -> SimplePattern {
+    fn fold_pattern(pattern: SimplePattern, fold_sample: bool, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> SimplePattern {
         match pattern {
             SimplePattern::Default => SimplePattern::Default,
 
             SimplePattern::Literal(literal) => SimplePattern::Literal(literal),
 
-            SimplePattern::Ident(Ident::Symbol(id)) => match &self.symbols[id].kind {
+            SimplePattern::Ident(Ident::Symbol(id)) => match symbols[id].kind {
                 SymbolKind::Const(literal) => SimplePattern::Literal(literal.clone()),
                 _ => SimplePattern::Ident(Ident::Symbol(id)),
             }
@@ -363,14 +367,14 @@ impl <'a> SemAnalyzer<'a> {
                 for pattern in &mut patterns {
                     let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
 
-                    *pattern = self.fold_pattern(owned_pattern, fold_sample);
+                    *pattern = Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
                 }
 
                 SimplePattern::Tuple(patterns)
             }
 
             SimplePattern::Comparison(mut comp_pattern) => {
-                comp_pattern.expr = Box::new(self.fold_expr(*comp_pattern.expr, fold_sample));
+                comp_pattern.expr = Box::new(Self::fold_expr_inner(*comp_pattern.expr, fold_sample, symbols, diagnostics));
 
                 SimplePattern::Comparison(comp_pattern)
             }
