@@ -32,7 +32,7 @@ use crate::compiler::{
 };
 
 impl Synthesis {
-    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, mut obj_map: HashMap::<SymbolId, usize>, symbols: &[Symbol], diagnostics: &mut Diagnostics) -> Netlist{
+    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> Netlist {
         let mut inputs = Vec::new();
         let mut outputs = Vec::new();
         let mut ents = Vec::new();
@@ -75,7 +75,7 @@ impl Synthesis {
             }
         }
 
-        // call synthesize_net
+        Self::synthesize_net(&nets, top_net_idx, &obj_map, ent_map, &mut ents, &mut relations, symbols, diagnostics);
 
         Netlist {
             inputs,
@@ -615,6 +615,8 @@ mod tests {
         //     input B: Int;
         //     output S: Int;
 
+        //     init A: Int = 2;
+
         //     S_inter = MUL(A, B);
         //     S = MUL_2(S_inter);
         // }
@@ -624,6 +626,8 @@ mod tests {
         //     input IN2: Int;
         //     input IN3: Int;
         //     output OUT: Int;
+
+        //     init IN1: Int = 4;
 
         //     INNER {
         //         A := IN1,
@@ -796,6 +800,13 @@ mod tests {
                         param_type: Type::Int,
                     },
                 }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Literal(Literal::Int(2)),
+                }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(1),
@@ -844,6 +855,13 @@ mod tests {
                         name: Ident::Symbol(12),
                         param_type: Type::Int,
                     },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(9),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Literal(Literal::Int(4)),
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
@@ -931,15 +949,15 @@ mod tests {
 
         assert_eq!(ents, vec![
             Entity { // IN1, A(1)
-                val: None,
+                val: Some(4),
                 sinks: vec![0],
             },
             Entity { // IN2, A(2)
-                val: None,
+                val: Some(2),
                 sinks: vec![2],
             },
             Entity { // IN3, A(3)
-                val: None,
+                val: Some(2),
                 sinks: vec![4],
             },
             Entity { // OUT
@@ -1157,4 +1175,140 @@ mod tests {
             },
         ]);
     }
+
+    #[test]
+    fn synthesize() {
+        // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
+
+        // net ADD_NET {
+        //     input A: Int;
+        //     input B: Int;
+        
+        //     output S: Int;
+
+        //     S = ADD(A, B);
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "REL".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int, Type::Int],
+                    return_type: Type::Int,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "ADD_NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            input: true,
+                        }),
+                        ("B".to_string(), NetPort {
+                            symbol: 3,
+                            input: true,
+                        }),
+                        ("S".to_string(), NetPort {
+                            symbol: 4,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "B".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "S".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Int,
+                    },
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Int,
+                    },
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(4),
+                    rel: Ident::Symbol(0),
+                    args: vec![
+                        Ident::Symbol(2),
+                        Ident::Symbol(3),
+                    ],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+        let ent_map: HashMap<SymbolId, usize> = HashMap::new();
+
+        let netlist = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+
+        assert_eq!(netlist, Netlist {
+            inputs: vec![
+                ("A".to_string(), 0),
+                ("B".to_string(), 1),
+            ],
+            outputs: vec![
+                ("S".to_string(), 2),
+            ],
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    input_ents: vec![0, 1],
+                    output_ent: 2,
+                },
+            ],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ]
+        });
+    }
+
+    // TODO: reason about corner cases?
 }

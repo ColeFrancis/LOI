@@ -55,9 +55,9 @@ impl Compiler {
 
         let mut diagnostics = Diagnostics::new();
 
-        let (ast, symbols) = Self::front_end(&code, &mut diagnostics);
+        let (ast, mut symbols) = Self::front_end(&code, &mut diagnostics);
 
-        Self::back_end(ast, &symbols, top_net, diagnostics)
+        Self::back_end(ast, &mut symbols, top_net, diagnostics)
     }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
@@ -67,7 +67,7 @@ impl Compiler {
         SemAnalyzer::new(program, diagnostics).analyze()
     }
 
-    fn back_end(ast: Program, symbols: &[Symbol], top_net: &str, mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
+    fn back_end(ast: Program, symbols: &mut [Symbol], top_net: &str, mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
         let mut compiled_relations = Vec::new();
         let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();

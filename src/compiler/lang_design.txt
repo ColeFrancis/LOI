@@ -183,7 +183,7 @@ net INTEGRATE {
 // Model of a ball thrown upwards wiht a velocity 1 and accelerating down with an acceleration 9.8
 net PNYS {
     init y: R = 1;
-    init g: R = -9.8;
+    init g: R = -9.8; // inits in outer modules override inits in inner modules
 
     output y: R;
 
