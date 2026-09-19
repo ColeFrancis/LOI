@@ -62,8 +62,13 @@ impl Compiler {
         let mut diagnostics = Diagnostics::new();
 
         let (ast, mut symbols) = Self::front_end(&code, &mut diagnostics);
+        let (netlist, compiled_relations) = Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
 
-        Self::back_end(ast, &mut symbols, top_net, diagnostics)
+        if diagnostics.has_errors() {
+            return Err(CompileError::Diagnostics(diagnostics));
+        }
+
+        Ok((netlist, compiled_relations))
     }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
@@ -73,7 +78,7 @@ impl Compiler {
         SemAnalyzer::new(program, diagnostics).analyze()
     }
 
-    fn back_end(ast: Program, symbols: &mut [Symbol], top_net: &str, mut diagnostics: Diagnostics) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
+    fn back_end(ast: Program, top_net: &str, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Vec<CompiledRel>) {
         let mut compiled_relations = Vec::new();
         let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
@@ -88,7 +93,7 @@ impl Compiler {
                         unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
 
-                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, &mut diagnostics) else {
+                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics) else {
                         continue;
                     };
 
@@ -120,16 +125,12 @@ impl Compiler {
                 name: top_net.to_string(),
             });
 
-            return Err(CompileError::Diagnostics(diagnostics));
+            return (Netlist::new(), compiled_relations);
         };
 
-        let netlist = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, &mut diagnostics);
+        let netlist = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
 
-        if diagnostics.has_errors() {
-            return Err(CompileError::Diagnostics(diagnostics));
-        }
-
-        Ok((netlist, compiled_relations))
+        (netlist, compiled_relations)
     }
 }
 

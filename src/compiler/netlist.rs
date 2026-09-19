@@ -32,6 +32,17 @@ pub struct Netlist {
     pub ents: Vec<Entity>,
 }
 
+impl Netlist {
+    pub fn new() -> Self {
+        Self {
+            inputs: vec![],
+            outputs: vec![],
+            relations: vec![],
+            ents: vec![],
+        }
+    }
+}
+
 #[derive(PartialEq, Debug)]
 pub struct Relation {
     pub idx: usize,
