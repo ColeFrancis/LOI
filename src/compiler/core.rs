@@ -41,6 +41,7 @@ use crate::compiler::{
 
 pub enum CompileError {
     Io(std::io::Error),
+    InvalidFileExtension,
     Diagnostics(Diagnostics),
 }
 
@@ -48,6 +49,11 @@ impl Compiler {
     // return netlist and vector of compiled relations or panic
     pub fn compile(file_path: &str, top_net: &str) -> Result<(Netlist, Vec<CompiledRel>), CompileError> {
         let path = PathBuf::from(file_path);
+
+        if path.extension().and_then(|ext| ext.to_str()) != Some("loi") {
+            return Err(CompileError::InvalidFileExtension);
+        }
+
         let code = match fs::read_to_string(&path) {
             Ok(code) => code,
             Err(err) => return Err(CompileError::Io(err)),
@@ -126,3 +132,6 @@ impl Compiler {
         Ok((netlist, compiled_relations))
     }
 }
+
+
+// see tests/compiler for integration tests
