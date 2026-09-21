@@ -70,7 +70,12 @@ impl<'a> Lexer<'a> {
             let col = self.curr_col; 
             match c {
                 // Whitespace
-                b' ' | b'\t' | b'\r' => continue,
+                b' ' | b'\r' => continue,
+
+                b'\t' => {
+                    self.curr_col += 3;
+                    continue
+                }
 
                 b'\n' => {
                     self.curr_line += 1;
@@ -422,10 +427,10 @@ mod test {
         assert_eq!(tokens[1].span.col, 1);
         
         assert_eq!(tokens[2].span.line, 2);
-        assert_eq!(tokens[2].span.col, 4);
+        assert_eq!(tokens[2].span.col, 7);
         
         assert_eq!(tokens[3].span.line, 2);
-        assert_eq!(tokens[3].span.col, 7);
+        assert_eq!(tokens[3].span.col, 10);
 
         assert_eq!(tokens[4].span.line, 3);
         assert_eq!(tokens[4].span.col, 3);

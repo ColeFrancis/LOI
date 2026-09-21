@@ -138,6 +138,8 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
+                println!("processing input. Type: {:?}", symbol_type);
+                println!("param type: {:?}", input_ent.param.param_type);
                 let new_type = self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
@@ -218,7 +220,14 @@ impl <'a> SemAnalyzer<'a> {
                     };
                     let (actual_type, span) = self.get_ent_type(*arg_id)?;
 
-                    self.compare_ent_types(actual_type, expected_type, span)?;
+                    let Some(new_type) = self.compare_ent_types(actual_type, expected_type, span) else {
+                        return None;
+                    };
+
+                    // if ent is first declared here, its type will be Unknown and it needs to be set based on the rel_t
+                    if let SymbolKind::Ent(ty) = &mut self.symbols[*arg_id].kind {
+                        *ty = new_type;
+                    }
                 }
 
                 let Ident::Symbol(asignee_id) = rel_inst.asignee else {
@@ -226,7 +235,14 @@ impl <'a> SemAnalyzer<'a> {
                 };
                 let (asignee_type, span) = self.get_ent_type(asignee_id)?;
 
-                self.compare_ent_types(asignee_type, return_type, span)?;
+                let Some(new_type) = self.compare_ent_types(asignee_type, return_type, span)  else {
+                    return None;
+                };
+                
+                // if ent is first declared here, its type will be Unknown and it needs to be set based on the rel_t
+                if let SymbolKind::Ent(ty) = &mut self.symbols[asignee_id].kind {
+                    *ty = new_type;
+                }
 
                 Some(NetItem::RelInst(rel_inst))
             }
@@ -238,7 +254,7 @@ impl <'a> SemAnalyzer<'a> {
                 };
 
                 let ports = match &self.symbols[net_id].kind {
-                    SymbolKind::Net {ports} => ports,
+                    SymbolKind::Net {ports} => ports.clone(),
                     _ => return None, // Do not need to check this condition as find_net_port in resolve_net already does.
                 };
 
@@ -258,7 +274,13 @@ impl <'a> SemAnalyzer<'a> {
 
                             let (connection_ent_type, _connection_ent_span) = self.get_ent_type(connection_ent_id)?;
 
-                            if inst_port_type != connection_ent_type {
+                            // if an ent is first declared as a connection, we need to set its type here
+                            if connection_ent_type == Type::Unknown {
+                                if let SymbolKind::Ent(ty) = &mut self.symbols[connection_ent_id].kind {
+                                    *ty = inst_port_type;
+                                }
+                            }
+                            else if inst_port_type != connection_ent_type {
                                 self.diagnostics.error(Diagnostic::MismatchedEntType {
                                     expected: connection_ent_type,
                                     found: inst_port_type,
@@ -1342,6 +1364,8 @@ mod tests {
                 }),
             ],
         });
+        
+        diagnostics.debug_print();
 
         assert_eq!(result, Some(Net {
             name: Ident::Symbol(4),

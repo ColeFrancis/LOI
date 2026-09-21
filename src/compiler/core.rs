@@ -39,10 +39,31 @@ use crate::compiler::{
     netlist::Netlist,
 };
 
+#[derive(Debug)]
 pub enum CompileError {
     Io(std::io::Error),
     InvalidFileExtension,
     Diagnostics(Diagnostics),
+}
+
+impl PartialEq for CompileError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (CompileError::Io(a), CompileError::Io(b)) => {
+                a.kind() == b.kind()
+            }
+
+            (CompileError::InvalidFileExtension, CompileError::InvalidFileExtension) => {
+                true
+            }
+
+            (CompileError::Diagnostics(a), CompileError::Diagnostics(b)) => {
+                a == b
+            }
+            // compare your other variants normally
+            _ => false,
+        }
+    }
 }
 
 impl Compiler {
@@ -109,7 +130,7 @@ impl Compiler {
                     };
                     
                     if symbols[id].name == top_net {
-                        top_net_idx_option = Some(id);
+                        top_net_idx_option = Some(idx);
                     }
 
                     nets.push(net);

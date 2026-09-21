@@ -1,0 +1,189 @@
+rel_t NAND: (a: Bool, b: Bool) -> Bool = ~(a&b);
+
+net XOR {
+    input A: Bool;
+    input B: Bool;
+    output Q: Bool;
+    output I: Bool;
+
+    I := NAND(A,B);
+
+    inter_2 := NAND(A, I);
+
+    inter_3 := NAND(I, B);
+
+    Q := NAND(inter_2, inter_3);
+}
+
+net ADDER {
+    input cin: Bool;
+    input A: Bool;
+    input B: Bool;
+
+    output S: Bool;
+    output cout: Bool;
+
+    cout := NAND(inter_1, inter_2);
+
+    XOR {
+        A := A,
+        B := B,
+        Q := AB,
+        I := inter_1,
+    };
+
+    XOR {
+        A := cin,
+        B := AB,
+        Q := S,
+        I := inter_2,
+    };
+}
+
+net ALU {
+    input A1: Bool;
+    input A2: Bool;
+
+    input B1: Bool;
+    input B2: Bool;
+
+    input cin: Bool;
+
+    input sub: Bool;
+
+    output S1: Bool;
+    output S2: Bool;
+
+    output cout: Bool;
+
+    XOR {
+        A := B1,
+        B := sub,
+        Q := B1p
+    };
+
+    XOR {
+        A := B2,
+        B := sub,
+        Q := B2p,
+    };
+
+    XOR {
+        A := cin,
+        B := sub,
+        Q := cinp,
+    };
+
+    ADDER {
+        cin := cinp,
+        A := A1,
+        B := B1p,
+
+        S := S1,
+        cout := cout1,
+    };
+
+    ADDER {
+        cin := cout1,
+        A := A2,
+        B := B2p,
+
+        S := S2,
+        cout := cout,
+    };
+}
+
+net d_LATCH {
+    input D: Bool;
+    input E: Bool;
+    output Q: Bool;
+    output Qp: Bool;
+
+    init Q: Bool = false;
+    init Qp: Bool = true;
+
+    D_n := NAND(D, D);
+
+    S := NAND(D, E);
+    R := NAND(D_n, E);
+
+    Q := NAND(S, Qp);
+    Qp := NAND(R, Q);
+}
+
+net d_FLIP_FLOP {
+    input D: Bool;
+    input clk: Bool;
+    output Q: Bool;
+    output Qp: Bool;
+
+    clk_1 := NAND(clk, clk);
+    clk_2 := NAND(clk_1, clk_2);
+
+    d_LATCH {
+        D := D,
+        E := clk_1,
+        Q := D_int,
+    };
+
+    d_LATCH {
+        D := D_int,
+        E := clk_2,
+        Q := Q,
+        Qp := Qp,
+    };
+}
+
+net REG {
+    input I1: Bool;
+    input I2: Bool;
+    
+    input clk: Bool;
+
+    output R1: Bool;
+    output R2: Bool;
+
+    d_FLIP_FLOP {
+        D := I1,
+        clk := clk,
+        Q := R1,
+    };
+
+    d_FLIP_FLOP {
+        D := I2,
+        clk := clk,
+        Q := R2,
+    };
+}
+
+net CALC {
+    input I1: Bool;
+    input I2: Bool;
+
+    input clk: Bool;
+    input sub: Bool;
+
+    output O1: Bool;
+    output O2: Bool;
+
+    init cin: Bool = false;
+
+    ALU {
+        A1 := O1,
+        A2 := O2,
+        B1 := I1,
+        B2 := I2,
+        cin := cin,
+        sub := sub,
+        S1 := S1,
+        S2 := S2,
+    };
+
+    REG {
+        I1 := S1,
+        I2 := S2,
+        clk := clk,
+        R1 := O1,
+        R2 := O2,
+    };
+}

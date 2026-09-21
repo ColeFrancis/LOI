@@ -26,6 +26,7 @@ use super::lexer::token::TokenKind;
 use super::sem_analyzer::types::Type;
 use super::symbol::SymbolKind;
 
+#[derive(PartialEq, Debug)]
 pub struct Diagnostics {
     errors: Vec<Diagnostic>,
 }
