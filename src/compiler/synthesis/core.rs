@@ -142,6 +142,7 @@ impl Synthesis {
 
                     relations.push(Relation {
                         idx: rel_idx,
+                        delay: 1,
                         input_ents: input_indices,
                         output_ent: asignee_idx,
                     });
@@ -378,6 +379,7 @@ mod tests {
         assert_eq!(relations, vec![
             Relation {
                 idx: 0,
+                delay: 1,
                 input_ents: vec![0, 1],
                 output_ent: 3,
             },
@@ -598,6 +600,7 @@ mod tests {
         assert_eq!(relations, vec![
             Relation {
                 idx: 0,
+                delay: 1,
                 input_ents: vec![0, 0],
                 output_ent: 1,
             },
@@ -992,36 +995,43 @@ mod tests {
         assert_eq!(relations, vec![
             Relation {
                 idx: 1,
+                delay: 1,
                 input_ents: vec![0, 0],
                 output_ent: 5,
             },
             Relation {
                 idx: 2,
+                delay: 1,
                 input_ents: vec![5],
                 output_ent: 4,
             },
             Relation {
                 idx: 1,
+                delay: 1,
                 input_ents: vec![1, 1],
                 output_ent: 7
             },
             Relation {
                 idx: 2,
+                delay: 1,
                 input_ents: vec![7],
                 output_ent: 6,
             },
             Relation {
                 idx: 1,
+                delay: 1,
                 input_ents: vec![2, 2],
                 output_ent: 9,
             },
             Relation {
                 idx: 2,
+                delay: 1,
                 input_ents: vec![9],
                 output_ent: 8,
             },
             Relation {
                 idx: 0,
+                delay: 1,
                 input_ents: vec![4, 6, 8],
                 output_ent: 3,
             },
@@ -1170,6 +1180,7 @@ mod tests {
         assert_eq!(relations, vec![
             Relation {
                 idx: 0,
+                delay: 1,
                 input_ents: vec![0, 1],
                 output_ent: 2,
             },
@@ -1288,6 +1299,7 @@ mod tests {
             relations: vec![
                 Relation {
                     idx: 0,
+                    delay: 1,
                     input_ents: vec![0, 1],
                     output_ent: 2,
                 },
