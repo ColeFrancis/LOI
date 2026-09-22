@@ -12,24 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-mod event;
-mod scheduler;
-pub mod rel_interpreter;
-mod runtime_diagnostics;
+//! # event
+//!
+//! This module defines the event type for use in the sim module
+//!
+//! ## Invariants
+//!
+//! - Events must contain a timestamp and an id for the entity they affect
+//!
+//! Author: Cole Francis
 
-use crate::simulator::{
-    scheduler::Scheduler,
-    rel_interpreter::RelInterpreter,
-};
+use crate::compiler::netlist::EntId;
 
-use crate::compiler::{
-    netlist::Netlist,
-    compiled_rel::CompiledRel,
-};
-
-pub struct Simulator {
-    netlist: Netlist,
-    scheduler: Scheduler,
-    interpreter: RelInterpreter,
+pub struct Event {
+    pub timestep: usize,
+    pub entity: EntId,
+    pub new_val: u64,
 }

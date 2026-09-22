@@ -856,7 +856,7 @@ mod tests {
         } 
         
         // Interpreter
-        let mut interpreter = RelInterpreter::new(&compiled_relations);
+        let mut interpreter = RelInterpreter::new(compiled_relations);
 
         // ROTATE args
         let args_1 = vec![0];

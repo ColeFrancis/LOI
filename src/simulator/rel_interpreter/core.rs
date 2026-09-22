@@ -31,8 +31,8 @@ use crate::simulator::runtime_diagnostics::RuntimeError;
 
 use crate::compiler::compiled_rel::CompiledRel;
 
-impl<'a> RelInterpreter<'a> {
-    pub fn new(relations: &'a [CompiledRel]) -> Self {
+impl RelInterpreter {
+    pub fn new(relations: Vec<CompiledRel>) -> Self {
         Self {
             relations,
             registers: [0; 64],
@@ -914,7 +914,7 @@ mod tests {
 
         let args = vec![(2.5_f64).to_bits() as u64, (3.0_f64).to_bits() as u64];
 
-        let result = RelInterpreter::new(&relations).evaluate(0, &args, 0, 0);
+        let result = RelInterpreter::new(relations).evaluate(0, &args, 0, 0);
 
         assert_eq!(5.5_f64.to_bits() as u64, result);
 
