@@ -53,13 +53,6 @@ impl Scheduler {
         self.event_count += 1;
     }
 
-    pub fn push_many(&mut self, events: Vec<Event>) {
-        for event in events {
-            self.events[event.timestep % WHEEL_SIZE].push(event);
-            self.event_count += 1;
-        }
-    }
-
     pub fn pop(&mut self) -> Option<Vec<Event>> {
         if self.event_count == 0 {
             return None;

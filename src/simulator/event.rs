@@ -27,6 +27,6 @@ use crate::compiler::netlist::EntId;
 #[derive(PartialEq, Debug, Clone)]
 pub struct Event {
     pub timestep: usize,
-    pub entity: EntId,
+    pub ent_id: EntId,
     pub new_val: u64,
 }

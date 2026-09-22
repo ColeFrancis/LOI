@@ -87,7 +87,7 @@ impl Synthesis {
 
                 inits.push(Event {
                     timestep: 0,
-                    entity: idx,
+                    ent_id: idx,
                     new_val: val,
                 });
             }
@@ -1347,7 +1347,7 @@ mod tests {
         assert_eq!(inits, vec![
             Event {
                 timestep: 0,
-                entity: 0,
+                ent_id: 0,
                 new_val: 1,
             },
         ]);

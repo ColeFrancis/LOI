@@ -883,17 +883,17 @@ mod tests {
         let result_8 = interpreter.evaluate(2, &args_8, 0, 1);
         let result_9 = interpreter.evaluate(2, &args_9, 0, 1);
 
-        assert_eq!(result_1, 1);
-        assert_eq!(result_2, 2);
-        assert_eq!(result_3, 0);
+        assert_eq!(result_1, Ok(1));
+        assert_eq!(result_2, Ok(2));
+        assert_eq!(result_3, Ok(0));
 
-        assert_eq!(result_4, true as u64);
-        assert_eq!(result_5, true as u64);
-        assert_eq!(result_6, true as u64);
-        assert_eq!(result_7, false as u64);
+        assert_eq!(result_4, Ok(true as u64));
+        assert_eq!(result_5, Ok(true as u64));
+        assert_eq!(result_6, Ok(true as u64));
+        assert_eq!(result_7, Ok(false as u64));
 
-        assert_eq!(result_8, (12.0_f64).to_bits() as u64);
-        assert_eq!(result_9, (33.75_f64).to_bits() as u64);
+        assert_eq!(result_8, Ok((12.0_f64).to_bits() as u64));
+        assert_eq!(result_9, Ok((33.75_f64).to_bits() as u64));
     }
 
     // TODO: test runtime errors

@@ -18,22 +18,32 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::netlist::EntId;
+use crate::compiler::netlist::{EntId, RelId};
 
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {
+    Interpreter {
+        err: InterpreterError,
+        rel_id: RelId,
+        timestep: usize,
+    },
+    SimultaneousDrivers {
+        ent_id: EntId,
+        timestep: usize,
+    },
+    NonexistantInput(String),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum InterpreterError {
     InvalidOpcode(u8),
     IntegerOverflow,
     DivisionByZero,
     IntNegativeExponent, // For integers
     InvalidProb(f64),
-    SimultaneousDrivers {
-        ent_id: EntId,
-        timestep: usize,
-    }, // simulator, not interpreter
 }
 
-impl RuntimeError {
+impl InterpreterError {
     pub fn from_index(index: usize, info: Option<u64>) -> Self {
         match index {
             0 => Self::InvalidOpcode(

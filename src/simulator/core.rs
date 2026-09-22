@@ -26,6 +26,7 @@ use super::Simulator;
 use super::scheduler::Scheduler;
 use super::rel_interpreter::RelInterpreter;
 use super::event::Event;
+use super::runtime_diagnostics::RuntimeError;
 
 use crate::compiler::{
     netlist::{Netlist, EntId},
@@ -48,17 +49,41 @@ impl Simulator {
         }
     }
 
-    pub fn load_inputs(&mut self, inputs: Vec<Event>) {
-        for event in inputs {
-            self.scheduler.push(event);
+    pub fn load_inputs(&mut self, inputs: Vec<(String, Vec<(usize, u64)>)>) -> Result<(), RuntimeError> {
+        for (ent, trace) in inputs {
+            let ent_id = self.netlist.inputs
+                .iter()
+                .find(|(name, _)| name == &ent)
+                .map(|(_, id)| *id)
+                .ok_or_else(|| RuntimeError::NonexistantInput(ent))?;
+            
+            for (timestep, new_val) in trace {
+                self.scheduler.push(Event {
+                    timestep,
+                    new_val,
+                    ent_id,
+                });
+            }
         }
+
+        Ok(())
     }
 
-    // returns all the outputs in watcher at the end of the simulation
-    // pub fn dump_outputs(&mut self) ->
+    // returns all the outputs in watcher at the end of the simulation, also clearing vectors in watcher
+    pub fn dump_outputs(&mut self) -> Vec<(String, Vec<(usize, u64)>)> {
+        let mut outputs = Vec::with_capacity(self.netlist.outputs.len());
+
+        for (name, ent_id) in &self.netlist.outputs {
+            if let Some(trace) = self.watcher.get_mut(ent_id) {
+                outputs.push((name.clone(), std::mem::take(trace)));
+            }
+        }
+
+        outputs
+    }
 
     // Returns none if the simulator reached max steps. Else if the simulator runs N timesteps it returns Some(N)
-    pub fn run (&mut self, max_steps: usize) -> Option<usize> {
+    pub fn run (&mut self, max_steps: usize) -> Result<usize, RuntimeError> {
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
@@ -70,22 +95,24 @@ impl Simulator {
 
             for event in curr_events {
                 // ensure entites aren't driven twice
-                if ent_last_driven[event.entity] != step {
-                    ent_last_driven[event.entity] = step;
-                    self.netlist.ents[event.entity].val = Some(event.new_val);
+                if ent_last_driven[event.ent_id] != step {
+                    ent_last_driven[event.ent_id] = step;
+                    self.netlist.ents[event.ent_id].val = Some(event.new_val);
                 }
-                else {
-                                                                                     // TODO: call runtime error
-                    return None;
+                else if self.netlist.ents[event.ent_id].val != Some(event.new_val) { // mutliple events with conflicting vals drive an ent
+                    return Err(RuntimeError::SimultaneousDrivers {
+                        ent_id: event.ent_id,
+                        timestep: step,
+                    });
                 }
                 
 
                 // Record output value change
-                if let Some(updates) = self.watcher.get_mut(&event.entity) {
+                if let Some(updates) = self.watcher.get_mut(&event.ent_id) {
                     updates.push((self.scheduler.curr_time, event.new_val));
                 }
                 
-                for rel_id in &self.netlist.ents[event.entity].sinks {
+                for rel_id in &self.netlist.ents[event.ent_id].sinks {
                     if rel_last_called[*rel_id] != step {
                         rel_last_called[*rel_id] = step;
                         relations_to_call.push(*rel_id);
@@ -109,26 +136,34 @@ impl Simulator {
                 };
 
                 let old_val = self.netlist.ents[output_ent_id].val;
-                let new_val = self.interpreter.evaluate(rel_id, &args, timestep, delay);
-                                                                                        // TODO: Handling of runtime errors
-
+                let new_val = match self.interpreter.evaluate(rel_id, &args, timestep, delay) {
+                    Ok(val) => val,
+                    Err(err) => return Err(RuntimeError::Interpreter {
+                        err,
+                        rel_id,
+                        timestep: step,
+                    }),
+                };
+                                                                            
                 if old_val != Some(new_val) {
                     self.scheduler.push(Event {
                         timestep: self.scheduler.curr_time + delay,
-                        entity: output_ent_id,
+                        ent_id: output_ent_id,
                         new_val: new_val,
                     });
                 }
             }
 
-            step += 1;
-            if step > max_steps {
-                return Some(step - 1);
+            if step >= max_steps {
+                return Ok(step);
             }
+            step += 1;
         }
 
-        Some(step - 1)
+        Ok(step - 1)
     }
 }
 
 // TODO: test that relations are only executed if no inputs are None
+// TODO: test runtime errors (simultaneous drivers and interpreter errors)
+// TODO: test max steps and finishing early functionality

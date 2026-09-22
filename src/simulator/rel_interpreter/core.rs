@@ -27,7 +27,7 @@ use rand::Rng;
 
 use super::RelInterpreter;
 
-use crate::simulator::runtime_diagnostics::RuntimeError;
+use crate::simulator::runtime_diagnostics::InterpreterError;
 
 use crate::compiler::compiled_rel::CompiledRel;
 
@@ -39,7 +39,7 @@ impl RelInterpreter {
         }
     }
 
-    pub fn evaluate (&mut self, relation_id: usize, args: &[u64], sim_timestep: usize, rel_delay: usize) -> u64 {
+    pub fn evaluate (&mut self, relation_id: usize, args: &[u64], sim_timestep: usize, rel_delay: usize) -> Result<u64, InterpreterError> {
         // Fill time info and arguments
         self.registers[0] = sim_timestep as u64;
         self.registers[1] = rel_delay as u64;
@@ -48,15 +48,9 @@ impl RelInterpreter {
         let code = &self.relations[relation_id].bytecode;
         
         Self::execute(&mut self.registers, code)
-            .unwrap_or_else(|error| {
-                // TODO: call a runtime_diagnostics report function
-                //  error, relation (convert id to the string), sim_timestep
-
-                panic!("Runtime diagnostics not yet implemented");
-            })
     }
 
-    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> Result<u64, RuntimeError> {
+    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> Result<u64, InterpreterError> {
         let mut inst_counter = 0;
 
         loop {
@@ -91,7 +85,7 @@ impl RelInterpreter {
                         0b00010100 => {
                             registers[dest_reg] = src1_val
                                 .checked_abs()
-                                .ok_or(RuntimeError::IntegerOverflow)? as u64;
+                                .ok_or(InterpreterError::IntegerOverflow)? as u64;
                             continue;
                         }
 
@@ -111,49 +105,49 @@ impl RelInterpreter {
                         0b00000000 => {
                             registers[dest_reg] = src1_val
                                 .checked_add(src2_val)
-                                .ok_or(RuntimeError::IntegerOverflow)? as u64;
+                                .ok_or(InterpreterError::IntegerOverflow)? as u64;
                         }
 
                         // SUB
                         0b00000100 => {
                             registers[dest_reg] = src1_val
                                 .checked_sub(src2_val)
-                                .ok_or(RuntimeError::IntegerOverflow)? as u64;
+                                .ok_or(InterpreterError::IntegerOverflow)? as u64;
                         }
 
                         // MUL
                         0b00001000 => {
                             registers[dest_reg] = src1_val
                                 .checked_mul(src2_val)
-                                .ok_or(RuntimeError::IntegerOverflow)? as u64;
+                                .ok_or(InterpreterError::IntegerOverflow)? as u64;
                         }
 
                         // DIV
                         0b00001100 => {
                             registers[dest_reg] = src1_val
                                 .checked_div(src2_val)
-                                .ok_or(RuntimeError::DivisionByZero)? as u64;
+                                .ok_or(InterpreterError::DivisionByZero)? as u64;
                         }
 
                         // POW
                         0b00010000 => {
                             if src2_val < 0 {
-                                return Err(RuntimeError::IntNegativeExponent);
+                                return Err(InterpreterError::IntNegativeExponent);
                             }
 
                             registers[dest_reg] = src1_val
                                 .checked_pow(src2_val as u32)
-                                .ok_or(RuntimeError::IntegerOverflow)? as u64;
+                                .ok_or(InterpreterError::IntegerOverflow)? as u64;
                         }
 
                         // IMOD
                         0b00011000 => {
                             registers[dest_reg] = src1_val
                                 .checked_rem(src2_val)
-                                .ok_or(RuntimeError::DivisionByZero)? as u64;
+                                .ok_or(InterpreterError::DivisionByZero)? as u64;
                         }
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -216,7 +210,7 @@ impl RelInterpreter {
                             registers[dest_reg] = src1_val.powf(src2_val).to_bits();
                         }
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -308,7 +302,7 @@ impl RelInterpreter {
                             registers[dest_reg] = (src_val as f64).to_bits();
                         }
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -398,7 +392,7 @@ impl RelInterpreter {
                             inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -425,7 +419,7 @@ impl RelInterpreter {
                             inst_counter += 1;
 
                             if src1_is_reg { // no info, only code
-                                return Err(RuntimeError::from_index(code as usize, None));
+                                return Err(InterpreterError::from_index(code as usize, None));
                             }else { 
                                 let src_val = Self::read_source(
                                     registers,
@@ -434,7 +428,7 @@ impl RelInterpreter {
                                     src2_is_reg,
                                 );
 
-                                return Err(RuntimeError::from_index(code as usize, Some(src_val)));
+                                return Err(InterpreterError::from_index(code as usize, Some(src_val)));
                             }
                         }
 
@@ -490,7 +484,7 @@ impl RelInterpreter {
                             inst_counter = (inst_counter as isize + offset as isize) as usize;
                         }
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -551,7 +545,7 @@ impl RelInterpreter {
                         // IGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -606,11 +600,11 @@ impl RelInterpreter {
                         // FGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
                     }
                 }
 
-                _ => return Err(RuntimeError::InvalidOpcode(inst as u8)),
+                _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
             }
         }
     }
@@ -636,7 +630,7 @@ impl RelInterpreter {
 mod tests {
     use super::*;
     use crate::simulator::rel_interpreter::test_assembler::assemble;
-    use crate::simulator::runtime_diagnostics::RuntimeError;
+    use crate::simulator::runtime_diagnostics::InterpreterError;
 
     #[test]
     fn int_arith() {
@@ -855,7 +849,7 @@ mod tests {
 
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(RuntimeError::DivisionByZero));
+        assert_eq!(result, Err(InterpreterError::DivisionByZero));
     }
 
     #[test]
@@ -868,7 +862,7 @@ mod tests {
 
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(RuntimeError::IntNegativeExponent));
+        assert_eq!(result, Err(InterpreterError::IntNegativeExponent));
     }
 
     #[test]
@@ -880,7 +874,7 @@ mod tests {
 
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(RuntimeError::IntegerOverflow));
+        assert_eq!(result, Err(InterpreterError::IntegerOverflow));
     }
 
     #[test]
@@ -896,7 +890,7 @@ mod tests {
 
         let result = RelInterpreter::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(RuntimeError::InvalidProb(1.1)));
+        assert_eq!(result, Err(InterpreterError::InvalidProb(1.1)));
     }
 
     #[test]
@@ -916,7 +910,7 @@ mod tests {
 
         let result = RelInterpreter::new(relations).evaluate(0, &args, 0, 0);
 
-        assert_eq!(5.5_f64.to_bits() as u64, result);
+        assert_eq!(Ok(5.5_f64.to_bits() as u64), result);
 
 
     }

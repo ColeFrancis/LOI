@@ -655,47 +655,47 @@ fn calculator() {
         vec![
             Event {
                 timestep: 0,
-                entity: 4,
+                ent_id: 4,
                 new_val: 0,
             },
             Event {
                 timestep: 0,
-                entity: 5,
+                ent_id: 5,
                 new_val: 0,
             },
             Event {
                 timestep: 0,
-                entity: 6,
+                ent_id: 6,
                 new_val: 0,
             },
             Event {
                 timestep: 0,
-                entity: 37,
+                ent_id: 37,
                 new_val: 1,
             },
             Event {
                 timestep: 0,
-                entity: 40,
+                ent_id: 40,
                 new_val: 0,
             },
             Event {
                 timestep: 0,
-                entity: 41,
+                ent_id: 41,
                 new_val: 1,
             },
             Event {
                 timestep: 0,
-                entity: 48,
+                ent_id: 48,
                 new_val: 1,
             },
             Event {
                 timestep: 0,
-                entity: 51,
+                ent_id: 51,
                 new_val: 0,
             },
             Event {
                 timestep: 0,
-                entity: 52,
+                ent_id: 52,
                 new_val: 1,
             },
         ],
