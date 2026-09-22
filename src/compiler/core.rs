@@ -35,36 +35,10 @@ use crate::compiler::{
     symbol::{Symbol, SymbolId},
     ast::{Program, Item, Ident},
     diagnostics::{Diagnostics, Diagnostic},
+    compile_error::CompileError,
     compiled_rel::CompiledRel,
     netlist::Netlist,
 };
-
-#[derive(Debug)]
-pub enum CompileError {
-    Io(std::io::Error),
-    InvalidFileExtension,
-    Diagnostics(Diagnostics),
-}
-
-impl PartialEq for CompileError {
-    fn eq(&self, other: &Self) -> bool {
-        match (self, other) {
-            (CompileError::Io(a), CompileError::Io(b)) => {
-                a.kind() == b.kind()
-            }
-
-            (CompileError::InvalidFileExtension, CompileError::InvalidFileExtension) => {
-                true
-            }
-
-            (CompileError::Diagnostics(a), CompileError::Diagnostics(b)) => {
-                a == b
-            }
-            // compare your other variants normally
-            _ => false,
-        }
-    }
-}
 
 impl Compiler {
     // return netlist and vector of compiled relations or panic

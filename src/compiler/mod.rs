@@ -20,8 +20,10 @@ mod code_gen;
 mod synthesis;
 mod diagnostics;
 
+
 mod ast;
 mod symbol;
+pub mod compile_error;
 pub mod compiled_rel;
 pub mod netlist;
 

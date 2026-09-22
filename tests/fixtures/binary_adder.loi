@@ -118,7 +118,7 @@ net d_FLIP_FLOP {
     output Qp: Bool;
 
     clk_1 := NAND(clk, clk);
-    clk_2 := NAND(clk_1, clk_2);
+    clk_2 := NAND(clk_1, clk_1);
 
     d_LATCH {
         D := D,
