@@ -18,6 +18,8 @@
 //!
 //! Author: Cole Francis
 
+use crate::compiler::netlist::EntId;
+
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {
     InvalidOpcode(u8),
@@ -25,6 +27,10 @@ pub enum RuntimeError {
     DivisionByZero,
     IntNegativeExponent, // For integers
     InvalidProb(f64),
+    SimultaneousDrivers {
+        ent_id: EntId,
+        timestep: usize,
+    }, // simulator, not interpreter
 }
 
 impl RuntimeError {
