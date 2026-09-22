@@ -4,11 +4,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.4.0]
+## [1.0.0]
 
 ### Added
 
-- All front-end stages of the compiler are completed and tested
+### Changed
+
+## [0.4.0] - 2026-09-1
+
+### Added
+
+- Compiler Completed and Tested
 
 ### Changed
 
