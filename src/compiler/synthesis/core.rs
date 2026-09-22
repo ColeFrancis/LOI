@@ -31,12 +31,15 @@ use crate::compiler::{
     diagnostics::Diagnostics,
 };
 
+use crate::simulator::event::Event;
+
 impl Synthesis {
-    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> Netlist {
+    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Vec<Event>) {
         let mut inputs = Vec::new();
         let mut outputs = Vec::new();
         let mut ents = Vec::new();
         let mut relations = Vec::new();
+        let mut inits = Vec::new();
 
         let mut ent_map: HashMap<SymbolId, usize> = HashMap::new();
         for item in &nets[top_net_idx].items {
@@ -77,12 +80,25 @@ impl Synthesis {
 
         Self::synthesize_net(&nets, top_net_idx, &obj_map, ent_map, &mut ents, &mut relations, symbols, diagnostics);
 
-        Netlist {
+        // loop through ents, finding ones that aren't None, and creating inits events instead
+        for (idx, ent) in ents.iter_mut().enumerate() {
+            if let Some(val) = ent.val {
+                ent.val = None;
+
+                inits.push(Event {
+                    timestep: 0,
+                    entity: idx,
+                    new_val: val,
+                });
+            }
+        }
+
+        (Netlist {
             inputs,
             outputs,
             relations,
             ents,
-        }
+        }, inits)
     }
 
     fn synthesize_net(nets: &[Net], target_net_idx: usize, obj_map: &HashMap::<SymbolId, usize>, mut ent_map: HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>, relations: &mut Vec<Relation>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) {
@@ -1197,6 +1213,8 @@ mod tests {
         
         //     output S: Int;
 
+        //     init A: Int = 1;
+
         //     S = ADD(A, B);
         // }
         let mut diagnostics = Diagnostics::new();
@@ -1270,6 +1288,13 @@ mod tests {
                         param_type: Type::Int,
                     },
                 }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Literal(Literal::Int(1)),
+                }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
@@ -1286,7 +1311,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let netlist = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(netlist, Netlist {
             inputs: vec![
@@ -1319,6 +1344,13 @@ mod tests {
                 },
             ]
         });
+        assert_eq!(inits, vec![
+            Event {
+                timestep: 0,
+                entity: 0,
+                new_val: 1,
+            },
+        ]);
     }
 
     // TODO: reason about corner cases?

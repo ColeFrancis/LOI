@@ -26,6 +26,7 @@ use loi::compiler::{
 };
 
 use loi::simulator::rel_interpreter::test_assembler::assemble;
+use loi::simulator::event::Event;
 
 // To test:
 //  missing file
@@ -419,15 +420,15 @@ fn calculator() {
                     sinks: vec![0, 2, 4, 6, 8, 10],
                 },
                 Entity { // 4
-                    val: Some(0),
+                    val: None,
                     sinks: vec![13, 14, 41],
                 },
                 Entity { // 5
-                    val: Some(0),
+                    val: None,
                     sinks: vec![22, 23, 53],
                 },
                 Entity { // 6
-                    val: Some(0),
+                    val: None,
                     sinks: vec![8, 9],
                 },
                 Entity { // 7
@@ -551,7 +552,7 @@ fn calculator() {
                     sinks: vec![29],
                 },
                 Entity { // 37
-                    val: Some(1),
+                    val: None,
                     sinks: vec![40],
                 },
                 Entity { // 38
@@ -563,11 +564,11 @@ fn calculator() {
                     sinks: vec![38, 39],
                 },
                 Entity { // 40
-                    val: Some(0),
+                    val: None,
                     sinks: vec![36, 37, 38],
                 },
                 Entity { // 41
-                    val: Some(1),
+                    val: None,
                     sinks: vec![35],
                 },
                 Entity { // 42
@@ -595,7 +596,7 @@ fn calculator() {
                     sinks: vec![41],
                 },
                 Entity { // 48
-                    val: Some(1),
+                    val: None,
                     sinks: vec![52],
                 },
                 Entity { // 49
@@ -607,11 +608,11 @@ fn calculator() {
                     sinks: vec![50, 51],
                 },
                 Entity { // 52
-                    val: Some(0),
+                    val: None,
                     sinks: vec![48,49,50],
                 },
                 Entity { // 53
-                    val: Some(1),
+                    val: None,
                     sinks: vec![47],
                 },
                 Entity { // 54
@@ -650,6 +651,53 @@ fn calculator() {
                     RET r4
                 ").unwrap(),
             }
+        ],
+        vec![
+            Event {
+                timestep: 0,
+                entity: 4,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                entity: 5,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                entity: 6,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                entity: 37,
+                new_val: 1,
+            },
+            Event {
+                timestep: 0,
+                entity: 40,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                entity: 41,
+                new_val: 1,
+            },
+            Event {
+                timestep: 0,
+                entity: 48,
+                new_val: 1,
+            },
+            Event {
+                timestep: 0,
+                entity: 51,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                entity: 52,
+                new_val: 1,
+            },
         ],
     )));
 }

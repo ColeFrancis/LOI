@@ -20,24 +20,42 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
+
 use super::Simulator;
 use super::scheduler::Scheduler;
 use super::rel_interpreter::RelInterpreter;
 use super::event::Event;
 
 use crate::compiler::{
-    netlist::Netlist,
+    netlist::{Netlist, EntId},
     compiled_rel::CompiledRel,
 };
 
 impl Simulator {
-    pub fn new(netlist: Netlist, relations: Vec<CompiledRel>) -> Self {
+    pub fn new(netlist: Netlist, relations: Vec<CompiledRel>, inits: Vec<Event>) -> Self {
+        let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
+
+        for (_, output_ent_id) in &netlist.outputs {
+            watcher.insert(*output_ent_id, Vec::new());
+        }
+
         Self {
             netlist,
-            scheduler: Scheduler::new(),
+            scheduler: Scheduler::new(inits),
             interpreter: RelInterpreter::new(relations),
+            watcher,
         }
     }
+
+    pub fn load_inputs(&mut self, inputs: Vec<Event>) {
+        for event in inputs {
+            self.scheduler.push(event);
+        }
+    }
+
+    // returns all the outputs in watcher at the end of the simulation
+    // pub fn dump_outputs(&mut self) ->
 
     // Returns none if the simulator reached max steps. Else if the simulator runs N timesteps it returns Some(N)
     pub fn run (&mut self, max_steps: usize) -> Option<usize> {
@@ -51,6 +69,11 @@ impl Simulator {
 
             for event in curr_events {
                 self.netlist.ents[event.entity].val = Some(event.new_val);
+
+                // Record output value change
+                if let Some(updates) = self.watcher.get_mut(&event.entity) {
+                    updates.push((self.scheduler.curr_time, event.new_val));
+                }
                 
                 for rel_id in &self.netlist.ents[event.entity].sinks {
                     if pending[*rel_id] != step {
@@ -86,8 +109,6 @@ impl Simulator {
                     });
                 }
             }
-
-            // TODO: Write output values to watchers
 
             step += 1;
             if step > max_steps {

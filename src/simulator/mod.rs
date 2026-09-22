@@ -13,10 +13,12 @@
 // limitations under the License.
 
 mod core;
-mod event;
+pub mod event;
 mod scheduler;
 pub mod rel_interpreter;
 mod runtime_diagnostics;
+
+use std::collections::HashMap;
 
 use crate::simulator::{
     scheduler::Scheduler,
@@ -24,7 +26,7 @@ use crate::simulator::{
 };
 
 use crate::compiler::{
-    netlist::Netlist,
+    netlist::{Netlist, EntId},
     compiled_rel::CompiledRel,
 };
 
@@ -32,4 +34,5 @@ pub struct Simulator {
     netlist: Netlist,
     scheduler: Scheduler,
     interpreter: RelInterpreter,
+    watcher: HashMap<EntId, Vec<(usize, u64)>>,
 }

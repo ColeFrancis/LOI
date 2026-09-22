@@ -34,12 +34,18 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub fn new() -> Self {
-        Self {
+    pub fn new(inits: Vec<Event>) -> Self {
+        let mut scheduler = Self {
             curr_time: 0,
             event_count: 0,
             events: std::array::from_fn(|_| Vec::new()),
+        };
+
+        for event in inits {
+            scheduler.push(event);
         }
+
+        scheduler
     }
 
     pub fn push(&mut self, event: Event) {
