@@ -27,7 +27,6 @@ use super::sync::SyncRule;
 use crate::compiler::{
     ast::*,
     lexer::token::TokenKind,
-    diagnostics::Span,
 };
 
 impl<'a> Parser<'a> {

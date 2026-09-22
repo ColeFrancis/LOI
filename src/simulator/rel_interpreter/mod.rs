@@ -17,8 +17,8 @@ pub mod test_assembler;
 
 use crate::compiler::compiled_rel::CompiledRel;
 
-pub struct RelInterpreter {
+pub struct RelInterpreter<'a> {
     // relation id refers to index of outer vector
-    relations: Vec<CompiledRel>,
+    relations: &'a [CompiledRel],
     registers: [u64; 64],
 }

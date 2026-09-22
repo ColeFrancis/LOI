@@ -31,7 +31,7 @@ use super::types::Type;
 use crate::compiler::{
     ast::*,
     symbol::{Symbol, SymbolKind, SymbolId, NetPort},
-    diagnostics::{Diagnostic, Span, Expected},
+    diagnostics::{Diagnostic, Span},
 };
 
 impl <'a> SemAnalyzer<'a> {

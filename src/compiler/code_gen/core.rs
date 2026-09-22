@@ -30,9 +30,9 @@ use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::ast::*;
 use crate::compiler::compiled_rel::CompiledRel;
-use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
+use crate::compiler::symbol::Symbol;
 use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Span, Diagnostic};
+use crate::compiler::diagnostics::{Diagnostics, Diagnostic};
 
 impl<'a> CodeGen<'a> {
     pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
@@ -69,7 +69,7 @@ impl<'a> CodeGen<'a> {
             }
         }
 
-        let (mut ir_bytecode, mut src, mut result_type) = self.compile_expr(relation.body)?;
+        let (mut ir_bytecode, src, result_type) = self.compile_expr(relation.body)?;
 
         // coerce to match return type
         let src = match relation.return_type {
@@ -81,9 +81,9 @@ impl<'a> CodeGen<'a> {
 
             Type::Real => self.coerce_real(&mut ir_bytecode, src, &result_type, true)?,
 
-            Type::Mod(n) => self.coerce_int(&mut ir_bytecode, src, &result_type)?, // handles taking modulus
+            Type::Mod(_) => self.coerce_int(&mut ir_bytecode, src, &result_type)?, // handles taking modulus
 
-            Type::Custom(Ident::Symbol(id)) => src,
+            Type::Custom(Ident::Symbol(_)) => src,
 
             _ => return None,
         };
@@ -400,6 +400,8 @@ mod tests {
         lexer::Lexer,
         parser::Parser,
         sem_analyzer::SemAnalyzer,
+        diagnostics::Span,
+        symbol::SymbolKind,
     };
     use crate::simulator::rel_interpreter::{RelInterpreter, test_assembler::assemble};
 
@@ -854,7 +856,7 @@ mod tests {
         } 
         
         // Interpreter
-        let mut interpreter = RelInterpreter::new(compiled_relations);
+        let mut interpreter = RelInterpreter::new(&compiled_relations);
 
         // ROTATE args
         let args_1 = vec![0];

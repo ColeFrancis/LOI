@@ -22,15 +22,8 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashMap;
-
 use super::SemAnalyzer;
-use super::scope::Scope;
-use super::types::Type;
-use crate::compiler::{
-    ast::*,
-    symbol::{Symbol, SymbolKind},
-};
+use crate::compiler::ast::*;
 
 impl <'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
@@ -196,8 +189,15 @@ impl <'a> SemAnalyzer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::diagnostics::{Diagnostics, Span};
-    use crate::compiler::sem_analyzer::scope::Scope;
+    use std::collections::HashMap;
+    use crate::compiler::{
+        diagnostics::{Diagnostics, Span},
+        sem_analyzer::{
+            scope::Scope,
+            types::Type,
+        },
+        symbol::{Symbol, SymbolKind},
+    };
 
     #[test]
     fn expr_literal() {

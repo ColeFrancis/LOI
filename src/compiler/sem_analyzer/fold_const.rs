@@ -54,7 +54,7 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     // returning None means the statement was sucessfully folded
-    pub(super) fn fold_let(&mut self, mut stmt: LetStatement, fold_sample: bool) -> Option<LetStatement> {
+    pub(super) fn fold_let(&mut self, stmt: LetStatement, fold_sample: bool) -> Option<LetStatement> {
         Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, &mut self.diagnostics)
     }
 

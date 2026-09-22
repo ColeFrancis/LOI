@@ -411,8 +411,6 @@ mod tests {
     use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::symbol::{Symbol, NetPort};
     use crate::compiler::diagnostics::Diagnostics;
-    use crate::compiler::parser::Parser;
-    use crate::compiler::lexer::Lexer;
 
     #[test]
     fn check_let_1() {

@@ -23,15 +23,13 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashMap;
-
 use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
-use crate::compiler::ast::*;
-use crate::compiler::compiled_rel::CompiledRel;
-use crate::compiler::symbol::{Symbol, SymbolId, SymbolKind};
-use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Span, Diagnostic};
+use crate::compiler::{
+    ast::*,
+    symbol::SymbolKind,
+    sem_analyzer::types::Type,
+};
 
 impl<'a> CodeGen<'a> {
     // Returns the bytecode in intermediate representation, the source where the result is stored, and the type
@@ -661,7 +659,7 @@ impl<'a> CodeGen<'a> {
                         return None;
                     };
 
-                    let (expr_bytecode, src, sub_type) = self.compile_expr(let_statement.expr)?;
+                    let (expr_bytecode, src, _sub_type) = self.compile_expr(let_statement.expr)?;
 
                     bytecode.extend(expr_bytecode);
 
@@ -742,7 +740,7 @@ impl<'a> CodeGen<'a> {
                         };
                     }
 
-                    let (mut expr_bytecode, src, sub_type) = self.compile_expr(arm.expr)?;
+                    let (mut expr_bytecode, src, _sub_type) = self.compile_expr(arm.expr)?;
 
                     // free register moved into dest
                     if let Source::RegInter(src_reg) = src {
@@ -890,7 +888,7 @@ impl<'a> CodeGen<'a> {
                 let mut jmp_inst_indices: Vec<usize> = Vec::new();
                 let mut last_comp_jmp_idx = 0;
                 for (expr, cdf_val_reg) in arm_exprs.into_iter().zip(cdf.iter()) {
-                    let (mut expr_bytecode, src, sub_type) = self.compile_expr(expr)?;
+                    let (mut expr_bytecode, src, _sub_type) = self.compile_expr(expr)?;
 
                     // free register moved into dest
                     if let Source::RegInter(src_reg) = src {
@@ -965,7 +963,7 @@ impl<'a> CodeGen<'a> {
 
             // for literal pattern, if scrutinee value doesn't match literal, then skip jmp
             SimplePattern::Literal(literal) => {
-                let (mut lit_src, mut lit_type) = match literal {
+                let (mut lit_src, lit_type) = match literal {
                     Literal::Bool(b) => (Source::Bool(b), Type::Bool),
 
                     Literal::Int(i) => (Source::Int(i), Type::Int),
@@ -1065,7 +1063,7 @@ impl<'a> CodeGen<'a> {
 
             // for comparison pattern, if the scrutinee value doesn't match the comparison, then skip jmp
             SimplePattern::Comparison(comp_pattern) => {
-                let (expr_bytecode, mut comp_src, mut comp_type) = self.compile_expr(*comp_pattern.expr)?;
+                let (expr_bytecode, mut comp_src, comp_type) = self.compile_expr(*comp_pattern.expr)?;
 
                 bytecode.extend(expr_bytecode);
 
@@ -1142,6 +1140,12 @@ impl<'a> CodeGen<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
+
+    use crate::compiler::{
+        diagnostics::{Diagnostics, Span},
+        symbol::Symbol,
+    };
 
     #[test]
     fn literal_expr_1() {

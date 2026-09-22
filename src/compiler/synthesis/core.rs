@@ -1274,7 +1274,6 @@ mod tests {
             (0, 0),
             (1, 0),
         ]);
-        let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
         let netlist = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 

@@ -22,8 +22,6 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashSet;
-
 use super::SemAnalyzer;
 
 use crate::compiler::{
@@ -54,7 +52,7 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     // TODO: reason more about if I need to check more than just multiple driver errors
-    fn check_constraints_net(&mut self, mut net: Net) -> Option<Net> { 
+    fn check_constraints_net(&mut self, net: Net) -> Option<Net> { 
         let mut has_errors = false; 
         let mut driven_ents: Vec<(SymbolId, Span)> = Vec::new();
 
