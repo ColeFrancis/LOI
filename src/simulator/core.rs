@@ -82,12 +82,12 @@ impl Simulator {
         outputs
     }
 
-    // Returns none if the simulator reached max steps. Else if the simulator runs N timesteps it returns Some(N)
+    // returns the number of timesteps that were ran if no runtime errors, otherwise the error is returned
     pub fn run (&mut self, max_steps: usize) -> Result<usize, RuntimeError> {
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
-        // initialized to 1 to use with rel_last_called
+        // initialized to 1 to use with rel_last_called and ent_last_driven
         let mut step: usize = 1;
 
         while let Some(curr_events) = self.scheduler.pop() {
@@ -99,7 +99,7 @@ impl Simulator {
                     ent_last_driven[event.ent_id] = step;
                     self.netlist.ents[event.ent_id].val = Some(event.new_val);
                 }
-                else if self.netlist.ents[event.ent_id].val != Some(event.new_val) { // mutliple events with conflicting vals drive an ent
+                else if self.netlist.ents[event.ent_id].val != Some(event.new_val) { // mutliple events with conflicting vals drive an ent is an error
                     return Err(RuntimeError::SimultaneousDrivers {
                         ent_id: event.ent_id,
                         timestep: step,
@@ -165,5 +165,5 @@ impl Simulator {
 }
 
 // TODO: test that relations are only executed if no inputs are None
-// TODO: test runtime errors (simultaneous drivers and interpreter errors)
+// TODO: test all runtime errors
 // TODO: test max steps and finishing early functionality
