@@ -123,7 +123,7 @@ impl Simulator {
 
             step += 1;
             if step > max_steps {
-                return None;
+                return Some(step - 1);
             }
         }
 
