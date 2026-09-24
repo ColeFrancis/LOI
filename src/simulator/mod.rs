@@ -25,10 +25,7 @@ use crate::simulator::{
     rel_interpreter::RelInterpreter,
 };
 
-use crate::compiler::{
-    netlist::{Netlist, EntId},
-    compiled_rel::CompiledRel,
-};
+use crate::compiler::netlist::{Netlist, EntId};
 
 pub struct Simulator {
     netlist: Netlist,
