@@ -91,7 +91,6 @@ impl Simulator {
             let mut relations_to_call = Vec::new();
 
             for event in curr_events {
-                println!("{:?}", event);
                 // ensure entites aren't driven twice
                 if ent_last_driven[event.ent_id] != self.scheduler.curr_time {
                     ent_last_driven[event.ent_id] = self.scheduler.curr_time;
@@ -103,10 +102,6 @@ impl Simulator {
                         timestep: self.scheduler.curr_time-1,
                     });
                 }
-                else {
-                    println!("mutliple events, same val");
-                }
-                
 
                 // Record output value change
                 if let Some(updates) = self.watcher.get_mut(&event.ent_id) {

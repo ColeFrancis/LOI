@@ -138,8 +138,6 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
-                println!("processing input. Type: {:?}", symbol_type);
-                println!("param type: {:?}", input_ent.param.param_type);
                 let new_type = self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
