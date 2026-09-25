@@ -91,6 +91,7 @@ impl Simulator {
             let mut relations_to_call = Vec::new();
 
             for event in curr_events {
+                println!("{:?}", event);
                 // ensure entites aren't driven twice
                 if ent_last_driven[event.ent_id] != self.scheduler.curr_time {
                     ent_last_driven[event.ent_id] = self.scheduler.curr_time;
@@ -116,7 +117,7 @@ impl Simulator {
                 }
             }
             for rel_id in relations_to_call {
-                let timestep = self.scheduler.curr_time;
+                let timestep = self.scheduler.curr_time - 1;
                 let compiled_rel_id = self.netlist.relations[rel_id].idx;
                 let delay = self.netlist.relations[rel_id].delay;
                 let output_ent_id = self.netlist.relations[rel_id].output_ent;
@@ -138,13 +139,13 @@ impl Simulator {
                     Err(err) => return Err(RuntimeError::Interpreter {
                         err,
                         rel_id,
-                        timestep: self.scheduler.curr_time-1,
+                        timestep,
                     }),
                 };
                                                                             
                 if old_val != Some(new_val) {
                     self.scheduler.push(Event {
-                        timestep: self.scheduler.curr_time-1 + delay, // -1 necessary because curr_time in scheduler increments after pop
+                        timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
                         ent_id: output_ent_id,
                         new_val: new_val,
                     });
@@ -857,26 +858,128 @@ mod tests {
         ]);
     }
 
-    // #[test]
-    // fn impulse_oscillator() {
-    //     // rel_t imp_delay : (a: Impulse) -> Impulse = a;
-    //     // rel_t read_imp: (a: Impulse) -> Int = {
-    //     //     cases a {
-    //     //         true: 1,
-    //     //         _ : 0,
-    //     //     }
-    //     // };
-    //     // net OSC {
-    //     //     output a: Int;
+    #[test]
+    fn impulse_oscillator() {
+        // rel_t imp_delay : (a: Impulse) -> Impulse = a;
+        // rel_t read_imp: (a: Impulse) -> Int = {
+        //     cases a {
+        //         true: 1,
+        //         _ : 0,
+        //     }
+        // };
+        // net OSC {
+        //     output i: Impulse
+        //     output a: Int;
 
-    //     //     init imp_1: Impulse = true; // will cause impulse on sim step 1
+        //     init imp_1: Impulse = true; // will cause impulse on sim step 1
 
-    //     //     imp_1 := imp_delay(imp_2);
-    //     //     imp_2 := imp_delay(imp_1);
+        //     imp_1 := imp_delay(imp_2);
+        //     imp_2 := imp_delay(imp_1);
 
-    //     //     a := read_imp(imp_2);
-    //     // }
+        //     i := imp_delay(imp_2);
 
+        //     a := read_imp(i);
+        // }
+        let netlist = Netlist {
+            inputs: vec![],
+            outputs: vec![
+                ("i".to_string(), 0),
+                ("a".to_string(), 1),
+            ],
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![3],
+                    output_ent: 2,
+                },
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![2],
+                    output_ent: 3,
+                },
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![3],
+                    output_ent: 0,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![0],
+                    output_ent: 1,
+                },
+            ],
+            ents: vec![
+                Entity { // i
+                    val: None,
+                    sinks: vec![3],
+                },
+                Entity { // a
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity { // imp_1
+                    val: None,
+                    sinks: vec![1],
+                },
+                Entity { // imp_2
+                    val: None,
+                    sinks: vec![0, 2],
+                },
+            ],
+        };
 
-    // }
+        let relations = vec![
+            CompiledRel {
+                name: "imp_delay".to_string(),
+                complexity: 0,
+                bytecode: assemble("
+                    IADD r3 r2 r1
+                    RET r3
+                ").unwrap(),
+            },
+            CompiledRel {
+                name: "read_imp".to_string(),
+                complexity: 0,
+                bytecode: assemble("
+                    IEQ r3 r2 r0
+                    IJNE o13 r3 i1
+                    MOV r4 i1
+                    JMP o10
+                    MOV r4 i0
+                    RET r4
+                ").unwrap(),
+            },
+        ];
+
+        let inits = vec![
+            Event {
+                timestep: 0,
+                ent_id: 2,
+                new_val: 0,
+            },
+        ];
+
+        let mut sim = Simulator::new(netlist, relations, inits);
+
+        let _steps = sim.run(10);
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(output, vec![
+            ("i".to_string(), vec![
+                (2, 2),
+                (4, 4),
+                (6, 6),
+                (8, 8),
+                (10, 10),
+            ]),
+            ("a".to_string(), vec![
+                (3, 1),
+            ]),
+        ]);
+    }
 }

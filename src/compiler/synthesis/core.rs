@@ -211,8 +211,8 @@ impl Synthesis {
                         Expr::Literal(literal) => match (literal, &init.param.param_type) {
                             (Literal::Bool(b), &Type::Bool) => b as u64,
                             (Literal::Bool(b), &Type::Impulse) => match b {
-                                true => 1 as u64, // Will make the ent true at time 1.
-                                false => 0 as u64,
+                                true => 0 as u64, 
+                                false => u64::MAX, // typically 0 is chosen when an impulse needs to be set to a known false value but here we need to represent a true value at time 0
                             }
 
                             (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
@@ -1367,8 +1367,279 @@ mod tests {
         ]);
     }
 
-    // TODO: more testing with type conversion of inits
-    //  mods, impulse, custom type, etc
+    #[test]
+    fn real_init() {
+        // net NET {
+        //     output A: Real;
+
+        //     init A: Real = 1;
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Real),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Real,
+                    },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Real,
+                    },
+                    val: Expr::Literal(Literal::Real(1.0)),
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+
+        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+
+        assert_eq!(inits, vec![
+            Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 1.0_f64.to_bits() as u64,
+            },
+        ]);
+    }
+
+    #[test]
+    fn impulse_init() {
+        // net NET {
+        //     output A: Impulse;
+
+        //     init A: Impulse = true;
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Impulse),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Impulse,
+                    },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Impulse,
+                    },
+                    val: Expr::Literal(Literal::Bool(true)),
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+
+        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+
+        assert_eq!(inits, vec![
+            Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 0 as u64,
+            },
+        ]);
+    }
+
+    #[test]
+    fn mod_init() {
+        // net NET {
+        //     output A: Mod(3);
+
+        //     init A: Mod(3) = 4;
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 2,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Mod(3)),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Mod(3),
+                    },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Mod(3),
+                    },
+                    val: Expr::Literal(Literal::Int(4)),
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+
+        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+
+        assert_eq!(inits, vec![
+            Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 1 as u64,
+            },
+        ]);
+    }
+
+    #[test]
+    fn custom_init() {
+        // ent_t COIN = {H, T};
+        // net NET {
+        //     output A: COIN;
+
+        //     init A: COIN = T;
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "COIN".to_string(),
+                kind: SymbolKind::EntType,
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 0,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "H".to_string(),
+                kind: SymbolKind::EntMember {
+                    parent: 0,
+                    mapping: 1,
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        ("A".to_string(), NetPort {
+                            symbol: 4,
+                            input: false,
+                        }),
+                    ]),
+                },
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Real),
+                span: Span{line: 0, col: 0},
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    val: Expr::Ident(Ident::Symbol(2)),
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([
+            (0, 0),
+            (1, 0),
+        ]);
+
+        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+
+        assert_eq!(inits, vec![
+            Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 1 as u64,
+            },
+        ]);
+    }
 
     // TODO: reason about corner cases?
 }
