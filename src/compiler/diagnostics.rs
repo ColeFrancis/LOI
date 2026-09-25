@@ -130,6 +130,7 @@ pub enum Diagnostic {
     },
 
     // In binary expressions or matching case scrutinee and arms
+    // and for inits on entities
     IncompatibleTypes {
         left: Type,
         right: Type,

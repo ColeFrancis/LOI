@@ -132,3 +132,5 @@ fn adder() {
         ]),
     ]);
 }
+
+// TODO: tests with custom ent types, impulses, and mods

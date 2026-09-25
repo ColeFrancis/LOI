@@ -250,14 +250,14 @@ pub struct InputEnt {
 #[derive(PartialEq, Debug)]
 pub struct OutputEnt {
     pub param: Param,
-    // span not needed yet
+    // span not needed
 }
 
 #[derive(PartialEq, Debug)]
 pub struct EntInit {
     pub param: Param,
     pub val: Expr,
-    // span not needed yet
+    // span not needed
 }
 
 #[derive(PartialEq, Debug)]

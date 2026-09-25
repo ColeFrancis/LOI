@@ -24,8 +24,8 @@ use std::collections::HashMap;
 
 use super::Synthesis;
 use crate::compiler::{
-    sem_analyzer::SemAnalyzer,
-    symbol::{Symbol, SymbolId},
+    sem_analyzer::{SemAnalyzer, types::Type},
+    symbol::{Symbol, SymbolId, SymbolKind},
     ast::{Net, NetItem, Ident, Expr, Literal},
     netlist::{Netlist, Entity, Relation},
     diagnostics::Diagnostics,
@@ -207,16 +207,30 @@ impl Synthesis {
 
                     // fold expression, deep clone necessary
                     let result_expr = SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
-                    let Expr::Literal(literal) = result_expr else {
-                        unreachable!("expression should have been folded");
-                    };
+                    let folded_val = match result_expr {
+                        Expr::Literal(literal) => match (literal, &init.param.param_type) {
+                            (Literal::Bool(b), &Type::Bool) => b as u64,
+                            (Literal::Bool(b), &Type::Impulse) => match b {
+                                true => 1 as u64, // Will make the ent true at time 1.
+                                false => 0 as u64,
+                            }
 
-                    let folded_val = match literal {
-                        Literal::Bool(b) => b as u64,
+                            (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
+                            (Literal::Int(i), &Type::Int) => i as u64,
+                            (Literal::Int(i), &Type::Real) => (i as f64).to_bits(),
 
-                        Literal::Int(i) => i as u64,
+                            (Literal::Real(r), &Type::Real) => r.to_bits(),
 
-                        Literal::Real(r) => r.to_bits(),
+                            (left_literal, right) => unreachable!("type checking already occured"),
+                        },
+
+                        Expr::Ident(Ident::Symbol(id)) => match  symbols[id].kind {
+                            SymbolKind::EntMember { mapping, .. } => mapping as u64,
+
+                            _ => unreachable!("ident should be ent member"),
+                        }
+
+                        _ => unreachable!("type checking already occured"),
                     };
 
                     ents[idx].val = Some(folded_val);
@@ -1352,6 +1366,9 @@ mod tests {
             },
         ]);
     }
+
+    // TODO: more testing with type conversion of inits
+    //  mods, impulse, custom type, etc
 
     // TODO: reason about corner cases?
 }

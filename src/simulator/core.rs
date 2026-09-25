@@ -856,4 +856,27 @@ mod tests {
             ]),
         ]);
     }
+
+    // #[test]
+    // fn impulse_oscillator() {
+    //     // rel_t imp_delay : (a: Impulse) -> Impulse = a;
+    //     // rel_t read_imp: (a: Impulse) -> Int = {
+    //     //     cases a {
+    //     //         true: 1,
+    //     //         _ : 0,
+    //     //     }
+    //     // };
+    //     // net OSC {
+    //     //     output a: Int;
+
+    //     //     init imp_1: Impulse = true; // will cause impulse on sim step 1
+
+    //     //     imp_1 := imp_delay(imp_2);
+    //     //     imp_2 := imp_delay(imp_1);
+
+    //     //     a := read_imp(imp_2);
+    //     // }
+
+
+    // }
 }
