@@ -27,16 +27,17 @@ use crate::compiler::{
     sem_analyzer::{SemAnalyzer, types::Type},
     symbol::{Symbol, SymbolId, SymbolKind},
     ast::{Net, NetItem, Ident, Expr, Literal},
-    netlist::{Netlist, Entity, Relation},
-    diagnostics::Diagnostics,
+    netlist::{Netlist, Interface, Entity, Relation, EntId},
+    diagnostics::{Diagnostics, Span},
 };
 
 use crate::simulator::event::Event;
 
 impl Synthesis {
-    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Vec<Event>) {
-        let mut inputs = Vec::new();
-        let mut outputs = Vec::new();
+    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Interface, Vec<Event>) {
+        let mut inputs = HashMap::<String, (EntId, Type)>::new();
+        let mut outputs = HashMap::<EntId, (String, Type)>::new();
+        let mut custom_type_maps = HashMap::<String, Vec<(String, u64)>>::new();
         let mut ents = Vec::new();
         let mut relations = Vec::new();
         let mut inits = Vec::new();
@@ -51,7 +52,20 @@ impl Synthesis {
 
                     let idx = ents.len();
 
-                    inputs.push((symbols[id].name.to_string(), idx));
+                    let ent_type = match input.param.param_type {
+                        Type::Bool => Type::Bool,
+                        Type::Impulse => Type::Impulse,
+                        Type::Int => Type::Int,
+                        Type::Real => Type::Real,
+                        Type::Mod(n) => Type::Mod(n),
+                        Type::Custom(Ident::Symbol(id)) => {
+                            let name = symbols[id].name.clone();
+                            Type::Custom(Ident::Str {val: name, span: Span{line: 0, col: 0}})
+                        }
+                        _ => unreachable!("type should match one of above"),
+                    };
+
+                    inputs.insert(symbols[id].name.to_string(), (idx, ent_type));
                     ent_map.insert(id, idx);
                     ents.push(Entity {
                         val: None,
@@ -66,7 +80,20 @@ impl Synthesis {
 
                     let idx = ents.len();
 
-                    outputs.push((symbols[id].name.to_string(), idx));
+                    let ent_type = match output.param.param_type {
+                        Type::Bool => Type::Bool,
+                        Type::Impulse => Type::Impulse,
+                        Type::Int => Type::Int,
+                        Type::Real => Type::Real,
+                        Type::Mod(n) => Type::Mod(n),
+                        Type::Custom(Ident::Symbol(id)) => {
+                            let name = symbols[id].name.clone();
+                            Type::Custom(Ident::Str {val: name, span: Span{line: 0, col: 0}})
+                        }
+                        _ => unreachable!("type should match one of above"),
+                    };
+
+                    outputs.insert(idx, (symbols[id].name.to_string(), ent_type));
                     ent_map.insert(id, idx);
                     ents.push(Entity {
                         val: None,
@@ -74,6 +101,21 @@ impl Synthesis {
                     });
                 }
 
+                _ => {}
+            }
+        }
+
+        for symbol in symbols.iter() {
+            match &symbol.kind {
+                SymbolKind::EntMember { parent, mapping } => {
+                    let symbol_name = symbol.name.clone();
+                    let parent_name = symbols[*parent].name.clone();
+
+                    custom_type_maps
+                        .entry(parent_name)
+                        .or_default()
+                        .push((symbol_name, *mapping as u64));
+                }
                 _ => {}
             }
         }
@@ -94,11 +136,14 @@ impl Synthesis {
         }
 
         (Netlist {
-            inputs,
-            outputs,
             relations,
             ents,
-        }, inits)
+        }, Interface {
+            inputs,
+            outputs,
+            custom_type_maps,
+        },
+        inits)
     }
 
     fn synthesize_net(nets: &[Net], target_net_idx: usize, obj_map: &HashMap::<SymbolId, usize>, mut ent_map: HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>, relations: &mut Vec<Relation>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) {
@@ -1325,16 +1370,9 @@ mod tests {
             (1, 0),
         ]);
 
-        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (netlist, interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(netlist, Netlist {
-            inputs: vec![
-                ("A".to_string(), 0),
-                ("B".to_string(), 1),
-            ],
-            outputs: vec![
-                ("S".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -1357,6 +1395,16 @@ mod tests {
                     sinks: vec![],
                 },
             ]
+        });
+        assert_eq!(interface, Interface {
+            inputs: HashMap::from([
+                ("A".to_string(), (0, Type::Int)),
+                ("B".to_string(), (1, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("S".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
         });
         assert_eq!(inits, vec![
             Event {
@@ -1419,7 +1467,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(inits, vec![
             Event {
@@ -1482,7 +1530,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(inits, vec![
             Event {
@@ -1545,7 +1593,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(inits, vec![
             Event {
@@ -1630,7 +1678,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let (netlist, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(inits, vec![
             Event {

@@ -20,7 +20,7 @@
 
 use loi::compiler::Compiler;
 
-use loi::simulator::Simulator;
+use loi::simulator::{Simulator, IO_VAL};
 
 #[test]
 fn flip_flop() {
@@ -31,27 +31,27 @@ fn flip_flop() {
 
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
 
-    let Ok((netlist, relations, inits)) = result else {
+    let Ok((netlist, interface, relations, inits)) = result else {
         unreachable!();
     };
 
-    let mut sim = Simulator::new(netlist, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, inits);
 
     let inputs = vec![
         ("D".to_string(), vec![
-            (0, 0),
-            (11, 1),
-            (31, 0),
+            (0, IO_VAL::Bool(false)),
+            (11, IO_VAL::Bool(true)),
+            (31, IO_VAL::Bool(false)),
         ]),
         ("clk".to_string(), vec![
-            (10, 1),
-            (15, 0),
-            (20, 1),
-            (25, 0),
-            (30, 1),
-            (35, 0),
-            (40, 1),
-            (45, 0),
+            (10, IO_VAL::Bool(true)),
+            (15, IO_VAL::Bool(false)),
+            (20, IO_VAL::Bool(true)),
+            (25, IO_VAL::Bool(false)),
+            (30, IO_VAL::Bool(true)),
+            (35, IO_VAL::Bool(false)),
+            (40, IO_VAL::Bool(true)),
+            (45, IO_VAL::Bool(false)),
         ]),
     ];
 
@@ -65,14 +65,14 @@ fn flip_flop() {
 
     assert_eq!(output, vec![
         ("Q".to_string(), vec![
-            (0, 0),
-            (24, 1),
-            (45, 0),
+            (0, IO_VAL::Bool(false)),
+            (24, IO_VAL::Bool(true)),
+            (45, IO_VAL::Bool(false)),
         ]),
         ("Qp".to_string(), vec![
-            (0, 1),
-            (25, 0),
-            (44, 1),
+            (0, IO_VAL::Bool(true)),
+            (25, IO_VAL::Bool(false)),
+            (44, IO_VAL::Bool(true)),
         ]),
     ]);
 }
@@ -86,25 +86,25 @@ fn adder() {
 
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
 
-    let Ok((netlist, relations, inits)) = result else {
+    let Ok((netlist, interface, relations, inits)) = result else {
         unreachable!();
     };
 
-    let mut sim = Simulator::new(netlist, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, inits);
 
     let inputs = vec![
         ("cin".to_string(), vec![
-            (0, 0),
-            (30, 1),
+            (0, IO_VAL::Bool(false)),
+            (30, IO_VAL::Bool(true)),
         ]),
         ("A".to_string(), vec![
-            (0, 0),
-            (10, 1),
-            (40, 0),
+            (0, IO_VAL::Bool(false)),
+            (10, IO_VAL::Bool(true)),
+            (40, IO_VAL::Bool(false)),
         ]),
         ("B".to_string(), vec![
-            (0, 0),
-            (20, 1),
+            (0, IO_VAL::Bool(false)),
+            (20, IO_VAL::Bool(true)),
         ]),
     ];
 
@@ -118,17 +118,17 @@ fn adder() {
 
     assert_eq!(output, vec![
         ("S".to_string(), vec![
-            (6, 0),
-            (14, 1),
-            (25, 0),
-            (32, 1),
-            (46, 0),
+            (6, IO_VAL::Bool(false)),
+            (14, IO_VAL::Bool(true)),
+            (25, IO_VAL::Bool(false)),
+            (32, IO_VAL::Bool(true)),
+            (46, IO_VAL::Bool(false)),
         ]),
         ("cout".to_string(), vec![
-            (5, 0),
-            (22, 1),
-            (42, 0),
-            (45, 1),
+            (5, IO_VAL::Bool(false)),
+            (22, IO_VAL::Bool(true)),
+            (42, IO_VAL::Bool(false)),
+            (45, IO_VAL::Bool(true)),
         ]),
     ]);
 }

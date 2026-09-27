@@ -22,12 +22,14 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
+
+use super::sem_analyzer::types::Type;
+
 pub type EntId = usize;
 
 #[derive(PartialEq, Debug)]
 pub struct Netlist {
-    pub inputs: Vec<(String, EntId)>, // name of port needed for taking inputs in the simulator
-    pub outputs: Vec<(String, EntId)>, // name of port needed for reporting outputs in the simulator
     pub relations: Vec<Relation>,
     pub ents: Vec<Entity>,
 }
@@ -35,10 +37,25 @@ pub struct Netlist {
 impl Netlist {
     pub fn new() -> Self {
         Self {
-            inputs: vec![],
-            outputs: vec![],
             relations: vec![],
             ents: vec![],
+        }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Interface {
+    pub inputs: HashMap<String, (EntId, Type)>, // name of port needed for taking inputs in the simulator
+    pub outputs: HashMap<EntId, (String, Type)>, // name of port needed for reporting outputs in the simulator
+    pub custom_type_maps: HashMap<String, Vec<(String, u64)>>,
+}
+
+impl Interface {
+    pub fn new() -> Self {
+        Self {
+            inputs: HashMap::new(),
+            outputs: HashMap::new(),
+            custom_type_maps: HashMap::new(),
         }
     }
 }

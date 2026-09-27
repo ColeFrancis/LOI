@@ -23,45 +23,80 @@
 use std::collections::HashMap;
 
 use super::Simulator;
+use super::IO_VAL;
 use super::scheduler::Scheduler;
 use super::rel_interpreter::RelInterpreter;
 use super::event::Event;
 use super::runtime_diagnostics::RuntimeError;
 
 use crate::compiler::{
-    netlist::{Netlist, EntId},
+    ast::Ident,
+    netlist::{Netlist, Interface, EntId},
     compiled_rel::CompiledRel,
+    sem_analyzer::types::Type,
 };
 
 impl Simulator {
-    pub fn new(netlist: Netlist, relations: Vec<CompiledRel>, inits: Vec<Event>) -> Self {
+    pub fn new(netlist: Netlist, interface: Interface, relations: Vec<CompiledRel>, inits: Vec<Event>) -> Self {
         let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
 
-        for (_, output_ent_id) in &netlist.outputs {
+        for output_ent_id in interface.outputs.keys() {
             watcher.insert(*output_ent_id, Vec::new());
         }
 
         Self {
             netlist,
+            interface,
             scheduler: Scheduler::new(inits),
             interpreter: RelInterpreter::new(relations),
             watcher,
         }
     }
 
-    pub fn load_inputs(&mut self, inputs: Vec<(String, Vec<(usize, u64)>)>) -> Result<(), RuntimeError> {
-        for (ent, trace) in inputs {
-            let ent_id = self.netlist.inputs
-                .iter()
-                .find(|(name, _)| name == &ent)
-                .map(|(_, id)| *id)
-                .ok_or_else(|| RuntimeError::NonexistantInput(ent))?;
+    pub fn load_inputs(&mut self, inputs: Vec<(String, Vec<(usize, IO_VAL)>)>) -> Result<(), RuntimeError> {
+        for (ent_name, trace) in inputs {
+            let (ent_id, ent_type) = self.interface.inputs.get(&ent_name)
+                .ok_or_else(|| RuntimeError::NonexistantInput(ent_name))?;
             
-            for (timestep, new_val) in trace {
+            for (timestep, io_val) in trace {
+                let new_val = match (&io_val, ent_type) {
+                    (IO_VAL::Bool(b), Type::Bool) => *b as u64,
+
+                    (IO_VAL::Int(i), Type::Int) => *i as u64,
+                    (IO_VAL::Int(i), Type::Real) => (*i as f64).to_bits(),
+
+                    (IO_VAL::Real(f), Type::Real) => f.to_bits(),
+
+                    (IO_VAL::Custom(given_str), Type::Custom(Ident::Str{val, ..})) => {
+                        self.interface.custom_type_maps.get(val)
+                        .and_then(|members| {
+                            members.iter()
+                                .find(|(member, _)| member == given_str)
+                                .map(|(_, mapping)| *mapping)
+                        })
+                        .ok_or_else(|| RuntimeError::NonexistantInputValue(given_str.clone()))?
+                    }
+
+                    _ => {
+                        let found = match io_val {
+                            IO_VAL::Bool(_) => Type::Bool,
+                            IO_VAL::Int(_) => Type::Int,
+                            IO_VAL::Real(_) => Type::Real,
+                            IO_VAL::Custom(_) => Type::Unknown,
+                        };
+
+                        return Err(RuntimeError::IncompatibleTypes {
+                            ent_id: *ent_id,
+                            expected: ent_type.clone(),
+                            found,
+                        })
+                    }
+                };
+
                 self.scheduler.push(Event {
                     timestep,
                     new_val,
-                    ent_id,
+                    ent_id: *ent_id,
                 });
             }
         }
@@ -70,14 +105,49 @@ impl Simulator {
     }
 
     // returns all the outputs in watcher at the end of the simulation, also clearing vectors in watcher
-    pub fn dump_outputs(&mut self) -> Vec<(String, Vec<(usize, u64)>)> {
-        let mut outputs = Vec::with_capacity(self.netlist.outputs.len());
+    pub fn dump_outputs(&mut self) -> Vec<(String, Vec<(usize, IO_VAL)>)> {
+        let mut outputs = Vec::with_capacity(self.interface.outputs.len());
 
-        for (name, ent_id) in &self.netlist.outputs {
-            if let Some(trace) = self.watcher.get_mut(ent_id) {
-                outputs.push((name.clone(), std::mem::take(trace)));
+        for (ent_id, (ent_name, ent_type)) in &self.interface.outputs {
+            if let Some(trace) = self.watcher.get_mut(&ent_id) {
+                let trace =std::mem::take(trace);
+                let mut new_trace = Vec::new();
+
+                for (timestep, raw_val) in trace {
+                    let io_val = match ent_type {
+                        Type::Bool => IO_VAL::Bool(raw_val != 0),
+                        Type::Impulse => IO_VAL::Bool(raw_val == timestep as u64),
+                        Type::Int => IO_VAL::Int(raw_val as i64),
+                        Type::Real => IO_VAL::Real(f64::from_bits(raw_val)),
+                        Type::Mod(_) => IO_VAL::Int(raw_val as i64),
+                        Type::Custom(Ident::Str{val,..}) => {
+                            let name = self.interface.custom_type_maps.get(val)
+                                .and_then(|members| {
+                                    members.iter()
+                                        .find(|(_, mapping)| mapping == &raw_val)
+                                        .map(|(member, _)| member)
+                                }).unwrap();
+                            
+                                IO_VAL::Custom(name.to_string())
+                        }
+                        _ => unreachable!("Type should not be any other"),
+                    };
+
+                    new_trace.push((timestep, io_val));
+                }
+                outputs.push((ent_name.clone(), new_trace));
             }
         }
+
+        // Sort because iterating thrugh hashmap isnt guarenteed to be in order
+        // Maybe we shouldn't care about order
+        outputs.sort_by_key(|(name, _)| {
+            self.interface.outputs  
+                .iter()
+                .find(|(_, (ent_name, _))| ent_name == name)
+                .map(|(id, _)| *id)
+                .unwrap()
+        });
 
         outputs
     }
@@ -91,7 +161,6 @@ impl Simulator {
             let mut relations_to_call = Vec::new();
 
             for event in curr_events {
-                println!("{:?}", event);
                 // ensure entites aren't driven twice
                 if ent_last_driven[event.ent_id] != self.scheduler.curr_time {
                     ent_last_driven[event.ent_id] = self.scheduler.curr_time;
@@ -180,13 +249,6 @@ mod tests {
         //     q := ADD(a, b);
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-                ("b".to_string(), 1),
-            ],
-            outputs: vec![
-                ("q".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -210,6 +272,16 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface{
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+                ("b".to_string(), (1, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("q".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![
             CompiledRel {
@@ -224,14 +296,14 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 1),
+                (1, IO_VAL::Int(1)),
             ]),
             ("b".to_string(), vec![
-                (2, 1),
+                (2, IO_VAL::Int(1)),
             ]),
         ];
 
@@ -245,7 +317,7 @@ mod tests {
 
         assert_eq!(output, vec![
             ("q".to_string(), vec![
-                (3 as usize, 2 as u64),
+                (3 as usize, IO_VAL::Int(2)),
             ]),
         ]);
     }
@@ -257,12 +329,6 @@ mod tests {
         //     output a: Int;
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-            ],
-            outputs: vec![
-                ("a".to_string(), 0),
-            ],
             relations: vec![],
             ents: vec![
                 Entity {
@@ -271,16 +337,25 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![];
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("b".to_string(), vec![
-                (2, 1),
+                (2, IO_VAL::Int(1)),
             ]),
         ];
 
@@ -296,12 +371,6 @@ mod tests {
         //     output a: Int;
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-            ],
-            outputs: vec![
-                ("a".to_string(), 0),
-            ],
             relations: vec![],
             ents: vec![
                 Entity {
@@ -310,17 +379,26 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![];
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 1),
-                (1, 2),
+                (1, IO_VAL::Int(1)),
+                (1, IO_VAL::Int(2)),
             ]),
         ];
 
@@ -338,23 +416,16 @@ mod tests {
 
     #[test]
     fn interpreter_error() {
-        // rel_t DIV : (a: Int, b: Int) -> Real = a/b;
+        // rel_t DIV : (a: Int, b: Int) -> Int = a/b;
 
         // net A {
-        //     input a: Real;
-        //     input b: Real;
-        //     output q: Real;
+        //     input a: Int;
+        //     input b: Int;
+        //     output q: Int;
 
         //     q := DIV(a, b);
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-                ("b".to_string(), 1),
-            ],
-            outputs: vec![
-                ("q".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -378,6 +449,16 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+                ("b".to_string(), (1, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("q".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![
             CompiledRel {
@@ -392,14 +473,14 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 1),
+                (1, IO_VAL::Int(1)),
             ]),
             ("b".to_string(), vec![
-                (2, 0),
+                (2, IO_VAL::Int(0)),
             ]),
         ];
 
@@ -423,12 +504,6 @@ mod tests {
         //     output a: Int;
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-            ],
-            outputs: vec![
-                ("a".to_string(), 0),
-            ],
             relations: vec![],
             ents: vec![
                 Entity {
@@ -437,16 +512,25 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![];
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (5, 1),
+                (5, IO_VAL::Int(1)),
             ]),
         ];
 
@@ -466,12 +550,6 @@ mod tests {
         //     output a: Int;
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-            ],
-            outputs: vec![
-                ("a".to_string(), 0),
-            ],
             relations: vec![],
             ents: vec![
                 Entity {
@@ -480,16 +558,25 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![];
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (50, 1),
+                (50, IO_VAL::Int(1)),
             ]),
         ];
 
@@ -505,13 +592,6 @@ mod tests {
     #[test]
     fn nand_vs_and_and_not() {
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-                ("b".to_string(), 1),
-            ],
-            outputs: vec![
-                ("q".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -535,6 +615,16 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Bool)),
+                ("b".to_string(), (1, Type::Bool)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("q".to_string(), Type::Bool)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![
             CompiledRel {
@@ -550,20 +640,20 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 1),
-                (5, 1),
-                (9, 0),
-                (13, 0),
+                (1, IO_VAL::Bool(true)),
+                (5, IO_VAL::Bool(true)),
+                (9, IO_VAL::Bool(false)),
+                (13, IO_VAL::Bool(false)),
             ]),
             ("b".to_string(), vec![
-                (1, 1),
-                (5, 0),
-                (9, 1),
-                (13, 0),
+                (1, IO_VAL::Bool(true)),
+                (5, IO_VAL::Bool(false)),
+                (9, IO_VAL::Bool(true)),
+                (13, IO_VAL::Bool(false)),
             ]),
         ];
 
@@ -576,13 +666,6 @@ mod tests {
         let output_1 = sim.dump_outputs();
 
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-                ("b".to_string(), 1),
-            ],
-            outputs: vec![
-                ("q".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -616,6 +699,16 @@ mod tests {
                 }
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Bool)),
+                ("b".to_string(), (1, Type::Bool)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("q".to_string(), Type::Bool)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![
             CompiledRel {
@@ -638,20 +731,20 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 1),
-                (5, 1),
-                (9, 0),
-                (13, 0),
+                (1, IO_VAL::Bool(true)),
+                (5, IO_VAL::Bool(true)),
+                (9, IO_VAL::Bool(false)),
+                (13, IO_VAL::Bool(false)),
             ]),
             ("b".to_string(), vec![
-                (1, 1),
-                (5, 0),
-                (9, 1),
-                (13, 0),
+                (1, IO_VAL::Bool(true)),
+                (5, IO_VAL::Bool(false)),
+                (9, IO_VAL::Bool(true)),
+                (13, IO_VAL::Bool(false)),
             ]),
         ];
 
@@ -684,13 +777,6 @@ mod tests {
         //     q := NAND(net_4, net_5);
         // }
         let netlist = Netlist {
-            inputs: vec![
-                ("a".to_string(), 0),
-                ("b".to_string(), 1),
-            ],
-            outputs: vec![
-                ("q".to_string(), 2),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -744,6 +830,16 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Bool)),
+                ("b".to_string(), (1, Type::Bool)),
+            ]),
+            outputs: HashMap::from([
+                (2, ("q".to_string(), Type::Bool)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
 
         let relations = vec![
             CompiledRel {
@@ -759,16 +855,16 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, 0),
-                (5, 1),
+                (1, IO_VAL::Bool(false)),
+                (5, IO_VAL::Bool(true)),
             ]),
             ("b".to_string(), vec![
-                (1, 0),
-                (9, 1),
+                (1, IO_VAL::Bool(false)),
+                (9, IO_VAL::Bool(true)),
             ]),
         ];
 
@@ -782,9 +878,9 @@ mod tests {
 
         assert_eq!(output, vec![
             ("q".to_string(), vec![
-                (4 as usize, 0 as u64),
-                (7 as usize, 1 as u64),
-                (12 as usize, 0 as u64),
+                (4 as usize, IO_VAL::Bool(false)),
+                (7 as usize, IO_VAL::Bool(true)),
+                (12 as usize, IO_VAL::Bool(false)),
             ]),
         ]);
     }
@@ -801,10 +897,6 @@ mod tests {
         //     a := ADD_1(a);
         // }
         let netlist = Netlist {
-            inputs: vec![],
-            outputs: vec![
-                ("a".to_string(), 0),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -819,6 +911,13 @@ mod tests {
                     sinks: vec![0],
                 },
             ],
+        };
+        let interface = Interface {
+            inputs: HashMap::new(),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
         };
 
         let relations = vec![
@@ -840,7 +939,7 @@ mod tests {
             },
         ];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let _steps = sim.run(5);
 
@@ -848,12 +947,12 @@ mod tests {
 
         assert_eq!(output, vec![
             ("a".to_string(), vec![
-                (0 as usize, 0 as u64),
-                (1 as usize, 1 as u64),
-                (2 as usize, 2 as u64),
-                (3 as usize, 3 as u64),
-                (4 as usize, 4 as u64),
-                (5 as usize, 5 as u64),
+                (0 as usize, IO_VAL::Int(0)),
+                (1 as usize, IO_VAL::Int(1)),
+                (2 as usize, IO_VAL::Int(2)),
+                (3 as usize, IO_VAL::Int(3)),
+                (4 as usize, IO_VAL::Int(4)),
+                (5 as usize, IO_VAL::Int(5)),
             ]),
         ]);
     }
@@ -881,11 +980,6 @@ mod tests {
         //     a := read_imp(i);
         // }
         let netlist = Netlist {
-            inputs: vec![],
-            outputs: vec![
-                ("i".to_string(), 0),
-                ("a".to_string(), 1),
-            ],
             relations: vec![
                 Relation {
                     idx: 0,
@@ -931,6 +1025,14 @@ mod tests {
                 },
             ],
         };
+        let interface = Interface {
+            inputs: HashMap::new(),
+            outputs: HashMap::from([
+                (0, ("i".to_string(), Type::Impulse)),
+                (1, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(), 
+        };
 
         let relations = vec![
             CompiledRel {
@@ -963,7 +1065,7 @@ mod tests {
             },
         ];
 
-        let mut sim = Simulator::new(netlist, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
 
         let _steps = sim.run(10);
 
@@ -971,15 +1073,19 @@ mod tests {
 
         assert_eq!(output, vec![
             ("i".to_string(), vec![
-                (2, 2),
-                (4, 4),
-                (6, 6),
-                (8, 8),
-                (10, 10),
+                (2, IO_VAL::Bool(true)),
+                (4, IO_VAL::Bool(true)),
+                (6, IO_VAL::Bool(true)),
+                (8, IO_VAL::Bool(true)),
+                (10, IO_VAL::Bool(true)),
             ]),
             ("a".to_string(), vec![
-                (3, 1),
+                (3, IO_VAL::Int(1)),
             ]),
         ]);
     }
+
+    // TODO: Test with custom types
+    // TODO: Test errors to do with nonexistant custom type members
+    // TODO: Test error for invalid IO_VAL
 }

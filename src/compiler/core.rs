@@ -37,14 +37,14 @@ use crate::compiler::{
     diagnostics::{Diagnostics, Diagnostic},
     compile_error::CompileError,
     compiled_rel::CompiledRel,
-    netlist::Netlist,
+    netlist::{Netlist, Interface},
 };
 
 use crate::simulator::event::Event;
 
 impl Compiler {
     // return netlist and vector of compiled relations or panic
-    pub fn compile(file_path: &str, top_net: &str) -> Result<(Netlist, Vec<CompiledRel>, Vec<Event>), CompileError> {
+    pub fn compile(file_path: &str, top_net: &str) -> Result<(Netlist, Interface, Vec<CompiledRel>, Vec<Event>), CompileError> {
         let path = PathBuf::from(file_path);
 
         if path.extension().and_then(|ext| ext.to_str()) != Some("loi") {
@@ -59,13 +59,13 @@ impl Compiler {
         let mut diagnostics = Diagnostics::new();
 
         let (ast, mut symbols) = Self::front_end(&code, &mut diagnostics);
-        let (netlist, compiled_relations, inits) = Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
+        let (netlist, interface, compiled_relations, inits) = Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
 
         if diagnostics.has_errors() {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        Ok((netlist, compiled_relations, inits))
+        Ok((netlist, interface, compiled_relations, inits))
     }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
@@ -75,7 +75,7 @@ impl Compiler {
         SemAnalyzer::new(program, diagnostics).analyze()
     }
 
-    fn back_end(ast: Program, top_net: &str, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Vec<CompiledRel>, Vec<Event>) {
+    fn back_end(ast: Program, top_net: &str, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Interface, Vec<CompiledRel>, Vec<Event>) {
         let mut compiled_relations = Vec::new();
         let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
@@ -122,12 +122,12 @@ impl Compiler {
                 name: top_net.to_string(),
             });
 
-            return (Netlist::new(), compiled_relations, Vec::new());
+            return (Netlist::new(), Interface::new(), compiled_relations, Vec::new());
         };
 
-        let (netlist, inits) = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
+        let (netlist, interface, inits) = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
 
-        (netlist, compiled_relations, inits)
+        (netlist, interface, compiled_relations, inits)
     }
 }
 

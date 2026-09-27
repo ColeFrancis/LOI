@@ -15,13 +15,13 @@
 mod core;
 mod lexer;
 mod parser;
-mod sem_analyzer;
+pub mod sem_analyzer;
 mod code_gen;
 mod synthesis;
 mod diagnostics;
 
 
-mod ast;
+pub mod ast;
 mod symbol;
 pub mod compile_error;
 pub mod compiled_rel;

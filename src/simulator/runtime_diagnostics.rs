@@ -19,6 +19,7 @@
 //! Author: Cole Francis
 
 use crate::compiler::netlist::{EntId, RelId};
+use crate::compiler::sem_analyzer::types::Type;
 
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {
@@ -32,6 +33,12 @@ pub enum RuntimeError {
         timestep: usize,
     },
     NonexistantInput(String),
+    NonexistantInputValue(String),
+    IncompatibleTypes {
+        ent_id: EntId,
+        expected: Type,
+        found: Type,
+    }
 }
 
 #[derive(Debug, PartialEq)]

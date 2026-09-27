@@ -25,10 +25,20 @@ use crate::simulator::{
     rel_interpreter::RelInterpreter,
 };
 
-use crate::compiler::netlist::{Netlist, EntId};
+use crate::compiler::netlist::{Netlist, Interface, EntId};
+
+#[allow(non_camel_case_types)]
+#[derive(PartialEq, Debug)]
+pub enum IO_VAL {
+    Bool(bool),
+    Int(i64),
+    Real(f64),
+    Custom(String),
+}
 
 pub struct Simulator {
     netlist: Netlist,
+    interface: Interface,
     scheduler: Scheduler,
     interpreter: RelInterpreter,
     watcher: HashMap<EntId, Vec<(usize, u64)>>,

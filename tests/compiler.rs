@@ -18,11 +18,14 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
+
 use loi::compiler::{
     Compiler,
     compile_error::CompileError,
-    netlist::{Netlist, Relation, Entity},
+    netlist::{Netlist, Interface, Relation, Entity},
     compiled_rel::CompiledRel,
+    sem_analyzer::types::Type,
 };
 
 use loi::simulator::rel_interpreter::test_assembler::assemble;
@@ -66,16 +69,6 @@ fn calculator() {
 
     assert_eq!(result, Ok((
         Netlist {
-            inputs: vec![
-                ("I1".to_string(), 0),
-                ("I2".to_string(), 1),
-                ("clk".to_string(), 2),
-                ("sub".to_string(), 3),
-            ],
-            outputs: vec![
-                ("O1".to_string(), 4),
-                ("O2".to_string(), 5),
-            ],
             relations: vec![
                 Relation { 
                     idx: 0,
@@ -641,6 +634,19 @@ fn calculator() {
                 },
             ],
         }, 
+        Interface {
+            inputs: HashMap::from([
+                ("I1".to_string(), (0, Type::Bool)),
+                ("I2".to_string(), (1, Type::Bool)),
+                ("clk".to_string(), (2, Type::Bool)),
+                ("sub".to_string(), (3, Type::Bool)),
+            ]),
+            outputs: HashMap::from([
+                (4, ("O1".to_string(), Type::Bool)),
+                (5, ("O2".to_string(), Type::Bool)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        },
         vec![
             CompiledRel {
                 name: "NAND".to_string(),
