@@ -51,7 +51,6 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    // TODO: reason more about if I need to check more than just multiple driver errors
     fn check_constraints_net(&mut self, net: Net) -> Option<Net> { 
         let mut has_errors = false; 
         let mut driven_ents: Vec<(SymbolId, Span)> = Vec::new();
