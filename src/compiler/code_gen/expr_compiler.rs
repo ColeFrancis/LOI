@@ -48,7 +48,6 @@ impl<'a> CodeGen<'a> {
                 }
             }
 
-                                                                                             // TODO: custom types appear as idents
             Expr::Ident(Ident::Symbol(id)) => {
                 match self.symbol_table[id].kind.clone() {
                     SymbolKind::Variable(ident_type) => {

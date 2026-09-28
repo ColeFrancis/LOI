@@ -498,6 +498,10 @@ mod tests {
         }));
     }
 
+    // TODO: test type conversion and type conversion errors of inputs
+    // TODO: Test errors to do with nonexistant custom type members
+    // TODO: Test error for invalid IoVal
+
     #[test]
     fn max_steps() {
         // net A {
@@ -1197,8 +1201,4 @@ mod tests {
             ]),
         ]);
     }
-
-    // TODO: test type conversion and type conversion errors of inputs
-    // TODO: Test errors to do with nonexistant custom type members
-    // TODO: Test error for invalid IoVal
 }
