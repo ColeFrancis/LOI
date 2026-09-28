@@ -324,7 +324,7 @@ mod tests {
     }
 
     #[test]
-    fn non_existant_input_error() {
+    fn non_existant_input() {
         // net A {
         //     input a: Int;
         //     output a: Int;
@@ -363,6 +363,157 @@ mod tests {
         let success = sim.load_inputs(inputs);
 
         assert_eq!(success, Err(RuntimeError::NonexistantInput("b".to_string())));
+    }
+
+    #[test]
+    fn type_conversion() {
+        // net A {
+        //     input a: Real;
+        //     output a: Real;
+        // }
+        let netlist = Netlist {
+            relations: vec![],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Real)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Real)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let inputs = vec![
+            ("a".to_string(), vec![
+                (2, IoVal::Int(1)),
+            ]),
+        ];
+
+        let success = sim.load_inputs(inputs);
+
+        assert_eq!(success, Ok(()));
+
+        let _steps = sim.run(5);
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(output, vec![
+            ("a".to_string(), vec![
+                (2, IoVal::Real(1.0)),
+            ]),
+        ]);
+    }
+
+    #[test]
+    fn incorrect_input_type() {
+        // net A {
+        //     input a: Int;
+        //     output a: Int;
+        // }
+        let netlist = Netlist {
+            relations: vec![],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Int)),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let inputs = vec![
+            ("a".to_string(), vec![
+                (2, IoVal::Real(1.0)),
+            ]),
+        ];
+
+        let success = sim.load_inputs(inputs);
+
+        assert_eq!(success, Err(RuntimeError::IncompatibleTypes {
+            ent_id: 0,
+            expected: Type::Int,
+            found: Type::Real,
+        }));
+    }
+
+    #[test]
+    fn nonexistant_input_value() {
+        // ent_t TEST = {VAL1};
+        // net A {
+        //     input a: TEST;
+        //     output a: TEST;
+        // }
+        let netlist = Netlist {
+            relations: vec![],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Custom(Ident::Str {
+                    val: "TEST".to_string(),
+                    span: Span{line: 0, col: 0},
+                }))),
+            ]),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Custom(Ident::Str {
+                    val: "TEST".to_string(),
+                    span: Span{line: 0, col: 0},
+                }))),
+            ]),
+            custom_type_maps: HashMap::from([
+                ("TEST".to_string(), vec![
+                    ("VAL1".to_string(), 0),
+                ]),
+            ]),
+        };
+
+        let relations = vec![];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let inputs = vec![
+            ("a".to_string(), vec![
+                (2, IoVal::Custom("VAL2".to_string())),
+            ]),
+        ];
+
+        let success = sim.load_inputs(inputs);
+
+        assert_eq!(success, Err(RuntimeError::NonexistantInputValue("VAL2".to_string())));
     }
 
     #[test]
@@ -497,10 +648,6 @@ mod tests {
             timestep: 2,
         }));
     }
-
-    // TODO: test type conversion and type conversion errors of inputs
-    // TODO: Test errors to do with nonexistant custom type members
-    // TODO: Test error for invalid IoVal
 
     #[test]
     fn max_steps() {

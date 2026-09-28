@@ -986,6 +986,4 @@ mod tests {
 
         assert_eq!(result, Expr::Literal(Literal::Int(0)));
     }
-
-    // TODO: Test boolean operations
 }
