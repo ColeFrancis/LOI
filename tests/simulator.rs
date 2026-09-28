@@ -133,4 +133,45 @@ fn adder() {
     ]);
 }
 
-// TODO: tests with custom ent types, impulses, and mods
+#[test]
+fn impulse_and_custom() {
+    let path = format!("{}/tests/fixtures/custom_type_latch.loi", env!("CARGO_MANIFEST_DIR"));
+    println!("path: {}", path);
+
+    let result = Compiler::compile(&path, "LATCH");
+
+    assert!(result.is_ok(), "Compilation failed: {:?}", result);
+
+    let Ok((netlist, interface, relations, inits)) = result else {
+        unreachable!();
+    };
+
+    let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+    let inputs = vec![
+        ("in".to_string(), vec![
+            (1, IoVal::Custom("B".to_string())),
+            (5, IoVal::Custom("A".to_string())),
+        ]),
+        ("clk".to_string(), vec![
+            (2, IoVal::Bool(true)),
+            (8, IoVal::Bool(true)),
+        ]),
+    ];
+
+    let success = sim.load_inputs(inputs);
+
+    assert_eq!(success, Ok(()));
+
+    let _steps = sim.run(256);
+
+    let output = sim.dump_outputs();
+
+    assert_eq!(output, vec![
+        ("out".to_string(), vec![
+            (0, IoVal::Custom("A".to_string())),
+            (3, IoVal::Custom("B".to_string())),
+            (9, IoVal::Custom("A".to_string())),
+        ]),
+    ]);
+}

@@ -61,6 +61,11 @@ impl Simulator {
             for (timestep, io_val) in trace {
                 let new_val = match (&io_val, ent_type) {
                     (IoVal::Bool(b), Type::Bool) => *b as u64,
+                    (IoVal::Bool(b), Type::Impulse) => match b {
+                        true => timestep as u64,
+                        false if timestep == 0 => u64::MAX, // 0 is the default value when needing to set impulse to 0, except for events at timestep 0 (like inits)
+                        _ => 0 as u64,
+                    },
 
                     (IoVal::Int(i), Type::Int) => *i as u64,
                     (IoVal::Int(i), Type::Real) => (*i as f64).to_bits(),
