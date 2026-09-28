@@ -23,7 +23,7 @@
 use std::collections::HashMap;
 
 use super::Simulator;
-use super::IO_VAL;
+use super::IoVal;
 use super::scheduler::Scheduler;
 use super::rel_interpreter::RelInterpreter;
 use super::event::Event;
@@ -53,21 +53,21 @@ impl Simulator {
         }
     }
 
-    pub fn load_inputs(&mut self, inputs: Vec<(String, Vec<(usize, IO_VAL)>)>) -> Result<(), RuntimeError> {
+    pub fn load_inputs(&mut self, inputs: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<(), RuntimeError> {
         for (ent_name, trace) in inputs {
             let (ent_id, ent_type) = self.interface.inputs.get(&ent_name)
                 .ok_or_else(|| RuntimeError::NonexistantInput(ent_name))?;
             
             for (timestep, io_val) in trace {
                 let new_val = match (&io_val, ent_type) {
-                    (IO_VAL::Bool(b), Type::Bool) => *b as u64,
+                    (IoVal::Bool(b), Type::Bool) => *b as u64,
 
-                    (IO_VAL::Int(i), Type::Int) => *i as u64,
-                    (IO_VAL::Int(i), Type::Real) => (*i as f64).to_bits(),
+                    (IoVal::Int(i), Type::Int) => *i as u64,
+                    (IoVal::Int(i), Type::Real) => (*i as f64).to_bits(),
 
-                    (IO_VAL::Real(f), Type::Real) => f.to_bits(),
+                    (IoVal::Real(f), Type::Real) => f.to_bits(),
 
-                    (IO_VAL::Custom(given_str), Type::Custom(Ident::Str{val, ..})) => {
+                    (IoVal::Custom(given_str), Type::Custom(Ident::Str{val, ..})) => {
                         self.interface.custom_type_maps.get(val)
                         .and_then(|members| {
                             members.iter()
@@ -79,10 +79,10 @@ impl Simulator {
 
                     _ => {
                         let found = match io_val {
-                            IO_VAL::Bool(_) => Type::Bool,
-                            IO_VAL::Int(_) => Type::Int,
-                            IO_VAL::Real(_) => Type::Real,
-                            IO_VAL::Custom(_) => Type::Unknown,
+                            IoVal::Bool(_) => Type::Bool,
+                            IoVal::Int(_) => Type::Int,
+                            IoVal::Real(_) => Type::Real,
+                            IoVal::Custom(_) => Type::Unknown,
                         };
 
                         return Err(RuntimeError::IncompatibleTypes {
@@ -105,7 +105,7 @@ impl Simulator {
     }
 
     // returns all the outputs in watcher at the end of the simulation, also clearing vectors in watcher
-    pub fn dump_outputs(&mut self) -> Vec<(String, Vec<(usize, IO_VAL)>)> {
+    pub fn dump_outputs(&mut self) -> Vec<(String, Vec<(usize, IoVal)>)> {
         let mut outputs = Vec::with_capacity(self.interface.outputs.len());
 
         for (ent_id, (ent_name, ent_type)) in &self.interface.outputs {
@@ -115,11 +115,11 @@ impl Simulator {
 
                 for (timestep, raw_val) in trace {
                     let io_val = match ent_type {
-                        Type::Bool => IO_VAL::Bool(raw_val != 0),
-                        Type::Impulse => IO_VAL::Bool(raw_val == timestep as u64),
-                        Type::Int => IO_VAL::Int(raw_val as i64),
-                        Type::Real => IO_VAL::Real(f64::from_bits(raw_val)),
-                        Type::Mod(_) => IO_VAL::Int(raw_val as i64),
+                        Type::Bool => IoVal::Bool(raw_val != 0),
+                        Type::Impulse => IoVal::Bool(raw_val == timestep as u64),
+                        Type::Int => IoVal::Int(raw_val as i64),
+                        Type::Real => IoVal::Real(f64::from_bits(raw_val)),
+                        Type::Mod(_) => IoVal::Int(raw_val as i64),
                         Type::Custom(Ident::Str{val,..}) => {
                             let name = self.interface.custom_type_maps.get(val)
                                 .and_then(|members| {
@@ -128,7 +128,7 @@ impl Simulator {
                                         .map(|(member, _)| member)
                                 }).unwrap();
                             
-                                IO_VAL::Custom(name.to_string())
+                                IoVal::Custom(name.to_string())
                         }
                         _ => unreachable!("Type should not be any other"),
                     };
@@ -234,6 +234,7 @@ impl Simulator {
 mod tests {
     use super::*;
     use crate::compiler::netlist::{Entity, Relation};
+    use crate::compiler::diagnostics::Span;
     use crate::simulator::rel_interpreter::test_assembler::assemble;
     use crate::simulator::runtime_diagnostics::InterpreterError;
 
@@ -300,10 +301,10 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Int(1)),
+                (1, IoVal::Int(1)),
             ]),
             ("b".to_string(), vec![
-                (2, IO_VAL::Int(1)),
+                (2, IoVal::Int(1)),
             ]),
         ];
 
@@ -317,7 +318,7 @@ mod tests {
 
         assert_eq!(output, vec![
             ("q".to_string(), vec![
-                (3 as usize, IO_VAL::Int(2)),
+                (3 as usize, IoVal::Int(2)),
             ]),
         ]);
     }
@@ -355,7 +356,7 @@ mod tests {
 
         let inputs = vec![
             ("b".to_string(), vec![
-                (2, IO_VAL::Int(1)),
+                (2, IoVal::Int(1)),
             ]),
         ];
 
@@ -397,8 +398,8 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Int(1)),
-                (1, IO_VAL::Int(2)),
+                (1, IoVal::Int(1)),
+                (1, IoVal::Int(2)),
             ]),
         ];
 
@@ -477,10 +478,10 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Int(1)),
+                (1, IoVal::Int(1)),
             ]),
             ("b".to_string(), vec![
-                (2, IO_VAL::Int(0)),
+                (2, IoVal::Int(0)),
             ]),
         ];
 
@@ -530,7 +531,7 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (5, IO_VAL::Int(1)),
+                (5, IoVal::Int(1)),
             ]),
         ];
 
@@ -576,7 +577,7 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (50, IO_VAL::Int(1)),
+                (50, IoVal::Int(1)),
             ]),
         ];
 
@@ -644,16 +645,16 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Bool(true)),
-                (5, IO_VAL::Bool(true)),
-                (9, IO_VAL::Bool(false)),
-                (13, IO_VAL::Bool(false)),
+                (1, IoVal::Bool(true)),
+                (5, IoVal::Bool(true)),
+                (9, IoVal::Bool(false)),
+                (13, IoVal::Bool(false)),
             ]),
             ("b".to_string(), vec![
-                (1, IO_VAL::Bool(true)),
-                (5, IO_VAL::Bool(false)),
-                (9, IO_VAL::Bool(true)),
-                (13, IO_VAL::Bool(false)),
+                (1, IoVal::Bool(true)),
+                (5, IoVal::Bool(false)),
+                (9, IoVal::Bool(true)),
+                (13, IoVal::Bool(false)),
             ]),
         ];
 
@@ -735,16 +736,16 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Bool(true)),
-                (5, IO_VAL::Bool(true)),
-                (9, IO_VAL::Bool(false)),
-                (13, IO_VAL::Bool(false)),
+                (1, IoVal::Bool(true)),
+                (5, IoVal::Bool(true)),
+                (9, IoVal::Bool(false)),
+                (13, IoVal::Bool(false)),
             ]),
             ("b".to_string(), vec![
-                (1, IO_VAL::Bool(true)),
-                (5, IO_VAL::Bool(false)),
-                (9, IO_VAL::Bool(true)),
-                (13, IO_VAL::Bool(false)),
+                (1, IoVal::Bool(true)),
+                (5, IoVal::Bool(false)),
+                (9, IoVal::Bool(true)),
+                (13, IoVal::Bool(false)),
             ]),
         ];
 
@@ -859,12 +860,12 @@ mod tests {
 
         let inputs = vec![
             ("a".to_string(), vec![
-                (1, IO_VAL::Bool(false)),
-                (5, IO_VAL::Bool(true)),
+                (1, IoVal::Bool(false)),
+                (5, IoVal::Bool(true)),
             ]),
             ("b".to_string(), vec![
-                (1, IO_VAL::Bool(false)),
-                (9, IO_VAL::Bool(true)),
+                (1, IoVal::Bool(false)),
+                (9, IoVal::Bool(true)),
             ]),
         ];
 
@@ -878,9 +879,9 @@ mod tests {
 
         assert_eq!(output, vec![
             ("q".to_string(), vec![
-                (4 as usize, IO_VAL::Bool(false)),
-                (7 as usize, IO_VAL::Bool(true)),
-                (12 as usize, IO_VAL::Bool(false)),
+                (4 as usize, IoVal::Bool(false)),
+                (7 as usize, IoVal::Bool(true)),
+                (12 as usize, IoVal::Bool(false)),
             ]),
         ]);
     }
@@ -947,12 +948,12 @@ mod tests {
 
         assert_eq!(output, vec![
             ("a".to_string(), vec![
-                (0 as usize, IO_VAL::Int(0)),
-                (1 as usize, IO_VAL::Int(1)),
-                (2 as usize, IO_VAL::Int(2)),
-                (3 as usize, IO_VAL::Int(3)),
-                (4 as usize, IO_VAL::Int(4)),
-                (5 as usize, IO_VAL::Int(5)),
+                (0 as usize, IoVal::Int(0)),
+                (1 as usize, IoVal::Int(1)),
+                (2 as usize, IoVal::Int(2)),
+                (3 as usize, IoVal::Int(3)),
+                (4 as usize, IoVal::Int(4)),
+                (5 as usize, IoVal::Int(5)),
             ]),
         ]);
     }
@@ -1073,19 +1074,131 @@ mod tests {
 
         assert_eq!(output, vec![
             ("i".to_string(), vec![
-                (2, IO_VAL::Bool(true)),
-                (4, IO_VAL::Bool(true)),
-                (6, IO_VAL::Bool(true)),
-                (8, IO_VAL::Bool(true)),
-                (10, IO_VAL::Bool(true)),
+                (2, IoVal::Bool(true)),
+                (4, IoVal::Bool(true)),
+                (6, IoVal::Bool(true)),
+                (8, IoVal::Bool(true)),
+                (10, IoVal::Bool(true)),
             ]),
             ("a".to_string(), vec![
-                (3, IO_VAL::Int(1)),
+                (3, IoVal::Int(1)),
             ]),
         ]);
     }
 
-    // TODO: Test with custom types
+    #[test]
+    fn custom_type_state_machine() {
+        // ent_t LET = {A, B, C};
+        // rel_t SHIFT : (a: LET) ->  LET = {
+        //     cases a {
+        //         A : B,
+        //         B : C,
+        //         _ : A,
+        //     }
+        // };
+        // net DUO {
+        //     output a: LET;
+
+        //     init a: LET = A;
+        //     init b: LET = B;
+
+        //     a := SHIFT(b);
+        //     b := SHIFT(a);
+        // }
+        // (a,b): (A,B), (C,B), (C,A), (B,A), (B,C), (A,C), repeat
+        let net = Netlist {
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![1],
+                    output_ent: 0,
+                },
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![0],
+                    output_ent: 1,
+                },
+            ],
+            ents: vec![
+                Entity { // a
+                    val: None,
+                    sinks: vec![1],
+                }, // b
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+            ],
+        };
+
+        let interface = Interface {
+            inputs: HashMap::new(),
+            outputs: HashMap::from([
+                (0, ("a".to_string(), Type::Custom(Ident::Str {
+                    val: "LET".to_string(),
+                    span: Span{line: 0, col: 0},
+                }))),
+            ]),
+            custom_type_maps: HashMap::from([
+                ("LET".to_string(), vec![
+                    ("A".to_string(), 0),
+                    ("B".to_string(), 1),
+                    ("C".to_string(), 2),
+                ]),
+            ]),
+        };
+
+        let relations = vec![
+            CompiledRel {
+                name: "SHIFT".to_string(),
+                complexity: 0,
+                bytecode: assemble("
+                    IJNE o13 r2 i0
+                    MOV r3 i1
+                    JMP o35
+                    IJNE o13 r2 i1
+                    MOV r3 i2
+                    JMP o10
+                    MOV r3 i0
+                    RET r3
+                ").unwrap(),
+            },
+        ];
+
+        let inits = vec![
+            Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 0,
+            },
+            Event {
+                timestep: 0,
+                ent_id: 1,
+                new_val: 1,
+            },
+        ];
+
+        let mut sim = Simulator::new(net, interface, relations, inits);
+
+        let steps = sim.run(5);
+
+        assert_eq!(steps, Ok(5));
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(output, vec![
+            ("a".to_string(), vec![
+                (0, IoVal::Custom("A".to_string())),
+                (1, IoVal::Custom("C".to_string())),
+                (3, IoVal::Custom("B".to_string())),
+                (5, IoVal::Custom("A".to_string())),
+            ]),
+        ]);
+    }
+
+    // TODO: test type conversion and type conversion errors of inputs
     // TODO: Test errors to do with nonexistant custom type members
-    // TODO: Test error for invalid IO_VAL
+    // TODO: Test error for invalid IoVal
 }

@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Changed the structure of Netlist to introduce Interface
-- Updated simulator inputs and outputs to introduce IO_VAL rather than passing in raw u64
+- Updated simulator inputs and outputs to introduce IoVal rather than passing in raw u64
 
 ## [0.5.0] - 2026-09-24
 

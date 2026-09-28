@@ -18,7 +18,7 @@ mod parser;
 pub mod sem_analyzer;
 mod code_gen;
 mod synthesis;
-mod diagnostics;
+pub mod diagnostics;
 
 
 pub mod ast;

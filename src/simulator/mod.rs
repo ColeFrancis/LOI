@@ -29,7 +29,7 @@ use crate::compiler::netlist::{Netlist, Interface, EntId};
 
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Debug)]
-pub enum IO_VAL {
+pub enum IoVal {
     Bool(bool),
     Int(i64),
     Real(f64),

@@ -1629,7 +1629,7 @@ mod tests {
                 span: Span{line: 0, col: 0},
             },
             Symbol {
-                name: "H".to_string(),
+                name: "T".to_string(),
                 kind: SymbolKind::EntMember {
                     parent: 0,
                     mapping: 1,
@@ -1678,7 +1678,7 @@ mod tests {
             (1, 0),
         ]);
 
-        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
         assert_eq!(inits, vec![
             Event {
@@ -1687,7 +1687,11 @@ mod tests {
                 new_val: 1 as u64,
             },
         ]);
+        assert_eq!(interface.custom_type_maps, HashMap::from([
+            ("COIN".to_string(), vec![
+                ("H".to_string(), 0),
+                ("T".to_string(), 1),
+            ]),
+        ]));
     }
-
-    // TODO: reason about corner cases?
 }

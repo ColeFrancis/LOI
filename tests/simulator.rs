@@ -20,7 +20,7 @@
 
 use loi::compiler::Compiler;
 
-use loi::simulator::{Simulator, IO_VAL};
+use loi::simulator::{Simulator, IoVal};
 
 #[test]
 fn flip_flop() {
@@ -39,19 +39,19 @@ fn flip_flop() {
 
     let inputs = vec![
         ("D".to_string(), vec![
-            (0, IO_VAL::Bool(false)),
-            (11, IO_VAL::Bool(true)),
-            (31, IO_VAL::Bool(false)),
+            (0, IoVal::Bool(false)),
+            (11, IoVal::Bool(true)),
+            (31, IoVal::Bool(false)),
         ]),
         ("clk".to_string(), vec![
-            (10, IO_VAL::Bool(true)),
-            (15, IO_VAL::Bool(false)),
-            (20, IO_VAL::Bool(true)),
-            (25, IO_VAL::Bool(false)),
-            (30, IO_VAL::Bool(true)),
-            (35, IO_VAL::Bool(false)),
-            (40, IO_VAL::Bool(true)),
-            (45, IO_VAL::Bool(false)),
+            (10, IoVal::Bool(true)),
+            (15, IoVal::Bool(false)),
+            (20, IoVal::Bool(true)),
+            (25, IoVal::Bool(false)),
+            (30, IoVal::Bool(true)),
+            (35, IoVal::Bool(false)),
+            (40, IoVal::Bool(true)),
+            (45, IoVal::Bool(false)),
         ]),
     ];
 
@@ -65,14 +65,14 @@ fn flip_flop() {
 
     assert_eq!(output, vec![
         ("Q".to_string(), vec![
-            (0, IO_VAL::Bool(false)),
-            (24, IO_VAL::Bool(true)),
-            (45, IO_VAL::Bool(false)),
+            (0, IoVal::Bool(false)),
+            (24, IoVal::Bool(true)),
+            (45, IoVal::Bool(false)),
         ]),
         ("Qp".to_string(), vec![
-            (0, IO_VAL::Bool(true)),
-            (25, IO_VAL::Bool(false)),
-            (44, IO_VAL::Bool(true)),
+            (0, IoVal::Bool(true)),
+            (25, IoVal::Bool(false)),
+            (44, IoVal::Bool(true)),
         ]),
     ]);
 }
@@ -94,17 +94,17 @@ fn adder() {
 
     let inputs = vec![
         ("cin".to_string(), vec![
-            (0, IO_VAL::Bool(false)),
-            (30, IO_VAL::Bool(true)),
+            (0, IoVal::Bool(false)),
+            (30, IoVal::Bool(true)),
         ]),
         ("A".to_string(), vec![
-            (0, IO_VAL::Bool(false)),
-            (10, IO_VAL::Bool(true)),
-            (40, IO_VAL::Bool(false)),
+            (0, IoVal::Bool(false)),
+            (10, IoVal::Bool(true)),
+            (40, IoVal::Bool(false)),
         ]),
         ("B".to_string(), vec![
-            (0, IO_VAL::Bool(false)),
-            (20, IO_VAL::Bool(true)),
+            (0, IoVal::Bool(false)),
+            (20, IoVal::Bool(true)),
         ]),
     ];
 
@@ -118,17 +118,17 @@ fn adder() {
 
     assert_eq!(output, vec![
         ("S".to_string(), vec![
-            (6, IO_VAL::Bool(false)),
-            (14, IO_VAL::Bool(true)),
-            (25, IO_VAL::Bool(false)),
-            (32, IO_VAL::Bool(true)),
-            (46, IO_VAL::Bool(false)),
+            (6, IoVal::Bool(false)),
+            (14, IoVal::Bool(true)),
+            (25, IoVal::Bool(false)),
+            (32, IoVal::Bool(true)),
+            (46, IoVal::Bool(false)),
         ]),
         ("cout".to_string(), vec![
-            (5, IO_VAL::Bool(false)),
-            (22, IO_VAL::Bool(true)),
-            (42, IO_VAL::Bool(false)),
-            (45, IO_VAL::Bool(true)),
+            (5, IoVal::Bool(false)),
+            (22, IoVal::Bool(true)),
+            (42, IoVal::Bool(false)),
+            (45, IoVal::Bool(true)),
         ]),
     ]);
 }
