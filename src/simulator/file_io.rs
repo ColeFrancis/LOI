@@ -22,6 +22,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use super::IoVal;
 use super::runtime_diagnostics::{InputFileParseError, IoError};
@@ -55,7 +56,10 @@ impl IoFile {
     }
 
     fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
-        
+        // Create hashmap to map from entity to the index of the returned vector
+        let mut map_to_idx: HashMap<String, usize> = HashMap::new();
+        let mut inputs: Vec<(String, Vec<(usize, IoVal)>)> = Vec::new();
+
         for (line_num, line) in code.lines().enumerate() {
             let line_num = line_num + 1;
             let line = line.trim();
@@ -68,14 +72,115 @@ impl IoFile {
 
             if line_num == 1 {
                 if fields != vec!["step", "entity", "value"] {
-                    // TODO: Runtime error
+                    return Err(InputFileParseError::InvalidHeader);
                 }
+                continue;
             }
 
             if fields.len() != 3 {
-                // TODO: Runtime error
+                return Err(InputFileParseError::IncorrectNumberOfFields {
+                    expected: 3,
+                    found: fields.len(),
+                    line_num,
+                });
             }
+
+            let step = fields[0].parse::<usize>()
+                .map_err(|source| {
+                    InputFileParseError::InvalidStep {
+                        source,
+                        line_num,
+                    }
+                })?;
+
+            let entity = fields[1].to_string();
+
+            let val = if Self::starts_with_number(fields[2]) {
+                let num_str = fields[2];
+
+                if num_str.matches('.').count() > 1 {
+                    return Err(InputFileParseError::InvalidNumber {
+                        num: num_str.to_string(),
+                        line_num,
+                    });
+                }
+
+                if num_str.contains('.') {
+                    match num_str.parse::<f64>() {
+                        Ok(x) => IoVal::Real(x),
+                        Err(_) => {
+                            return Err(InputFileParseError::InvalidNumber {
+                                num: num_str.to_string(),
+                                line_num,
+                            });
+                        }
+                    } 
+                } else {
+                    match num_str.parse::<i64>() {
+                        Ok(x) => IoVal::Int(x),
+                        Err(_) => {
+                            return Err(InputFileParseError::InvalidNumber {
+                                num: num_str.to_string(),
+                                line_num,
+                            });
+                        }
+                    }
+                }
+            } else {
+                match fields[2] {
+                    "true" => IoVal::Bool(true),
+                    "false" => IoVal::Bool(false),
+                    other => IoVal::Custom(other.to_string()),
+                }
+            };
+
+            let idx = if let Some(&idx) = map_to_idx.get(&entity) {
+                idx
+            }
+            else {
+                let idx = inputs.len();
+                map_to_idx.insert(entity.clone(), idx);
+                inputs.push((entity.to_string(), vec![]));
+                idx
+            };
+
+            // .1 causes you to select the second element of the tuple
+            inputs[idx].1.push((step, val));
         }
-        Ok(vec![]) // Temporary
+
+        Ok(inputs)
     }
+
+    fn starts_with_number(s: &str) -> bool {
+        s.chars().next().map_or(false, |c| c.is_numeric())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_errors() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0 B 1
+            5 B 0
+            10 A 3"
+        );
+
+        assert_eq!(result, Ok(vec![
+            ("A".to_string(), vec![
+                (0, IoVal::Int(0)),
+                (10, IoVal::Int(3)),
+            ]),
+            ("B".to_string(), vec![
+                (0, IoVal::Int(1)),
+                (5, IoVal::Int(0)),
+            ]),
+        ]));
+    }
+
+    //TODO: Test all parse errors
 }

@@ -46,6 +46,20 @@ pub enum RuntimeError {
 pub enum InputFileParseError {
     InvalidInputFileType,
     Io(IoError),
+    InvalidHeader,
+    IncorrectNumberOfFields {
+        expected: usize,
+        found: usize,
+        line_num: usize,
+    },
+    InvalidStep {
+        source: std::num::ParseIntError,
+        line_num: usize,
+    },
+    InvalidNumber {
+        num: String,
+        line_num: usize,
+    },
 }
 
 #[derive(Debug)]
