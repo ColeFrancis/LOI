@@ -165,19 +165,23 @@ mod tests {
         let result = IoFile::read_txt_file(
             "step entity value
             0 A 0
-            0 B 1
-            5 B 0
-            10 A 3"
+            0 B 1.0
+            5 B false
+            10 A true
+            11 C this"
         );
 
         assert_eq!(result, Ok(vec![
             ("A".to_string(), vec![
                 (0, IoVal::Int(0)),
-                (10, IoVal::Int(3)),
+                (10, IoVal::Bool(true)),
             ]),
             ("B".to_string(), vec![
-                (0, IoVal::Int(1)),
-                (5, IoVal::Int(0)),
+                (0, IoVal::Real(1.0)),
+                (5, IoVal::Bool(false)),
+            ]),
+            ("C".to_string(), vec![
+                (11, IoVal::Custom("this".to_string())),
             ]),
         ]));
     }
