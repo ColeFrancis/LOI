@@ -24,7 +24,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use super::IoVal;
-use super::runtime_diagnostics::RuntimeError;
+use super::runtime_diagnostics::{RuntimeError, IoError};
 
 #[derive(Debug, PartialEq)]
 enum FileType {
@@ -43,9 +43,13 @@ impl IoFile {
             _ => FileType::Invalid,
         };
 
+        if file_type == FileType::Invalid {
+            return Err(RuntimeError::InvalidInputFileType);
+        }
+
         let code = match fs::read_to_string(&path) {
             Ok(code) => code,
-            Err(err) => return Err(RuntimeError::Io(err))
+            Err(err) => return Err(RuntimeError::Io(IoError(err)))
         };
 
         match file_type {
@@ -56,7 +60,26 @@ impl IoFile {
 
     fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, RuntimeError> {
         
-        
+        for (line_num, line) in code.lines().enumerate() {
+            let line_num = line_num + 1;
+            let line = line.trim();
+
+            if line.is_empty() {
+                continue;
+            }
+
+            let fields: Vec<&str> = line.split_whitespace().collect();
+
+            if line_num == 1 {
+                if fields != vec!["step", "entity", "value"] {
+                    // TODO: Runtime error
+                }
+            }
+
+            if fields.len() != 3 {
+                // TODO: Runtime error
+            }
+        }
         Ok(vec![]) // Temporary
     }
 }

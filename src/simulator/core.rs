@@ -121,7 +121,8 @@ impl Simulator {
                 for (timestep, raw_val) in trace {
                     let io_val = match ent_type {
                         Type::Bool => IoVal::Bool(raw_val != 0),
-                        Type::Impulse => IoVal::Bool(raw_val == timestep as u64),
+                        Type::Impulse if raw_val == timestep as u64 => IoVal::Bool(true),
+                        Type::Impulse if raw_val != timestep as u64 => continue,
                         Type::Int => IoVal::Int(raw_val as i64),
                         Type::Real => IoVal::Real(f64::from_bits(raw_val)),
                         Type::Mod(_) => IoVal::Int(raw_val as i64),
