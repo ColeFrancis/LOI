@@ -21,7 +21,7 @@
 use crate::compiler::netlist::{EntId, RelId};
 use crate::compiler::sem_analyzer::types::Type;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum RuntimeError {
     Interpreter {
         err: InterpreterError,
@@ -38,6 +38,18 @@ pub enum RuntimeError {
         ent_id: EntId,
         expected: Type,
         found: Type,
+    },
+    InvalidInputFileType,
+    Io(std::io::Error),
+}
+
+impl PartialEq for RuntimeError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (RuntimeError::Io(a), RuntimeError::Io(b)) => a.kind() == b.kind(),
+
+            (a, b) => a == b,
+        }
     }
 }
 

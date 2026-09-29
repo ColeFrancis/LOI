@@ -16,7 +16,8 @@ mod core;
 pub mod event;
 mod scheduler;
 pub mod rel_interpreter;
-mod runtime_diagnostics;
+pub mod runtime_diagnostics;
+pub mod file_io;
 
 use std::collections::HashMap;
 
