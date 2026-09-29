@@ -24,7 +24,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use super::IoVal;
-use super::runtime_diagnostics::{RuntimeError, IoError};
+use super::runtime_diagnostics::{InputFileParseError, IoError};
 
 #[derive(Debug, PartialEq)]
 enum FileType {
@@ -35,7 +35,7 @@ enum FileType {
 pub struct IoFile;
 
 impl IoFile {
-    pub fn read(file_path: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, RuntimeError> {
+    pub fn read(file_path: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
         let path = PathBuf::from(file_path);
 
         let file_type = match path.extension().and_then(|ext| ext.to_str()) {
@@ -43,22 +43,18 @@ impl IoFile {
             _ => FileType::Invalid,
         };
 
-        if file_type == FileType::Invalid {
-            return Err(RuntimeError::InvalidInputFileType);
-        }
-
         let code = match fs::read_to_string(&path) {
             Ok(code) => code,
-            Err(err) => return Err(RuntimeError::Io(IoError(err)))
+            Err(err) => return Err(InputFileParseError::Io(IoError(err)))
         };
 
         match file_type {
             FileType::Text => Self::read_txt_file(&code),
-            _ => Err(RuntimeError::InvalidInputFileType),
+            _ => Err(InputFileParseError::InvalidInputFileType),
         }
     }
 
-    fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, RuntimeError> {
+    fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
         
         for (line_num, line) in code.lines().enumerate() {
             let line_num = line_num + 1;

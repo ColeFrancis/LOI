@@ -39,6 +39,11 @@ pub enum RuntimeError {
         expected: Type,
         found: Type,
     },
+    InputFileParse(InputFileParseError),
+}
+
+#[derive(Debug, PartialEq)]
+pub enum InputFileParseError {
     InvalidInputFileType,
     Io(IoError),
 }
@@ -51,16 +56,6 @@ impl PartialEq for IoError {
         self.0.kind() == other.0.kind()
     }
 }
-
-// impl PartialEq for RuntimeError {
-//     fn eq(&self, other: &Self) -> bool {
-//         match (self, other) {
-//             (RuntimeError::Io(a), RuntimeError::Io(b)) => a.kind() == b.kind(),
-
-//             (a, b) => a == b,
-//         }
-//     }
-// }
 
 #[derive(Debug, PartialEq)]
 pub enum InterpreterError {
