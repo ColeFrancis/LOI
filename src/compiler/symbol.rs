@@ -58,6 +58,20 @@ pub enum SymbolKind {
     },
 }
 
+impl std::fmt::Display for SymbolKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SymbolKind::Const(_) => write!(f, "Constant Variable"),
+            SymbolKind::Variable(_) => write!(f, "Variable"),
+            SymbolKind::EntType => write!(f, "Custom Ent Type"),
+            SymbolKind::EntMember{..} => write!(f, "Custom Ent Type Member"),
+            SymbolKind::Ent(_) => write!(f, "Ent"),
+            SymbolKind::Rel_t {..} => write!(f, "Relation Type"),
+            SymbolKind::Net {..} => write!(f, "Net"),
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone)]
 pub enum EntType {
     Mod(usize),

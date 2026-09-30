@@ -262,6 +262,18 @@ pub enum Expected {
     IntLiteral,
 }
 
+impl std::fmt::Display for Expected {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expected::Token(token_kind) => write!(f, "{token_kind}"),
+            Expected::Expr => write!(f, "Expression"),
+            Expected::Pattern => write!(f, "Pattern"),
+            Expected::Ident => write!(f, "Identifier"),
+            Expected::IntLiteral => write!(f, "Int Literal"),
+        }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Operation {
     Cmp,
@@ -300,73 +312,133 @@ impl Diagnostic {
             ///////////////
             // Lexer Errors
             ///////////////
-            Diagnostic::UnknownToken {lexeme, span} => {}
+            Diagnostic::UnknownToken {lexeme, span} => {
+                eprintln!("Compiler Error: Unknown token \"{}\"\nat line {}:{}\n\n", lexeme, span.line, span.col);
+            }
 
-            Diagnostic::InvalidNum {lexeme, span} => {}
+            Diagnostic::InvalidNum {lexeme, span} => {
+                eprintln!("Compiler Error: Invalid number \"{}\"\nat line {}:{}\n\n", lexeme, span.line, span.col);
+            }
 
             ////////////////
             // Parser Errors
             ////////////////
-            Diagnostic::UnexpectedToken {expected, found, span} => {}
+            Diagnostic::UnexpectedToken {expected, found, span} => {
+                let expected = expected.iter().map(|token| format!("{token}")).collect::<Vec<_>>().join(", ");
 
-            Diagnostic::NestedTupleExpr {span} => {}
+                eprintln!("Compiler Error: Unexpected token: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, span.line, span.col);
+            }
+
+            Diagnostic::NestedTupleExpr {span} => {
+                eprintln!("Compiler Error: Nested Tuple Expressions\nat line {}:{}\n\n", span.line, span.col);
+            }
 
             ///////////////////////////
             // Semantic Analysis Errors
             ///////////////////////////
-            Diagnostic::DuplicateDefinition {name, old_span, new_span} => {}
+            Diagnostic::DuplicateDefinition {name, old_span, new_span} => {
+                eprintln!("Compiler Error: Duplicate definition of \"{}\", previously defined at {}:{}\nat line {}:{}\n\n", name, old_span.line, old_span.col, new_span.line, new_span.col);
+            }
 
-            Diagnostic::UndefinedIdent {name, span} => {}
+            Diagnostic::UndefinedIdent {name, span} => {
+                eprintln!("Compiler Error: Undefined identifier: \"{}\"\nat line {}:{}\n\n", name, span.line, span.col);
+            }
 
-            Diagnostic::UndefinedPort {name, span} => {}
+            Diagnostic::UndefinedPort {name, span} => {
+                eprintln!("Compiler Error: Undefined net port: \"{}\"\nat line {}:{}\n\n", name, span.line, span.col);
+            }
 
-            Diagnostic::DuplicatePort {name, span} => {}
+            Diagnostic::DuplicatePort {name, span} => {
+                eprintln!("Compiler Error: Port \"{}\" assigned multiple times\nat line {}:{}\n\n", name, span.line, span.col);
+            }
 
-            Diagnostic::UnexpectedIdent {expected, found, span} => {}
+            Diagnostic::UnexpectedIdent {expected, found, span} => {
+                let expected = expected.iter().map(|ident| format!("{ident}")).collect::<Vec<_>>().join(", ");
 
-            Diagnostic::IncompatibleTypes {left, right, op_span} => {}
+                eprintln!("Compiler Error: Unexpected Identifer: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, span.line, span.col);
+            }
 
-            Diagnostic::IncompatibleOp {expr_type, op, op_span} => {}
+            Diagnostic::IncompatibleTypes {left, right, op_span} => {
+                eprintln!("Compiler Error: Incompatible variable types: {} and {}\nat line {}:{}\n\n", left, right, op_span.line, op_span.col);
+            }
 
-            Diagnostic::NonRealProb {prob_type, arm_span} => {}
+            Diagnostic::IncompatibleOp {expr_type, op, op_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {}
+            Diagnostic::NonRealProb {prob_type, arm_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {}
+            Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {}
+            Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::MismatchedEntType {expected, found, span} => {}
+            Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {}
+            Diagnostic::MismatchedEntType {expected, found, span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::NonexistantNetPort {name, span} => {}
+            Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::DivideByZero {op_span} => {}
+            Diagnostic::NonexistantNetPort {name, span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::NegExpOnInt {op_span} => {}
+            Diagnostic::DivideByZero {op_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::NoReturnArm {span} => {}
+            Diagnostic::NegExpOnInt {op_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {}
+            Diagnostic::NoReturnArm {span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::NoDefaultPattern {cases_span} => {}
+            Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::ProbOutOfRange {total_prob, val, span} => {}
+            Diagnostic::NoDefaultPattern {cases_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::MultipleDefaultProb {arm_span} => {}
+            Diagnostic::ProbOutOfRange {total_prob, val, span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
-            Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {}
+            Diagnostic::MultipleDefaultProb {arm_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
+
+            Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
             /////////////////
             // CodeGen Errors
             /////////////////
-            Diagnostic::TooManySymbols {rel_name, rel_span} => {}
+            Diagnostic::TooManySymbols {rel_name, rel_span} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
 
             ////////////////////
             // Syntehsize Errors
             ////////////////////
-            Diagnostic::NonexistantTopLevelNet {name} => {}
+            Diagnostic::NonexistantTopLevelNet {name} => {
+                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+            }
         }
     }
 }
@@ -533,8 +605,16 @@ let n = @;", &mut diagnostics).tokenize();
         ]);
     }
 
-    // #[test]
-    // fn tuple_semantic() {
+    use crate::compiler::ast::Ident;
 
+    // #[test]
+    // fn print_test() {
+    //     Diagnostic::IncompatibleTypes {
+    //         left: Type::Int, 
+    //         right: Type::Custom(Ident::Str{val: "A".to_string(), span:Span{line: 0, col: 0}}), 
+    //         op_span: Span{line: 111, col: 2},
+    //     }.print();
+
+    //     assert!(false);
     // }
 }

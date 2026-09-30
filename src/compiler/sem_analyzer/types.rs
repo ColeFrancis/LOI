@@ -36,3 +36,40 @@ pub enum Type {
     Custom(Ident),
     Error,
 }
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Type::Unknown => write!(f, "Unknown"),
+            Type::Bool => write!(f, "Bool"),
+            Type::Impulse => write!(f, "Impulse"),
+            Type::Int => write!(f, "Int"),
+            Type::Real => write!(f, "Real"),
+            Type::Tuple(types) => {
+                write!(f, "(")?;
+
+                for (i, ty) in types.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+
+                    write!(f, "{ty}")?;
+                }
+
+                write!(f, ")")
+            }
+            Type::Mod(n) => write!(f, "Mod({})", n),
+            Type::Custom(ident) => {
+                write!(f, "Custom(")?;
+
+                match ident {
+                    Ident::Str {val, ..} => write!(f, "\"{}\"", val)?,
+                    Ident::Symbol(id) => write!(f, "{}", id)?,
+                }
+
+                write!(f, ")")
+            }
+            Type::Error => write!(f, "Error"),
+        }
+    }
+}
