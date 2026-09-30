@@ -1,4 +1,4 @@
-Language Of Interaction (LOI). Research platform for the purpose of understanding the emergence of computation in complex systems.
+Language Of Interaction (LOI). Research tool for the purpose of understanding the emergence of computation in complex systems.
 
 # Structures to analyze
 
