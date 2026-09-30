@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Reading and writing of input/output text files for the simulator
+
 ### Changed
 
 - Changed the structure of Netlist to introduce Interface
@@ -17,13 +19,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Network Simulator
+- Network Simulator completed
 
 ## [0.4.0] - 2026-09-1
 
 ### Added
 
-- Network Compiler
+- Network Compiler completed
 
 ### Changed
 
