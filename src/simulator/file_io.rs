@@ -21,11 +21,12 @@
 //! Author: Cole Francis
 
 use std::fs;
+use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::collections::HashMap;
 
 use super::IoVal;
-use super::runtime_diagnostics::{InputFileParseError, IoError};
+use super::runtime_diagnostics::{InputFileReadError, OutputFileWriteError, IoError};
 
 #[derive(Debug, PartialEq)]
 enum FileType {
@@ -36,7 +37,7 @@ enum FileType {
 pub struct IoFile;
 
 impl IoFile {
-    pub fn read(file_path: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
+    pub fn read(file_path: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileReadError> {
         let path = PathBuf::from(file_path);
 
         let file_type = match path.extension().and_then(|ext| ext.to_str()) {
@@ -46,12 +47,12 @@ impl IoFile {
 
         let code = match fs::read_to_string(&path) {
             Ok(code) => code,
-            Err(err) => return Err(InputFileParseError::Io(IoError(err)))
+            Err(err) => return Err(InputFileReadError::Io(IoError(err)))
         };
 
         match file_type {
             FileType::Text => Self::read_txt_file(&code),
-            _ => Err(InputFileParseError::InvalidInputFileType),
+            _ => Err(InputFileReadError::InvalidInputFileType),
         }
     }
 
@@ -63,18 +64,28 @@ impl IoFile {
             _ => FileType::Invalid,
         };
 
-        let code = match file_type {
-            FileType::Text => Self::write_txt_file(outputs),
-            FileType::Invalid => return Err(OutputFileWriteError::InvalidOutputFileType),
-        };
+        if file_type == FileType::Invalid {
+            return Err(OutputFileWriteError::InvalidOutputFileType);
+        }
 
-        fs::write(&path, code)
+        let file = fs::File::create(&path)
+            .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
+
+        let mut writer = BufWriter::new(file);
+
+        match file_type {
+            FileType::Text => Self::write_txt_file(&mut writer, outputs)?,
+            FileType::Invalid => unreachable!(),
+        }
+
+        writer
+            .flush()
             .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
 
         Ok(())
     }
 
-    fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
+    fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileReadError> {
         // Create hashmap to map from entity to the index of the returned vector
         let mut map_to_idx: HashMap<String, usize> = HashMap::new();
         let mut inputs: Vec<(String, Vec<(usize, IoVal)>)> = Vec::new();
@@ -91,13 +102,13 @@ impl IoFile {
 
             if line_num == 1 {
                 if fields != vec!["step", "entity", "value"] {
-                    return Err(InputFileParseError::InvalidHeader);
+                    return Err(InputFileReadError::InvalidHeader);
                 }
                 continue;
             }
 
             if fields.len() != 3 {
-                return Err(InputFileParseError::IncorrectNumberOfFields {
+                return Err(InputFileReadError::IncorrectNumberOfFields {
                     expected: 3,
                     found: fields.len(),
                     line_num,
@@ -106,7 +117,7 @@ impl IoFile {
 
             let step = fields[0].parse::<usize>()
                 .map_err(|source| {
-                    InputFileParseError::InvalidStep {
+                    InputFileReadError::InvalidStep {
                         source,
                         line_num,
                     }
@@ -117,18 +128,11 @@ impl IoFile {
             let val = if Self::starts_with_number(fields[2]) {
                 let num_str = fields[2];
 
-                if num_str.matches('.').count() > 1 {
-                    return Err(InputFileParseError::InvalidNumber {
-                        num: num_str.to_string(),
-                        line_num,
-                    });
-                }
-
                 if num_str.contains('.') {
                     match num_str.parse::<f64>() {
                         Ok(x) => IoVal::Real(x),
                         Err(_) => {
-                            return Err(InputFileParseError::InvalidNumber {
+                            return Err(InputFileReadError::InvalidNumber {
                                 num: num_str.to_string(),
                                 line_num,
                             });
@@ -138,7 +142,7 @@ impl IoFile {
                     match num_str.parse::<i64>() {
                         Ok(x) => IoVal::Int(x),
                         Err(_) => {
-                            return Err(InputFileParseError::InvalidNumber {
+                            return Err(InputFileReadError::InvalidNumber {
                                 num: num_str.to_string(),
                                 line_num,
                             });
@@ -170,18 +174,106 @@ impl IoFile {
         Ok(inputs)
     }
 
-    fn write_txt_file(outpus: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<String, OutputFileWriteError> {
-        // Make sure to sort outputs timewise
+    fn write_txt_file<W: Write>(writer: &mut W, outputs: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<(), OutputFileWriteError> {
+        let mut timewise_outputs: Vec<(usize, String, IoVal)> = Vec::new();
+
+        for (entity, traces) in outputs {
+            for (step, value) in traces {
+                timewise_outputs.push((step, entity.clone(), value));
+            }
+        }
+
+        timewise_outputs.sort_by_key(|(step, _, _)| *step);
+
+        writeln!(writer, "step entity value")
+            .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
+
+        for (step, entity, value) in timewise_outputs {
+            writeln!(writer, "{step} {entity} {value}")
+                .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
+        }
+
+        Ok(())
     }
 
     fn starts_with_number(s: &str) -> bool {
-        s.chars().next().map_or(false, |c| c.is_numeric())
+        let mut chars = s.chars();
+        
+        match chars.next() {
+            Some('-' | '+') => chars.next().is_some_and(|c| c.is_ascii_digit()),
+            Some(c) => c.is_ascii_digit(),
+            None => false,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+
+    #[test]
+    fn invalid_header() {
+        let result = IoFile::read_txt_file(
+            "steps entity value
+            0 A 0
+            0 B 1.0
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileReadError::InvalidHeader));
+    }
+
+    #[test]
+    fn incorrect_num_fields() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0 B 1.0
+            5 B 
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileReadError::IncorrectNumberOfFields {
+            expected: 3,
+            found: 2,
+            line_num: 4,
+        }));
+    }
+
+    #[test]
+    fn invalid_step() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0.0 B 1.0
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert!(matches!(result, Err(InputFileReadError::InvalidStep {..})));
+    }
+
+    #[test]
+    fn invalid_number() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0 B 1.0.2
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileReadError::InvalidNumber {
+            num: "1.0.2".to_string(),
+            line_num: 3,
+        }));
+    }
 
     #[test]
     fn no_errors() {
@@ -210,65 +302,35 @@ mod tests {
     }
 
     #[test]
-    fn invalid_header() {
-        let result = IoFile::read_txt_file(
-            "steps entity value
-            0 A 0
-            0 B 1.0
-            5 B false
-            10 A true
-            11 C this"
-        );
+    fn write_then_read() {
+        let outputs = vec![
+            ("bool".to_string(), vec![
+                    (0, IoVal::Bool(true)),
+                    (1, IoVal::Bool(false)),
+            ]),
+            ("int".to_string(), vec![
+                    (0, IoVal::Int(42)),
+                    (1, IoVal::Int(-123)),
+            ]),
+            ("real".to_string(), vec![
+                    (0, IoVal::Real(3.14159)),
+                    (1, IoVal::Real(-0.25)),
+            ]),
+            ("custom".to_string(), vec![
+                    (0, IoVal::Custom("foo".to_string())),
+                    (1, IoVal::Custom("bar".to_string())),
+            ]),
+        ];
 
-        assert_eq!(result, Err(InputFileParseError::InvalidHeader));
-    }
+        let path = std::env::temp_dir().join("loi_test.txt");
+        let path_str = path.to_str().unwrap();
 
-    #[test]
-    fn incorrect_num_fields() {
-        let result = IoFile::read_txt_file(
-            "step entity value
-            0 A 0
-            0 B 1.0
-            5 B 
-            10 A true
-            11 C this"
-        );
+        IoFile::write(path_str, outputs.clone()).unwrap();
 
-        assert_eq!(result, Err(InputFileParseError::IncorrectNumberOfFields {
-            expected: 3,
-            found: 2,
-            line_num: 4,
-        }));
-    }
+        let read_inputs = IoFile::read(path_str).unwrap();
 
-    #[test]
-    fn invalid_step() {
-        let result = IoFile::read_txt_file(
-            "step entity value
-            0 A 0
-            0.0 B 1.0
-            5 B false
-            10 A true
-            11 C this"
-        );
+        fs::remove_file(path).unwrap();
 
-        assert!(matches!(result, Err(InputFileParseError::InvalidStep {..})));
-    }
-
-    #[test]
-    fn invalid_number() {
-        let result = IoFile::read_txt_file(
-            "step entity value
-            0 A 0
-            0 B 1.0.2
-            5 B false
-            10 A true
-            11 C this"
-        );
-
-        assert_eq!(result, Err(InputFileParseError::InvalidNumber {
-            num: "1.0.2".to_string(),
-            line_num: 3,
-        }));
+        assert_eq!(outputs, read_inputs);
     }
 }

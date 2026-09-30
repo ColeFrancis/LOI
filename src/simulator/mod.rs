@@ -28,13 +28,24 @@ use crate::simulator::{
 
 use crate::compiler::netlist::{Netlist, Interface, EntId};
 
-#[allow(non_camel_case_types)]
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum IoVal {
     Bool(bool),
     Int(i64),
     Real(f64),
     Custom(String),
+}
+
+impl std::fmt::Display for IoVal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IoVal::Bool(value) => write!(f, "{value}"),
+            IoVal::Int(value) => write!(f, "{value}"),
+            IoVal::Real(value) if value.fract() == 0.0 => write!(f, "{value:.1}"),
+            IoVal::Real(value) => write!(f, "{value}"),
+            IoVal::Custom(value) => write!(f, "{value}"),
+        }
+    }
 }
 
 pub struct Simulator {

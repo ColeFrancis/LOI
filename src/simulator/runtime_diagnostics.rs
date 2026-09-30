@@ -39,11 +39,11 @@ pub enum RuntimeError {
         expected: Type,
         found: Type,
     },
-    InputFileParse(InputFileParseError),
+    InputFileParse(InputFileReadError),
 }
 
 #[derive(Debug, PartialEq)]
-pub enum InputFileParseError {
+pub enum InputFileReadError {
     InvalidInputFileType,
     Io(IoError),
     InvalidHeader,
