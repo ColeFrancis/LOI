@@ -39,6 +39,10 @@ impl RelInterpreter {
         }
     }
 
+    pub fn get_rel_name(&self, relation_id: usize) -> String {
+        self.relations[relation_id].name.clone()
+    }
+
     pub fn evaluate (&mut self, relation_id: usize, args: &[u64], sim_timestep: usize, rel_delay: usize) -> Result<u64, InterpreterError> {
         // Fill time info and arguments
         self.registers[0] = sim_timestep as u64;

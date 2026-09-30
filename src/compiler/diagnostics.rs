@@ -61,6 +61,12 @@ impl Diagnostics {
             println!("{}: {:#?}", i + 1, error);
         }
     }
+
+    pub fn print(&self) {
+        for diagnostic in &self.errors {
+            diagnostic.print();
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -286,6 +292,83 @@ pub enum ExprType {
 pub struct Span {
     pub line: usize,
     pub col: usize,
+}
+
+impl Diagnostic {
+    fn print(&self) {
+        match self {
+            ///////////////
+            // Lexer Errors
+            ///////////////
+            Diagnostic::UnknownToken {lexeme, span} => {}
+
+            Diagnostic::InvalidNum {lexeme, span} => {}
+
+            ////////////////
+            // Parser Errors
+            ////////////////
+            Diagnostic::UnexpectedToken {expected, found, span} => {}
+
+            Diagnostic::NestedTupleExpr {span} => {}
+
+            ///////////////////////////
+            // Semantic Analysis Errors
+            ///////////////////////////
+            Diagnostic::DuplicateDefinition {name, old_span, new_span} => {}
+
+            Diagnostic::UndefinedIdent {name, span} => {}
+
+            Diagnostic::UndefinedPort {name, span} => {}
+
+            Diagnostic::DuplicatePort {name, span} => {}
+
+            Diagnostic::UnexpectedIdent {expected, found, span} => {}
+
+            Diagnostic::IncompatibleTypes {left, right, op_span} => {}
+
+            Diagnostic::IncompatibleOp {expr_type, op, op_span} => {}
+
+            Diagnostic::NonRealProb {prob_type, arm_span} => {}
+
+            Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {}
+
+            Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {}
+
+            Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {}
+
+            Diagnostic::MismatchedEntType {expected, found, span} => {}
+
+            Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {}
+
+            Diagnostic::NonexistantNetPort {name, span} => {}
+
+            Diagnostic::DivideByZero {op_span} => {}
+
+            Diagnostic::NegExpOnInt {op_span} => {}
+
+            Diagnostic::NoReturnArm {span} => {}
+
+            Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {}
+
+            Diagnostic::NoDefaultPattern {cases_span} => {}
+
+            Diagnostic::ProbOutOfRange {total_prob, val, span} => {}
+
+            Diagnostic::MultipleDefaultProb {arm_span} => {}
+
+            Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {}
+
+            /////////////////
+            // CodeGen Errors
+            /////////////////
+            Diagnostic::TooManySymbols {rel_name, rel_span} => {}
+
+            ////////////////////
+            // Syntehsize Errors
+            ////////////////////
+            Diagnostic::NonexistantTopLevelNet {name} => {}
+        }
+    }
 }
 
 #[cfg(test)]

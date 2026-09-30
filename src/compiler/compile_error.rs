@@ -50,3 +50,15 @@ impl PartialEq for CompileError {
         }
     }
 }
+
+impl CompileError {
+    pub fn print(&self) {
+        match self {
+            CompileError::Io(err) => eprintln!("I/O error compiling file: {err}"),
+            
+            CompileError::InvalidFileExtension => eprintln!("Invalid file extension. Requires .loi file"),
+
+            CompileError::Diagnostics(diagnostics) => diagnostics.print(),
+        }
+    }
+}

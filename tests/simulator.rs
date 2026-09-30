@@ -136,29 +136,24 @@ fn adder() {
 #[test]
 fn impulse_and_custom() {
     let loi_path = format!("{}/tests/fixtures/custom_type_latch.loi", env!("CARGO_MANIFEST_DIR"));
+    let input_path = format!("{}/tests/fixtures/latch_inputs.txt", env!("CARGO_MANIFEST_DIR"));
+
 
     let result = Compiler::compile(&loi_path, "LATCH");
-
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
-
     let Ok((netlist, interface, relations, inits)) = result else {
         unreachable!();
     };
 
     let mut sim = Simulator::new(netlist, interface, relations, inits);
 
-    let input_path = format!("{}/tests/fixtures/latch_inputs.txt", env!("CARGO_MANIFEST_DIR"));
-
     let inputs = IoFile::read(&input_path).unwrap();
-
     let success = sim.load_inputs(inputs);
-
     assert_eq!(success, Ok(()));
 
     let _steps = sim.run(256);
 
     let output = sim.dump_outputs();
-
     assert_eq!(output, vec![
         ("out".to_string(), vec![
             (0, IoVal::Custom("A".to_string())),

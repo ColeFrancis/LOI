@@ -25,6 +25,7 @@ use crate::compiler::sem_analyzer::types::Type;
 pub enum RuntimeError {
     Interpreter {
         err: InterpreterError,
+        rel_name: String,
         rel_id: RelId,
         timestep: usize,
     },
@@ -39,7 +40,8 @@ pub enum RuntimeError {
         expected: Type,
         found: Type,
     },
-    InputFileParse(InputFileReadError),
+    InputFileRead(InputFileReadError),
+    OutputFileWrite(OutputFileWriteError),
 }
 
 #[derive(Debug, PartialEq)]
@@ -99,6 +101,76 @@ impl InterpreterError {
                 f64::from_bits(info.expect("InvalidProb reqires info")),
             ),
             _ => panic!("Invalid runtime error code: {index}"),
+        }
+    }
+}
+
+impl RuntimeError {
+    pub fn print(&self) {
+        match self {
+            RuntimeError::Interpreter {err, rel_name, rel_id, timestep} => err.print(rel_name, *rel_id, *timestep),
+
+            RuntimeError::SimultaneousDrivers {ent_id, timestep} => {}
+
+            RuntimeError::NonexistantInput(string) => {}
+
+            RuntimeError::NonexistantInputValue(string) => {}
+
+            RuntimeError::IncompatibleTypes {ent_id, expected, found} => {}
+
+            RuntimeError::InputFileRead(read_error) => read_error.print(),
+ 
+            RuntimeError::OutputFileWrite(write_error) => write_error.print(),
+        }
+    }
+}
+
+impl InputFileReadError {
+    pub fn print(&self) {
+        match self {
+            InputFileReadError::InvalidInputFileType => {}
+
+            InputFileReadError::Io(io_error) => io_error.print(),
+
+            InputFileReadError::InvalidHeader => {}
+
+            InputFileReadError::IncorrectNumberOfFields {expected, found, line_num} => {}
+
+            InputFileReadError::InvalidStep {source, line_num} => {}
+
+            InputFileReadError::InvalidNumber {num, line_num} => {}
+        }
+    }
+}
+
+impl OutputFileWriteError {
+    pub fn print(&self) {
+        match self {
+            OutputFileWriteError::InvalidOutputFileType => {}
+
+            OutputFileWriteError::Io(io_error) => io_error.print(),
+        }
+    }
+}
+
+impl IoError {
+    pub fn print(&self) {
+        eprintln!("I/O error accessing file: {}", self.0);
+    }
+}
+
+impl InterpreterError {
+    pub fn print(&self, rel_name: &str, rel_id: RelId, timestep: usize) {
+        match self {
+            InterpreterError::InvalidOpcode(code) => {}
+
+            InterpreterError::IntegerOverflow => {}
+
+            InterpreterError::DivisionByZero => {}
+
+            InterpreterError::IntNegativeExponent => {}
+
+            InterpreterError::InvalidProb(prob) => {}
         }
     }
 }

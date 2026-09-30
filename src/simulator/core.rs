@@ -213,6 +213,7 @@ impl Simulator {
                     Ok(val) => val,
                     Err(err) => return Err(RuntimeError::Interpreter {
                         err,
+                        rel_name: self.interpreter.get_rel_name(compiled_rel_id),
                         rel_id,
                         timestep,
                     }),
@@ -650,6 +651,7 @@ mod tests {
 
         assert_eq!(result, Err(RuntimeError::Interpreter {
             err: InterpreterError::DivisionByZero,
+            rel_name: "DIV".to_string(),
             rel_id: 0,
             timestep: 2,
         }));
