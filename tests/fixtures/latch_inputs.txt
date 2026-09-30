@@ -1,0 +1,5 @@
+step entity value
+0    in     B
+2    clk    true
+5    in     A
+8    clk    true

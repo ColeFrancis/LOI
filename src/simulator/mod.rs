@@ -17,7 +17,7 @@ pub mod event;
 mod scheduler;
 pub mod rel_interpreter;
 pub mod runtime_diagnostics;
-pub mod file_io;
+pub mod io_file;
 
 use std::collections::HashMap;
 

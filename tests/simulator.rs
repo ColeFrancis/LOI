@@ -20,7 +20,7 @@
 
 use loi::compiler::Compiler;
 
-use loi::simulator::{Simulator, IoVal};
+use loi::simulator::{Simulator, IoVal, io_file::IoFile};
 
 #[test]
 fn flip_flop() {
@@ -135,10 +135,9 @@ fn adder() {
 
 #[test]
 fn impulse_and_custom() {
-    let path = format!("{}/tests/fixtures/custom_type_latch.loi", env!("CARGO_MANIFEST_DIR"));
-    println!("path: {}", path);
+    let loi_path = format!("{}/tests/fixtures/custom_type_latch.loi", env!("CARGO_MANIFEST_DIR"));
 
-    let result = Compiler::compile(&path, "LATCH");
+    let result = Compiler::compile(&loi_path, "LATCH");
 
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
 
@@ -148,16 +147,9 @@ fn impulse_and_custom() {
 
     let mut sim = Simulator::new(netlist, interface, relations, inits);
 
-    let inputs = vec![
-        ("in".to_string(), vec![
-            (1, IoVal::Custom("B".to_string())),
-            (5, IoVal::Custom("A".to_string())),
-        ]),
-        ("clk".to_string(), vec![
-            (2, IoVal::Bool(true)),
-            (8, IoVal::Bool(true)),
-        ]),
-    ];
+    let input_path = format!("{}/tests/fixtures/latch_inputs.txt", env!("CARGO_MANIFEST_DIR"));
+
+    let inputs = IoFile::read(&input_path).unwrap();
 
     let success = sim.load_inputs(inputs);
 
