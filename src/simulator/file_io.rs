@@ -55,6 +55,25 @@ impl IoFile {
         }
     }
 
+    pub fn write(file_path: &str, outputs: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<(), OutputFileWriteError> {
+        let path = PathBuf::from(file_path);
+
+        let file_type = match path.extension().and_then(|ext| ext.to_str()) {
+            Some("txt") => FileType::Text,
+            _ => FileType::Invalid,
+        };
+
+        let code = match file_type {
+            FileType::Text => Self::write_txt_file(outputs),
+            FileType::Invalid => return Err(OutputFileWriteError::InvalidOutputFileType),
+        };
+
+        fs::write(&path, code)
+            .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
+
+        Ok(())
+    }
+
     fn read_txt_file(code: &str) -> Result<Vec<(String, Vec<(usize, IoVal)>)>, InputFileParseError> {
         // Create hashmap to map from entity to the index of the returned vector
         let mut map_to_idx: HashMap<String, usize> = HashMap::new();
@@ -151,6 +170,10 @@ impl IoFile {
         Ok(inputs)
     }
 
+    fn write_txt_file(outpus: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<String, OutputFileWriteError> {
+        // Make sure to sort outputs timewise
+    }
+
     fn starts_with_number(s: &str) -> bool {
         s.chars().next().map_or(false, |c| c.is_numeric())
     }
@@ -186,5 +209,66 @@ mod tests {
         ]));
     }
 
-    //TODO: Test all parse errors
+    #[test]
+    fn invalid_header() {
+        let result = IoFile::read_txt_file(
+            "steps entity value
+            0 A 0
+            0 B 1.0
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileParseError::InvalidHeader));
+    }
+
+    #[test]
+    fn incorrect_num_fields() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0 B 1.0
+            5 B 
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileParseError::IncorrectNumberOfFields {
+            expected: 3,
+            found: 2,
+            line_num: 4,
+        }));
+    }
+
+    #[test]
+    fn invalid_step() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0.0 B 1.0
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert!(matches!(result, Err(InputFileParseError::InvalidStep {..})));
+    }
+
+    #[test]
+    fn invalid_number() {
+        let result = IoFile::read_txt_file(
+            "step entity value
+            0 A 0
+            0 B 1.0.2
+            5 B false
+            10 A true
+            11 C this"
+        );
+
+        assert_eq!(result, Err(InputFileParseError::InvalidNumber {
+            num: "1.0.2".to_string(),
+            line_num: 3,
+        }));
+    }
 }

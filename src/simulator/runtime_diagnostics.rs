@@ -62,6 +62,12 @@ pub enum InputFileParseError {
     },
 }
 
+#[derive(Debug, PartialEq)]
+pub enum OutputFileWriteError {
+    InvalidOutputFileType,
+    Io(IoError),
+}
+
 #[derive(Debug)]
 pub struct IoError(pub std::io::Error);
 
