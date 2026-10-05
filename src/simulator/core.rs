@@ -159,7 +159,8 @@ impl Simulator {
     }
 
     // returns the number of timesteps that were ran if no runtime errors, otherwise the error is returned
-    pub fn run (&mut self, max_steps: usize) -> Result<usize, RuntimeError> {
+    pub fn run (&mut self, max_steps: usize, stop_on_next_output: bool) -> Result<usize, RuntimeError> {
+        let mut stopping = false;
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
@@ -182,6 +183,10 @@ impl Simulator {
                 // Record output value change
                 if let Some(updates) = self.watcher.get_mut(&event.ent_id) {
                     updates.push((self.scheduler.curr_time-1, event.new_val));
+
+                    if stop_on_next_output {
+                        stopping = true;
+                    }
                 }
                 
                 for rel_id in &self.netlist.ents[event.ent_id].sinks {
@@ -228,7 +233,7 @@ impl Simulator {
                 }
             }
 
-            if self.scheduler.curr_time > max_steps {
+            if self.scheduler.curr_time > max_steps || stopping {
                 return Ok(self.scheduler.curr_time-1);
             }
         }
@@ -319,7 +324,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let _steps = sim.run(256);
+        let _steps = sim.run(256, false);
 
         let output = sim.dump_outputs();
 
@@ -413,7 +418,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let _steps = sim.run(5);
+        let _steps = sim.run(5, false);
 
         let output = sim.dump_outputs();
 
@@ -565,7 +570,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let result = sim.run(10);
+        let result = sim.run(10, false);
 
         assert_eq!(result, Err(RuntimeError::SimultaneousDrivers{
             ent_id: 0,
@@ -647,7 +652,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let result = sim.run(256);
+        let result = sim.run(256, false);
 
         assert_eq!(result, Err(RuntimeError::Interpreter {
             err: InterpreterError::DivisionByZero,
@@ -698,7 +703,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let result = sim.run(10);
+        let result = sim.run(10, false);
 
         assert_eq!(result, Ok(6));
     }
@@ -744,7 +749,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let result = sim.run(10);
+        let result = sim.run(10, false);
 
         assert_eq!(result, Ok(10));
     }
@@ -821,7 +826,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let _steps = sim.run(256);
+        let _steps = sim.run(256, false);
 
         let output_1 = sim.dump_outputs();
 
@@ -912,7 +917,7 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let _steps = sim.run(256);
+        let _steps = sim.run(256, false);
 
         let output_2 = sim.dump_outputs();
 
@@ -920,7 +925,7 @@ mod tests {
     }
 
     #[test]
-    fn xor_with_nand() {
+    fn stop_on_next_output() {
         // rel_t NAND : (a: Bool, b: Bool) -> Bool = ~(a & b);
 
         // net XOR {
@@ -1032,13 +1037,22 @@ mod tests {
 
         assert_eq!(success, Ok(()));
 
-        let _steps = sim.run(256);
+        let _steps = sim.run(256, true);
 
-        let output = sim.dump_outputs();
+        let output_1 = sim.dump_outputs();
 
-        assert_eq!(output, vec![
+        assert_eq!(output_1, vec![
             ("q".to_string(), vec![
                 (4 as usize, IoVal::Bool(false)),
+            ]),
+        ]);
+
+        let _steps = sim.run(256, false);
+
+        let output_2 = sim.dump_outputs();
+
+        assert_eq!(output_2, vec![
+            ("q".to_string(), vec![
                 (7 as usize, IoVal::Bool(true)),
                 (12 as usize, IoVal::Bool(false)),
             ]),
@@ -1101,7 +1115,7 @@ mod tests {
 
         let mut sim = Simulator::new(netlist, interface, relations, inits);
 
-        let _steps = sim.run(5);
+        let _steps = sim.run(5, false);
 
         let output = sim.dump_outputs();
 
@@ -1227,7 +1241,7 @@ mod tests {
 
         let mut sim = Simulator::new(netlist, interface, relations, inits);
 
-        let _steps = sim.run(10);
+        let _steps = sim.run(10, false);
 
         let output = sim.dump_outputs();
 
@@ -1341,7 +1355,7 @@ mod tests {
 
         let mut sim = Simulator::new(net, interface, relations, inits);
 
-        let steps = sim.run(5);
+        let steps = sim.run(5, false);
 
         assert_eq!(steps, Ok(5));
 

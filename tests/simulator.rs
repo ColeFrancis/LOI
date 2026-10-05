@@ -59,7 +59,7 @@ fn flip_flop() {
 
     assert_eq!(success, Ok(()));
 
-    let _steps = sim.run(256);
+    let _steps = sim.run(256, false);
 
     let output = sim.dump_outputs();
 
@@ -112,7 +112,7 @@ fn adder() {
 
     assert_eq!(success, Ok(()));
 
-    let _steps = sim.run(256);
+    let _steps = sim.run(256, false);
 
     let output = sim.dump_outputs();
 
@@ -151,7 +151,7 @@ fn impulse_and_custom() {
     let success = sim.load_inputs(inputs);
     assert_eq!(success, Ok(()));
 
-    let _steps = sim.run(256);
+    let _steps = sim.run(256, false);
 
     let output = sim.dump_outputs();
     assert_eq!(output, vec![
