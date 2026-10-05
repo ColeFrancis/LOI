@@ -287,6 +287,22 @@ pub enum Operation {
     Not,
 }
 
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::Cmp => write!(f, "Comparison"),
+            Operation::Add => write!(f, "Add"),
+            Operation::Sub => write!(f, "Subtract"),
+            Operation::Mul => write!(f, "Multiply"),
+            Operation::Div => write!(f, "Divide"),
+            Operation::Pow => write!(f, "Power"),
+            Operation::Or  => write!(f, "Boolean Or"),
+            Operation::And => write!(f, "Boolean And"),
+            Operation::Not => write!(f, "Boolean Not"),
+        }   
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ExprType {
     Literal,
@@ -298,6 +314,22 @@ pub enum ExprType {
     Cases,
     Sample,
     Error,
+}
+
+impl std::fmt::Display for ExprType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExprType::Literal => write!(f, "Literal"),
+            ExprType::Ident   => write!(f, "Ident"),
+            ExprType::Unary   => write!(f, "Unary"),
+            ExprType::Binary  => write!(f, "Binary"),
+            ExprType::Tuple   => write!(f, "Tuple"),
+            ExprType::Block   => write!(f, "Block"),
+            ExprType::Cases   => write!(f, "Cases"),
+            ExprType::Sample  => write!(f, "Sample"),
+            ExprType::Error   => write!(f, "Error"),
+        }   
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -363,81 +395,87 @@ impl Diagnostic {
             }
 
             Diagnostic::IncompatibleOp {expr_type, op, op_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Incompatible operation {} given expression type: {}\nat line {}:{}\n\n", op, expr_type, op_span.line, op_span.col);
             }
 
             Diagnostic::NonRealProb {prob_type, arm_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Probability type must be Real. Instead found: {}\nat line {}:{}\n\n", prob_type, arm_span.line, arm_span.col);
             }
 
             Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Tuple lengths are not equal: {} and {}\nat line {}:{}\n\n", left_len, right_len, right_span.line, right_span.col);
             }
 
             Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                let expected = expected.iter().map(|expr_type| format!("{expr_type}")).collect::<Vec<_>>().join(", ");
+
+                eprintln!("Compiler Error: Illegal scrutinee expression type: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, cases_span.line, cases_span.col);
             }
 
             Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Incompatible expression return type: {}. Expected type: {}\nat line {}:{}\n\n", expr_type, return_type, rel_span.line, rel_span.col);
             }
 
             Diagnostic::MismatchedEntType {expected, found, span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Mismatched entity types. Expected: {}, found: {}\nat line {}:{}\n\n", expected, found, span.line, span.col);
             }
 
             Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}\n\n", expected_len, actual_len, rel_span.line, rel_span.col);
             }
 
             Diagnostic::NonexistantNetPort {name, span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Net port \"{}\" used but not found.\nat line {}:{}\n\n", name, span.line, span.col);
             }
 
             Diagnostic::DivideByZero {op_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Divide by zero while folding expression.\nat line {}:{}\n\n", op_span.line, op_span.line);
             }
 
             Diagnostic::NegExpOnInt {op_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Integer raised to negative power.\nat line {}:{}\n\n", op_span.line, op_span.line);
             }
 
             Diagnostic::NoReturnArm {span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: No return arms on expression.\nat line {}:{}\n\n", span.line, span.col);
             }
 
             Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Duplicate pattern on cases arm. First pattern at {}:{}\nat line {}:{}\n\n", old_arm_span.line, old_arm_span.col, arm_span.line, arm_span.col);
             }
 
             Diagnostic::NoDefaultPattern {cases_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: No default pattern given.\nat line {}:{}\n\n", cases_span.line, cases_span.col);
             }
 
             Diagnostic::ProbOutOfRange {total_prob, val, span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                match total_prob {
+                    true => eprintln!("Compiler Error: Arm's probability value \"{}\" out of range. Should be >= 0 and <= 1.\nat line {}:{}\n\n", val, span.line, span.col),
+                    false => eprintln!("Compiler Error: Total probability value \"{}\" out of range. Should be 1.\nat line {}:{}\n\n", val, span.line, span.col),
+                }
             }
 
             Diagnostic::MultipleDefaultProb {arm_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Multiple default probabilites given.\nat line {}:{}\n\n", arm_span.line, arm_span.col);
             }
 
             Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Entity \"{}\
+                 driven by multiple sources. First driven at {}:{}\nat line {}:{}\n\n", name, first_span.line, first_span.col, last_span.line, last_span.col);
             }
 
             /////////////////
             // CodeGen Errors
             /////////////////
             Diagnostic::TooManySymbols {rel_name, rel_span} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Too many internal registers needed to evaluate rel_t: \"{}\". Please reduce the number of variables, cases or probability arms, or simplify expressions.\nat line {}:{}\n\n", rel_name, rel_span.line, rel_span.col);
             }
 
             ////////////////////
             // Syntehsize Errors
             ////////////////////
             Diagnostic::NonexistantTopLevelNet {name} => {
-                //eprintln!("Compiler Error: \nat line {}:{}\n\n");
+                eprintln!("Compiler Error: Given top level net \"{}\" does not exist.", name);
             }
         }
     }
@@ -604,17 +642,4 @@ let n = @;", &mut diagnostics).tokenize();
             },
         ]);
     }
-
-    use crate::compiler::ast::Ident;
-
-    // #[test]
-    // fn print_test() {
-    //     Diagnostic::IncompatibleTypes {
-    //         left: Type::Int, 
-    //         right: Type::Custom(Ident::Str{val: "A".to_string(), span:Span{line: 0, col: 0}}), 
-    //         op_span: Span{line: 111, col: 2},
-    //     }.print();
-
-    //     assert!(false);
-    // }
 }

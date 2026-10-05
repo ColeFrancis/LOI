@@ -110,13 +110,21 @@ impl RuntimeError {
         match self {
             RuntimeError::Interpreter {err, rel_name, rel_id, timestep} => err.print(rel_name, *rel_id, *timestep),
 
-            RuntimeError::SimultaneousDrivers {ent_id, timestep} => {}
+            RuntimeError::SimultaneousDrivers {ent_id, timestep} => {
+                eprintln!("Runtime Error: Entity {} driven by conflicting values.\ntimestep: {}\n\n", ent_id, timestep);
+            }
 
-            RuntimeError::NonexistantInput(string) => {}
+            RuntimeError::NonexistantInput(string) => {
+                eprintln!("Runtime Error: Input entity {} does not exist.", string);
+            }
 
-            RuntimeError::NonexistantInputValue(string) => {}
+            RuntimeError::NonexistantInputValue(string) => {
+                eprintln!("Runtime Error: Input entity value {} does not exist.", string);
+            }
 
-            RuntimeError::IncompatibleTypes {ent_id, expected, found} => {}
+            RuntimeError::IncompatibleTypes {ent_id, expected, found} => {
+                eprintln!("Runtime Error: Given type {} incompatible with entity {}'s type: {}", found, ent_id, expected);
+            }
 
             RuntimeError::InputFileRead(read_error) => read_error.print(),
  
@@ -128,17 +136,27 @@ impl RuntimeError {
 impl InputFileReadError {
     pub fn print(&self) {
         match self {
-            InputFileReadError::InvalidInputFileType => {}
+            InputFileReadError::InvalidInputFileType => {
+                eprintln!("Runtime Error: Invalid input file type.");
+            }
 
             InputFileReadError::Io(io_error) => io_error.print(),
 
-            InputFileReadError::InvalidHeader => {}
+            InputFileReadError::InvalidHeader => {
+                eprintln!("Runtime Error: Invalid input file header. First line should be: \"step entity value\" (Whitespace variable)");
+            }
 
-            InputFileReadError::IncorrectNumberOfFields {expected, found, line_num} => {}
+            InputFileReadError::IncorrectNumberOfFields {expected, found, line_num} => {
+                eprintln!("Runtime Error: Incorrect number of fields in input file. Expected: {}, found: {}\nat line {}\n\n", expected, found, line_num);
+            }
 
-            InputFileReadError::InvalidStep {source, line_num} => {}
+            InputFileReadError::InvalidStep {source, line_num} => {
+                eprintln!("Runtime Error: Invalid step value in input file at line {}.\n{}\n\n", source, line_num);
+            }
 
-            InputFileReadError::InvalidNumber {num, line_num} => {}
+            InputFileReadError::InvalidNumber {num, line_num} => {
+                eprintln!("Runtime Error: Invalid number {} in putput file.\nat line {}\n\n", num, line_num);
+            }
         }
     }
 }
@@ -146,7 +164,9 @@ impl InputFileReadError {
 impl OutputFileWriteError {
     pub fn print(&self) {
         match self {
-            OutputFileWriteError::InvalidOutputFileType => {}
+            OutputFileWriteError::InvalidOutputFileType => {
+                eprintln!("Runtime Error: Invalid output file type.");
+            }
 
             OutputFileWriteError::Io(io_error) => io_error.print(),
         }
@@ -162,15 +182,26 @@ impl IoError {
 impl InterpreterError {
     pub fn print(&self, rel_name: &str, rel_id: RelId, timestep: usize) {
         match self {
-            InterpreterError::InvalidOpcode(code) => {}
+            InterpreterError::InvalidOpcode(code) => {
+                // If the relation compiler is bug_free
+                eprintln!("Runtime Error: Bug in relation compiler resulted in invalid opcode: {:b}.\nRelation \"{}\" (id {}) at timestep {}\n\n", code, rel_name, rel_id, timestep);
+            }
 
-            InterpreterError::IntegerOverflow => {}
+            InterpreterError::IntegerOverflow => {
+                eprintln!("Runtime Error: Integer overflow while executing.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+            }
 
-            InterpreterError::DivisionByZero => {}
+            InterpreterError::DivisionByZero => {
+                eprintln!("Runtime Error: Division by zero while executing.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+            }
 
-            InterpreterError::IntNegativeExponent => {}
+            InterpreterError::IntNegativeExponent => {
+                eprintln!("Runtime Error: Integer raised to negative power.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+            }
 
-            InterpreterError::InvalidProb(prob) => {}
+            InterpreterError::InvalidProb(prob) => {
+                eprintln!("Runtime Error: Probability value \"{}\" out of range. Should be 1.\nrelation \"{}\" (id {}) at timestep {}\n\n", prob, rel_name, rel_id, timestep);
+            }
         }
     }
 }
