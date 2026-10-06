@@ -6,13 +6,13 @@ net XOR {
     output Q: Bool;
     output I: Bool;
 
-    I := NAND(A,B);
+    NAND(A,B) := I;
 
-    inter_2 := NAND(A, I);
+    NAND(A, I) := inter_2;
 
-    inter_3 := NAND(I, B);
+    NAND(I, B) := inter_3;
 
-    Q := NAND(inter_2, inter_3);
+    NAND(inter_2, inter_3) := Q;
 }
 
 net ADDER {
@@ -23,7 +23,7 @@ net ADDER {
     output S: Bool;
     output cout: Bool;
 
-    cout := NAND(inter_1, inter_2);
+    NAND(inter_1, inter_2) := cout;
 
     XOR {
         A := A,
@@ -102,13 +102,13 @@ net d_LATCH {
     init Q: Bool = false;
     init Qp: Bool = true;
 
-    D_n := NAND(D, D);
+    NAND(D, D) := D_n;
 
-    S := NAND(D, E);
-    R := NAND(D_n, E);
+    NAND(D, E) := S;
+    NAND(D_n, E) := R;
 
-    Q := NAND(S, Qp);
-    Qp := NAND(R, Q);
+    NAND(S, Qp) := Q;
+    NAND(R, Q) := Qp;
 }
 
 net d_FLIP_FLOP {
@@ -117,8 +117,8 @@ net d_FLIP_FLOP {
     output Q: Bool;
     output Qp: Bool;
 
-    clk_1 := NAND(clk, clk);
-    clk_2 := NAND(clk_1, clk_1);
+    NAND(clk, clk) := clk_1;
+    NAND(clk_1, clk_1) := clk_2;
 
     d_LATCH {
         D := D,

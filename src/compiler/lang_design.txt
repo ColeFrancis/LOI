@@ -131,8 +131,8 @@ net HALF_ADD {
     output sum : Bool;
     output carry : Bool;
 
-    sum := XOR(a,b); // Instantiate a rel_t
-    carry := AND(a, b);
+    XOR(a,b) := sum; // Instantiate a rel_t
+    AND(a, b) := carry;
 };
 
 // Full adder
@@ -158,7 +158,7 @@ net ADD {
         cout := h2_carry,
     };
 
-    cout := OR(h1_carry, h2_carry);
+    OR(h1_carry, h2_carry) := cout;
 }
 
 // Showcases initializing entity values
@@ -169,7 +169,7 @@ net XOR_INVERTER {
 
     init b: Bool = 1;
 
-    s := XOR(a, b);
+    XOR(a, b) := s;
 }
 
 // DSP-inspired integrator by adding the current value of a to the current value of b repeatidly
@@ -177,7 +177,7 @@ net INTEGRATE {
     input a: R;
     output b: R;
 
-    b := ADD(a, b);
+    ADD(a, b) := b;
 }
 
 // Model of a ball thrown upwards wiht a velocity 1 and accelerating down with an acceleration 9.8
@@ -187,8 +187,8 @@ net PNYS {
 
     output y: R;
 
-    v := ADD(v, g);
-    y := ADD(y, v);
+    ADD(v, g) := v;
+    ADD(y, v) := y;
 }
 
 // Showcase of how to create D-latch
@@ -199,14 +199,14 @@ net DLATCH {
     output q: Bool;
     output q_not: Bool;
 
-    d_not := NOT(d);
+    NOT(d) := d_not;
 
-    s := NAND(d, clk);
-    r := NAND(d_not, clk);
+    NAND(d, clk) := s;
+    NAND(d_not, clk) := r;
 
     // feedback loop creates state.
-    q := NAND(s, q_not);
-    q_not := NAND(r, q);
+    NAND(s, q_not) := q;
+    NAND(r, q) := q_not;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,11 +265,11 @@ net Neuron {
                                        |______|
     */
 
-    next_potential := SYNAPSE(spike_in, weight, curr_potential);
+    SYNAPSE(spike_in, weight, curr_potential) := next_potential;
 
-    spike_out := AXON(next_potential);
+    AXON(next_potential) := spike_out;
 
-    curr_potential := BODY(spike_out, next_potential);
+    BODY(spike_out, next_potential) := curr_potential;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -284,14 +284,14 @@ net FLIP_FLOP {
     input d: Bool;
     output q: Bool;
 
-    s := NAND3(clk, rst_n, s_p);
-    s_p := NAND(r_p, s);
+    NAND3(clk, rst_n, s_p) := s;
+    NAND(r_p, s) := s_p;
 
-    r := NAND3(clk, s, r_p);
-    r_p := NAND3(d, rst_n, r);
+    NAND3(clk, s, r_p) := r;
+    NAND3(d, rst_n, r) := r_p;
 
-    q := NAND(s, q_p);
-    q_p := NAND3(rst_n, r, q);
+    NAND(s, q_p) := q;
+    NAND3(rst_n, r, q) := q_p;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////
@@ -325,11 +325,11 @@ net RULE_110_5 {
     init c4: Bool = false;
     init c5: Bool = true;
 
-    c1 := RULE_110(c5, c1, c2);
-    c2 := RULE_110(c1, c2, c3);
-    c3 := RULE_110(c2, c3, c4);
-    c4 := RULE_110(c3, c4, c5);
-    c5 := RULE_110(c4, c5, c1);
+    RULE_110(c5, c1, c2) := c1;
+    RULE_110(c1, c2, c3) := c2;
+    RULE_110(c2, c3, c4) := c3;
+    RULE_110(c3, c4, c5) := c4;
+    RULE_110(c4, c5, c1) := c5;
 }
 
 ///////////////////////

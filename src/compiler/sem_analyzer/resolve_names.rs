@@ -1573,7 +1573,7 @@ net FIRST {
     input a: Int;
     output q: Int;
 
-    q := ADD(a);
+    ADD(a) := q;
 }
 
 net SECOND {
@@ -1742,7 +1742,7 @@ net SECOND {
                         args: vec![
                             Ident::Symbol(7),
                         ],
-                        span: Span {line: 15, col: 7},
+                        span: Span {line: 15, col: 5},
                     }),
                 ],
             }),

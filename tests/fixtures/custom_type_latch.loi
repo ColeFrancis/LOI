@@ -12,5 +12,5 @@ net LATCH {
 
     init out: ABC = A;
 
-    out := LATCH_REL(out, in, clk);
+    LATCH_REL(out, in, clk) := out;
 }

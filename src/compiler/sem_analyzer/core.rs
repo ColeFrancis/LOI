@@ -87,7 +87,7 @@ net FIRST {
     input a: Int;
     output q: Int;
 
-    q := ADD(a);
+    ADD(a) := q;
 }
 
 net SECOND {
@@ -106,6 +106,7 @@ net SECOND {
 
         let (validated_program, symbols) = SemAnalyzer::new(program, &mut diagnostics).analyze();
 
+        diagnostics.debug_print();
 
         assert_eq!(symbols, vec![
             Symbol {
@@ -237,7 +238,7 @@ net SECOND {
                         args: vec![
                             Ident::Symbol(7),
                         ],
-                        span: Span {line: 17, col: 7},
+                        span: Span {line: 17, col: 5},
                     }),
                 ],
             }),

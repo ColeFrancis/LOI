@@ -90,8 +90,22 @@ impl<'a> Parser<'a> {
             },
 
             TokenKind::Ident(_) => match self.peek_n(1).kind {
-                TokenKind::Connect => Some(NetItem::RelInst(self.parse_rel_inst()?)),
-                _ => Some(NetItem::NetInst(self.parse_net_inst()?)),
+                TokenKind::LParen => Some(NetItem::RelInst(self.parse_rel_inst()?)),
+                TokenKind::LBrace => Some(NetItem::NetInst(self.parse_net_inst()?)),
+                _ => {
+                    self.diagnostics.error(Diagnostic::UnexpectedToken {
+                        expected: vec![
+                            Expected::Token(TokenKind::LParen),
+                            Expected::Token(TokenKind::LBrace),
+                        ],
+                        found: self.peek_n(1).kind.clone(),
+                        span: self.peek_n(1).span.clone(),
+                    });
+
+                    self.sync(&SyncRule::NetItem {depth: 0});
+
+                    None
+                }
             },
 
             other => {
@@ -132,11 +146,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_rel_inst(&mut self) -> Option<RelInst> {
-        let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
+        // let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
+        // let span = self.peek().span.clone();
+        // self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
+
+        // let rel = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
         let span = self.peek().span.clone();
-        self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
-
         let rel = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
         self.expect(TokenKind::LParen, &SyncRule::NetItem {depth: 0})?;
@@ -154,6 +170,10 @@ impl<'a> Parser<'a> {
         }
 
         self.expect(TokenKind::RParen, &SyncRule::NetItem {depth: 0})?;
+        
+        self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
+
+        let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
 
         self.expect(TokenKind::Semicolon, &SyncRule::NetItem {depth: 0})?;
 
@@ -255,7 +275,7 @@ mod tests {
         //         cout := h2_carry,
         //     };
 
-        //     cout := OR(h1_carry, h2_carry);
+        //     OR(h1_carry, h2_carry) := cout;
 
         // }
         let kinds: Vec<TokenKind> = vec![
@@ -280,9 +300,9 @@ mod tests {
                     Ident("cout".to_string()), Connect, Ident("h2_carry".to_string()), Comma,
                 RBrace, Semicolon,
 
-                Ident("cout".to_string()), Connect, Ident("OR".to_string()), LParen,
+                Ident("OR".to_string()), LParen,
                     Ident("h1_carry".to_string()), Comma, Ident("h2_carry".to_string()),
-                RParen, Semicolon,
+                RParen, Connect, Ident("cout".to_string()), Semicolon,
             RBrace, Eof
             ];
 
@@ -292,6 +312,8 @@ mod tests {
         let mut parser = Parser::new(tokens, &mut diagnostics);
 
         let result = parser.parse_net();
+
+        diagnostics.debug_print();
 
         assert_eq!(result, Some(Net {
             name: build_ident_str("ADD"),

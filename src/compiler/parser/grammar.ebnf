@@ -154,7 +154,7 @@ init_decl =
     "init" IDENT ":" type "=" expr ";" ;
 
 rel_inst = 
-    IDENT ":=" IDENT "(" arg_list? ")" ";" ;
+    IDENT "(" arg_list? ")" ":=" IDENT ";" ;
     
 arg_list =
     IDENT ("," IDENT)* ;
