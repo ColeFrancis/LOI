@@ -266,7 +266,7 @@ impl Synthesis {
 
                             (Literal::Real(r), &Type::Real) => r.to_bits(),
 
-                            (left_literal, right) => unreachable!("type checking already occured"),
+                            _ => unreachable!("type checking already occured"),
                         },
 
                         Expr::Ident(Ident::Symbol(id)) => match  symbols[id].kind {

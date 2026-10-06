@@ -51,14 +51,14 @@ impl PartialEq for CompileError {
     }
 }
 
-impl CompileError {
-    pub fn print(&self) {
+impl std::fmt::Display for CompileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CompileError::Io(err) => eprintln!("I/O error compiling file: {err}"),
-            
-            CompileError::InvalidFileExtension => eprintln!("Invalid file extension. Requires .loi file"),
+            CompileError::Io(error) => write!(f, "I/O error compiling file: {error}"),
 
-            CompileError::Diagnostics(diagnostics) => diagnostics.print(),
+            CompileError::InvalidFileExtension => write!(f, "Invalid file extension. Requires .loi file"),
+
+            CompileError::Diagnostics(diagnostics) => write!(f, "{diagnostics}"),
         }
     }
 }

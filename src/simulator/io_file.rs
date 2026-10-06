@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 
 use super::IoVal;
-use super::runtime_diagnostics::{InputFileReadError, OutputFileWriteError, IoError};
+use super::io_file_error::{InputFileReadError, OutputFileWriteError, IoError};
 
 #[derive(Debug, PartialEq)]
 enum FileType {

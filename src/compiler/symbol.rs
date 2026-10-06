@@ -73,12 +73,6 @@ impl std::fmt::Display for SymbolKind {
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub enum EntType {
-    Mod(usize),
-    Set, 
-}
-
-#[derive(PartialEq, Debug, Clone)]
 pub struct NetPort {
     pub symbol: SymbolId,
     pub input: bool,

@@ -14,3 +14,4 @@
 
 pub mod compiler;
 pub mod simulator;
+pub mod cli;

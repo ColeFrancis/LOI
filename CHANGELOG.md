@@ -4,10 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [0.6.0]
+## [1.0.0] - 2026-10-06
 
 ### Added
 
+- Command line interface and first version finished!
 - Reading and writing of input/output text files for the simulator
 
 ### Changed

@@ -126,10 +126,10 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Real    => write!(f, "\"Real\""),
             TokenKind::Mod     => write!(f, "\"Mod\""),
 
-            TokenKind::Ident(s)       => write!(f, "Identifier"),
-            TokenKind::BoolLiteral(b) => write!(f, "Bool Literal"),
-            TokenKind::IntLiteral(i)  => write!(f, "Int Literal"),
-            TokenKind::RealLiteral(r) => write!(f, "Real Literal"),
+            TokenKind::Ident(_)       => write!(f, "Identifier"),
+            TokenKind::BoolLiteral(_) => write!(f, "Bool Literal"),
+            TokenKind::IntLiteral(_)  => write!(f, "Int Literal"),
+            TokenKind::RealLiteral(_) => write!(f, "Real Literal"),
 
             TokenKind::Colon     => write!(f, "\":\""),
             TokenKind::Semicolon => write!(f, "\";\""),

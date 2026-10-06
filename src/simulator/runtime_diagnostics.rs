@@ -40,43 +40,6 @@ pub enum RuntimeError {
         expected: Type,
         found: Type,
     },
-    InputFileRead(InputFileReadError),
-    OutputFileWrite(OutputFileWriteError),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum InputFileReadError {
-    InvalidInputFileType,
-    Io(IoError),
-    InvalidHeader,
-    IncorrectNumberOfFields {
-        expected: usize,
-        found: usize,
-        line_num: usize,
-    },
-    InvalidStep {
-        source: std::num::ParseIntError,
-        line_num: usize,
-    },
-    InvalidNumber {
-        num: String,
-        line_num: usize,
-    },
-}
-
-#[derive(Debug, PartialEq)]
-pub enum OutputFileWriteError {
-    InvalidOutputFileType,
-    Io(IoError),
-}
-
-#[derive(Debug)]
-pub struct IoError(pub std::io::Error);
-
-impl PartialEq for IoError {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.kind() == other.0.kind()
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -105,102 +68,54 @@ impl InterpreterError {
     }
 }
 
-impl RuntimeError {
-    pub fn print(&self) {
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RuntimeError::Interpreter {err, rel_name, rel_id, timestep} => err.print(rel_name, *rel_id, *timestep),
+            RuntimeError::Interpreter {err, rel_name, rel_id, timestep} => {
+                write!(f, "Runtime Error: {} while executing relation \"{}\" (id {}) at timestep {}", err, rel_name, rel_id, timestep)
+            }
 
             RuntimeError::SimultaneousDrivers {ent_id, timestep} => {
-                eprintln!("Runtime Error: Entity {} driven by conflicting values.\ntimestep: {}\n\n", ent_id, timestep);
+                write!(f, "Runtime Error: Entity {} driven by conflicting values.\ntimestep: {}", ent_id, timestep)
             }
 
             RuntimeError::NonexistantInput(string) => {
-                eprintln!("Runtime Error: Input entity {} does not exist.", string);
+                write!(f, "Runtime Error: Input entity {} does not exist.", string)
             }
 
             RuntimeError::NonexistantInputValue(string) => {
-                eprintln!("Runtime Error: Input entity value {} does not exist.", string);
+                write!(f, "Runtime Error: Input entity value {} does not exist.", string)
             }
 
             RuntimeError::IncompatibleTypes {ent_id, expected, found} => {
-                eprintln!("Runtime Error: Given type {} incompatible with entity {}'s type: {}", found, ent_id, expected);
-            }
-
-            RuntimeError::InputFileRead(read_error) => read_error.print(),
- 
-            RuntimeError::OutputFileWrite(write_error) => write_error.print(),
-        }
-    }
-}
-
-impl InputFileReadError {
-    pub fn print(&self) {
-        match self {
-            InputFileReadError::InvalidInputFileType => {
-                eprintln!("Runtime Error: Invalid input file type.");
-            }
-
-            InputFileReadError::Io(io_error) => io_error.print(),
-
-            InputFileReadError::InvalidHeader => {
-                eprintln!("Runtime Error: Invalid input file header. First line should be: \"step entity value\" (Whitespace variable)");
-            }
-
-            InputFileReadError::IncorrectNumberOfFields {expected, found, line_num} => {
-                eprintln!("Runtime Error: Incorrect number of fields in input file. Expected: {}, found: {}\nat line {}\n\n", expected, found, line_num);
-            }
-
-            InputFileReadError::InvalidStep {source, line_num} => {
-                eprintln!("Runtime Error: Invalid step value in input file at line {}.\n{}\n\n", source, line_num);
-            }
-
-            InputFileReadError::InvalidNumber {num, line_num} => {
-                eprintln!("Runtime Error: Invalid number {} in putput file.\nat line {}\n\n", num, line_num);
+                write!(f, "Runtime Error: Given type {} incompatible with entity {}'s type: {}", found, ent_id, expected)
             }
         }
     }
 }
 
-impl OutputFileWriteError {
-    pub fn print(&self) {
-        match self {
-            OutputFileWriteError::InvalidOutputFileType => {
-                eprintln!("Runtime Error: Invalid output file type.");
-            }
-
-            OutputFileWriteError::Io(io_error) => io_error.print(),
-        }
-    }
-}
-
-impl IoError {
-    pub fn print(&self) {
-        eprintln!("I/O error accessing file: {}", self.0);
-    }
-}
-
-impl InterpreterError {
-    pub fn print(&self, rel_name: &str, rel_id: RelId, timestep: usize) {
+impl std::fmt::Display for InterpreterError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             InterpreterError::InvalidOpcode(code) => {
                 // If the relation compiler is bug_free
-                eprintln!("Runtime Error: Bug in relation compiler resulted in invalid opcode: {:b}.\nRelation \"{}\" (id {}) at timestep {}\n\n", code, rel_name, rel_id, timestep);
+                write!(f, "Bug in relation compiler resulted in invalid opcode {}", code)
             }
 
             InterpreterError::IntegerOverflow => {
-                eprintln!("Runtime Error: Integer overflow while executing.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+                write!(f, "Integer overflow")
             }
 
             InterpreterError::DivisionByZero => {
-                eprintln!("Runtime Error: Division by zero while executing.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+                write!(f, "Division by zero")
             }
 
             InterpreterError::IntNegativeExponent => {
-                eprintln!("Runtime Error: Integer raised to negative power.\nRelation \"{}\" (id {}) at timestep {}\n\n", rel_name, rel_id, timestep);
+                write!(f, "Integer raised to negative power")
             }
 
             InterpreterError::InvalidProb(prob) => {
-                eprintln!("Runtime Error: Probability value \"{}\" out of range. Should be 1.\nrelation \"{}\" (id {}) at timestep {}\n\n", prob, rel_name, rel_id, timestep);
+                write!(f, "Probability value \"{}\" out of range (Should be 1)", prob)
             }
         }
     }

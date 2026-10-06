@@ -18,6 +18,7 @@ mod scheduler;
 pub mod rel_interpreter;
 pub mod runtime_diagnostics;
 pub mod io_file;
+pub mod io_file_error;
 
 use std::collections::HashMap;
 

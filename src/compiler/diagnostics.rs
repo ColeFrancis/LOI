@@ -61,11 +61,16 @@ impl Diagnostics {
             println!("{}: {:#?}", i + 1, error);
         }
     }
+}
 
-    pub fn print(&self) {
+impl std::fmt::Display for Diagnostics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for diagnostic in &self.errors {
-            diagnostic.print();
+            writeln!(f, "Compiler Error: {diagnostic}")?;
+            writeln!(f)?;
         }
+
+        writeln!(f, "{} Compiler Errors found.", self.num_errors())
     }
 }
 
@@ -338,18 +343,18 @@ pub struct Span {
     pub col: usize,
 }
 
-impl Diagnostic {
-    fn print(&self) {
+impl std::fmt::Display for Diagnostic {
+    fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ///////////////
             // Lexer Errors
             ///////////////
             Diagnostic::UnknownToken {lexeme, span} => {
-                eprintln!("Compiler Error: Unknown token \"{}\"\nat line {}:{}\n\n", lexeme, span.line, span.col);
+                write!(f, "Unknown token \"{}\"\nat line {}:{}", lexeme, span.line, span.col)
             }
 
             Diagnostic::InvalidNum {lexeme, span} => {
-                eprintln!("Compiler Error: Invalid number \"{}\"\nat line {}:{}\n\n", lexeme, span.line, span.col);
+                write!(f, "Invalid number \"{}\"\nat line {}:{}", lexeme, span.line, span.col)
             }
 
             ////////////////
@@ -358,124 +363,123 @@ impl Diagnostic {
             Diagnostic::UnexpectedToken {expected, found, span} => {
                 let expected = expected.iter().map(|token| format!("{token}")).collect::<Vec<_>>().join(", ");
 
-                eprintln!("Compiler Error: Unexpected token: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, span.line, span.col);
+                write!(f, "Unexpected token: {}. Expected one of: {}\nat line {}:{}", found, expected, span.line, span.col)
             }
 
             Diagnostic::NestedTupleExpr {span} => {
-                eprintln!("Compiler Error: Nested Tuple Expressions\nat line {}:{}\n\n", span.line, span.col);
+                write!(f, "Nested Tuple Expressions\nat line {}:{}", span.line, span.col)
             }
 
             ///////////////////////////
             // Semantic Analysis Errors
             ///////////////////////////
             Diagnostic::DuplicateDefinition {name, old_span, new_span} => {
-                eprintln!("Compiler Error: Duplicate definition of \"{}\", previously defined at {}:{}\nat line {}:{}\n\n", name, old_span.line, old_span.col, new_span.line, new_span.col);
+                write!(f, "Duplicate definition of \"{}\", previously defined at {}:{}\nat line {}:{}", name, old_span.line, old_span.col, new_span.line, new_span.col)
             }
 
             Diagnostic::UndefinedIdent {name, span} => {
-                eprintln!("Compiler Error: Undefined identifier: \"{}\"\nat line {}:{}\n\n", name, span.line, span.col);
+                write!(f, "Undefined identifier: \"{}\"\nat line {}:{}", name, span.line, span.col)
             }
 
             Diagnostic::UndefinedPort {name, span} => {
-                eprintln!("Compiler Error: Undefined net port: \"{}\"\nat line {}:{}\n\n", name, span.line, span.col);
+                write!(f, "Undefined net port: \"{}\"\nat line {}:{}", name, span.line, span.col)
             }
 
             Diagnostic::DuplicatePort {name, span} => {
-                eprintln!("Compiler Error: Port \"{}\" assigned multiple times\nat line {}:{}\n\n", name, span.line, span.col);
+                write!(f, "Port \"{}\" assigned multiple times\nat line {}:{}", name, span.line, span.col)
             }
 
             Diagnostic::UnexpectedIdent {expected, found, span} => {
                 let expected = expected.iter().map(|ident| format!("{ident}")).collect::<Vec<_>>().join(", ");
 
-                eprintln!("Compiler Error: Unexpected Identifer: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, span.line, span.col);
+                write!(f, "Unexpected Identifer: {}. Expected one of: {}\nat line {}:{}", found, expected, span.line, span.col)
             }
 
             Diagnostic::IncompatibleTypes {left, right, op_span} => {
-                eprintln!("Compiler Error: Incompatible variable types: {} and {}\nat line {}:{}\n\n", left, right, op_span.line, op_span.col);
+                write!(f, "Incompatible variable types: {} and {}\nat line {}:{}", left, right, op_span.line, op_span.col)
             }
 
             Diagnostic::IncompatibleOp {expr_type, op, op_span} => {
-                eprintln!("Compiler Error: Incompatible operation {} given expression type: {}\nat line {}:{}\n\n", op, expr_type, op_span.line, op_span.col);
+                write!(f, "Incompatible operation {} given expression type: {}\nat line {}:{}", op, expr_type, op_span.line, op_span.col)
             }
 
             Diagnostic::NonRealProb {prob_type, arm_span} => {
-                eprintln!("Compiler Error: Probability type must be Real. Instead found: {}\nat line {}:{}\n\n", prob_type, arm_span.line, arm_span.col);
+                write!(f, "Probability type must be Real. Instead found: {}\nat line {}:{}", prob_type, arm_span.line, arm_span.col)
             }
 
             Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {
-                eprintln!("Compiler Error: Tuple lengths are not equal: {} and {}\nat line {}:{}\n\n", left_len, right_len, right_span.line, right_span.col);
+                write!(f, "Tuple lengths are not equal: {} and {}\nat line {}:{}", left_len, right_len, right_span.line, right_span.col)
             }
 
             Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {
                 let expected = expected.iter().map(|expr_type| format!("{expr_type}")).collect::<Vec<_>>().join(", ");
 
-                eprintln!("Compiler Error: Illegal scrutinee expression type: {}. Expected one of: {}\nat line {}:{}\n\n", found, expected, cases_span.line, cases_span.col);
+                write!(f, "Illegal scrutinee expression type: {}. Expected one of: {}\nat line {}:{}", found, expected, cases_span.line, cases_span.col)
             }
 
             Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {
-                eprintln!("Compiler Error: Incompatible expression return type: {}. Expected type: {}\nat line {}:{}\n\n", expr_type, return_type, rel_span.line, rel_span.col);
+                write!(f, "Incompatible expression return type: {}. Expected type: {}\nat line {}:{}", expr_type, return_type, rel_span.line, rel_span.col)
             }
 
             Diagnostic::MismatchedEntType {expected, found, span} => {
-                eprintln!("Compiler Error: Mismatched entity types. Expected: {}, found: {}\nat line {}:{}\n\n", expected, found, span.line, span.col);
+                write!(f, "Mismatched entity types. Expected: {}, found: {}\nat line {}:{}", expected, found, span.line, span.col)
             }
 
             Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {
-                eprintln!("Compiler Error: Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}\n\n", expected_len, actual_len, rel_span.line, rel_span.col);
+                write!(f, "Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}", expected_len, actual_len, rel_span.line, rel_span.col)
             }
 
             Diagnostic::NonexistantNetPort {name, span} => {
-                eprintln!("Compiler Error: Net port \"{}\" used but not found.\nat line {}:{}\n\n", name, span.line, span.col);
+                write!(f, "Net port \"{}\" used but not found.\nat line {}:{}", name, span.line, span.col)
             }
 
             Diagnostic::DivideByZero {op_span} => {
-                eprintln!("Compiler Error: Divide by zero while folding expression.\nat line {}:{}\n\n", op_span.line, op_span.line);
+                write!(f, "Divide by zero while folding expression.\nat line {}:{}", op_span.line, op_span.line)
             }
 
             Diagnostic::NegExpOnInt {op_span} => {
-                eprintln!("Compiler Error: Integer raised to negative power.\nat line {}:{}\n\n", op_span.line, op_span.line);
+                write!(f, "Integer raised to negative power.\nat line {}:{}", op_span.line, op_span.line)
             }
 
             Diagnostic::NoReturnArm {span} => {
-                eprintln!("Compiler Error: No return arms on expression.\nat line {}:{}\n\n", span.line, span.col);
+                write!(f, "No return arms on expression.\nat line {}:{}", span.line, span.col)
             }
 
             Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {
-                eprintln!("Compiler Error: Duplicate pattern on cases arm. First pattern at {}:{}\nat line {}:{}\n\n", old_arm_span.line, old_arm_span.col, arm_span.line, arm_span.col);
+                write!(f, "Duplicate pattern on cases arm. First pattern at {}:{}\nat line {}:{}", old_arm_span.line, old_arm_span.col, arm_span.line, arm_span.col)
             }
 
             Diagnostic::NoDefaultPattern {cases_span} => {
-                eprintln!("Compiler Error: No default pattern given.\nat line {}:{}\n\n", cases_span.line, cases_span.col);
+                write!(f, "No default pattern given.\nat line {}:{}", cases_span.line, cases_span.col)
             }
 
             Diagnostic::ProbOutOfRange {total_prob, val, span} => {
                 match total_prob {
-                    true => eprintln!("Compiler Error: Arm's probability value \"{}\" out of range. Should be >= 0 and <= 1.\nat line {}:{}\n\n", val, span.line, span.col),
-                    false => eprintln!("Compiler Error: Total probability value \"{}\" out of range. Should be 1.\nat line {}:{}\n\n", val, span.line, span.col),
+                    true => write!(f, "Arm's probability value \"{}\" out of range. Should be >= 0 and <= 1.\nat line {}:{}", val, span.line, span.col),
+                    false => write!(f, "Total probability value \"{}\" out of range. Should be 1.\nat line {}:{}", val, span.line, span.col),
                 }
             }
 
             Diagnostic::MultipleDefaultProb {arm_span} => {
-                eprintln!("Compiler Error: Multiple default probabilites given.\nat line {}:{}\n\n", arm_span.line, arm_span.col);
+                write!(f, "Multiple default probabilites given.\nat line {}:{}", arm_span.line, arm_span.col)
             }
 
             Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {
-                eprintln!("Compiler Error: Entity \"{}\
-                 driven by multiple sources. First driven at {}:{}\nat line {}:{}\n\n", name, first_span.line, first_span.col, last_span.line, last_span.col);
+                write!(f, "Entity \"{}\" driven by multiple sources. First driven at {}:{}\nat line {}:{}", name, first_span.line, first_span.col, last_span.line, last_span.col)
             }
 
             /////////////////
             // CodeGen Errors
             /////////////////
             Diagnostic::TooManySymbols {rel_name, rel_span} => {
-                eprintln!("Compiler Error: Too many internal registers needed to evaluate rel_t: \"{}\". Please reduce the number of variables, cases or probability arms, or simplify expressions.\nat line {}:{}\n\n", rel_name, rel_span.line, rel_span.col);
+                write!(f, "Too many internal registers needed to evaluate rel_t: \"{}\". Please reduce the number of variables, cases or probability arms, or simplify expressions.\nat line {}:{}\n\n", rel_name, rel_span.line, rel_span.col)
             }
 
             ////////////////////
             // Syntehsize Errors
             ////////////////////
             Diagnostic::NonexistantTopLevelNet {name} => {
-                eprintln!("Compiler Error: Given top level net \"{}\" does not exist.", name);
+                write!(f, "Given top level net \"{}\" does not exist.", name)
             }
         }
     }

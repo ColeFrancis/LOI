@@ -1,7 +1,8 @@
 [package]
 name = "loi"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 
 [dependencies]
 rand = "0.9"
+clap = { version = "4", features = ["derive"]}
