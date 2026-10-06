@@ -59,6 +59,11 @@ impl Compiler {
         let mut diagnostics = Diagnostics::new();
 
         let (ast, mut symbols) = Self::front_end(&code, &mut diagnostics);
+
+        if diagnostics.has_errors() {
+            return Err(CompileError::Diagnostics(diagnostics));
+        }
+
         let (netlist, interface, compiled_relations, inits) = Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
 
         if diagnostics.has_errors() {

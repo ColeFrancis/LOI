@@ -105,25 +105,33 @@ impl <'a> SemAnalyzer<'a> {
 
             Expr::Cases(mut cases_expr) => {
                 let mut has_errors = false;
-                let mut expr_type = self.get_expr_type(&cases_expr.arms[0].expr);
+                let mut expr_type = None;
 
-                for arm in &cases_expr.arms {
+                for arm in &mut cases_expr.arms {
                     if self.verify_pattern_expr_match(&cases_expr.scrutinee, &arm.pattern, &cases_expr.span, &arm.arm_span).is_none() {
                         has_errors = true;
                     }
 
+                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+                    arm.expr = self.add_types_expr(owned_expr)?;
                     let curr_expr_type = self.get_expr_type(&arm.expr);
 
-                    expr_type = match self.verify_expr_type_match(&expr_type, &curr_expr_type, &cases_expr.span) {
-                        Some(expr_type) => expr_type,
-                        None => {
-                            has_errors = true;
-                            continue;
+                    expr_type = match expr_type {
+                        None => Some(curr_expr_type),
+
+                        Some(ref expected_type) => match self.verify_expr_type_match(expected_type, &curr_expr_type, &cases_expr.span) {
+                            Some(expr_type) => Some(expr_type),
+                            None => {
+                                has_errors = true;
+                                continue;
+                            }
                         }
                     }
+                    
+                    
                 }
                 
-                cases_expr.expr_type = expr_type;
+                cases_expr.expr_type = expr_type?;
 
                 if has_errors {
                     None
@@ -135,16 +143,23 @@ impl <'a> SemAnalyzer<'a> {
 
             Expr::Sample(mut sample_expr) => {
                 let mut has_errors = false;
-                let mut expr_type = self.get_expr_type(&sample_expr.arms[0].expr);
 
-                for arm in &sample_expr.arms {
+                let mut expr_type = None;
+
+                for arm in &mut sample_expr.arms {
+                    let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
+                    arm.expr = self.add_types_expr(owned_expr)?;
                     let curr_expr_type = self.get_expr_type(&arm.expr);
 
-                    expr_type = match self.verify_expr_type_match(&expr_type, &curr_expr_type, &sample_expr.span) {
-                        Some(expr_type) => expr_type,
-                        None => {
-                            has_errors = true;
-                            continue;
+                    expr_type = match expr_type {
+                        None => Some(curr_expr_type),
+
+                        Some(ref expected_type) => match self.verify_expr_type_match(expected_type, &curr_expr_type, &sample_expr.span) {
+                            Some(expr_type) => Some(expr_type),
+                            None => {
+                                has_errors = true;
+                                continue;
+                            }
                         }
                     };
 
@@ -162,7 +177,7 @@ impl <'a> SemAnalyzer<'a> {
                     };
                 }
                 
-                sample_expr.expr_type = expr_type;
+                sample_expr.expr_type = expr_type?;
 
                 if has_errors {
                     None
@@ -345,6 +360,8 @@ impl <'a> SemAnalyzer<'a> {
 
             (Type::Error, _) => None,
             (_, Type::Error) => None,
+            (Type::Unknown, _) => None,
+            (_, Type::Unknown) => None,
 
             _ => {
                 self.diagnostics.error(Diagnostic::IncompatibleTypes {
@@ -558,6 +575,8 @@ impl <'a> SemAnalyzer<'a> {
 
             (Type::Error, _) => None,
             (_, Type::Error) => None,
+            // (Type::Unknown, _) => None,
+            // (_, Type::Unknown) => None,
 
             _ => {
                 self.diagnostics.error(Diagnostic::IncompatibleTypes {
@@ -1895,5 +1914,74 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn sample_expr_5() {
+        // sample {
+        //     0.5 : -1.0,
+        //     _ : -2,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program {items: Vec::new()},
+            symbols: vec![],
+            scopes: vec![],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Real(1.0))),
+                        op: UnaryOp::Neg,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: UnaryOp::Neg,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span {line: 0, col: 0},
+        }));
+
+        assert_eq!(result, Some(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Real(1.0))),
+                        op: UnaryOp::Neg,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Real,
+                    }),
+                    arm_span: Span {line: 0, col: 0},
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: UnaryOp::Neg,
+                        op_span: Span{line: 0, col: 0},
+                        expr_type: Type::Int,
+                    }),
+                    arm_span: Span {line: 0, col: 0},
+                },
+            ],
+            expr_type: Type::Real,
+            span: Span {line: 0, col: 0},
+        })));
     }
 }

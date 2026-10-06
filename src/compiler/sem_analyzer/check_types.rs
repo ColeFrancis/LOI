@@ -279,6 +279,11 @@ impl <'a> SemAnalyzer<'a> {
                                 }
                             }
                             else if inst_port_type != connection_ent_type {
+                                // If either are type error, return early to not report extra errors for the same problem
+                                if inst_port_type == Type::Error || connection_ent_type == Type::Error {
+                                    return None;
+                                }
+
                                 self.diagnostics.error(Diagnostic::MismatchedEntType {
                                     expected: connection_ent_type,
                                     found: inst_port_type,
@@ -389,6 +394,11 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             _ => {
+                // If either are type error, return early to not report extra errors for the same problem
+                if symbol_type == Type::Error || object_type == Type::Error {
+                    return None;
+                }
+
                 self.diagnostics.error(Diagnostic::MismatchedEntType {
                     expected: object_type,
                     found: symbol_type,

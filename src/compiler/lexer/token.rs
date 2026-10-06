@@ -84,6 +84,8 @@ pub enum TokenKind {
     Lt, // <
     Ge, // >=
     Le, // <=
+    // Eq, // ==
+    // Ne, // !=
 
     Plus,     // +
     Minus,    // -
