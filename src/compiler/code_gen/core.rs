@@ -822,7 +822,7 @@ mod tests {
         let code = "
         ent_t SET = {A, B, C};
 
-        rel_t ROTATE: (in: SET) -> SET = {
+        rel_t ROTATE (in: SET) -> SET = {
             cases in {
                 A : B,
                 B : C,
@@ -830,13 +830,13 @@ mod tests {
             }
         };
 
-        rel_t NAND: (a: Bool, b: Bool) -> Bool = {
+        rel_t NAND (a: Bool, b: Bool) -> Bool = {
             let c = a & b;
 
             ~c
         };
 
-        rel_t P: (x: Real) -> Real = 3 * (x * x) + 4 * x + 5;
+        rel_t P (x: Real) -> Real = 3 * (x * x) + 4 * x + 5;
         ";
         let mut diagnostics = Diagnostics::new();
 

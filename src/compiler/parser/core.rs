@@ -255,12 +255,12 @@ mod tests {
         
         // let a = 1;
 
-        // rel_t ONE : () -> Real = 1;
+        // rel_t ONE () -> Real = 1;
 
         // net EMPTY {}
         let kinds: Vec<TokenKind> = vec![Ent_t, Ident("COIN".to_string()), Equals, LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()), RBrace, Semicolon,
             Let, Ident("a".to_string()), Equals, IntLiteral(1), Semicolon,
-            Rel_t, Ident("ONE".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, IntLiteral(1), Semicolon,
+            Rel_t, Ident("ONE".to_string()), LParen, RParen, Arrow, Real, Equals, IntLiteral(1), Semicolon,
             NetToken, Ident("EMPTY".to_string()), LBrace, RBrace, Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -300,7 +300,7 @@ mod tests {
         
 let a = 1;
 
-rel_t ONE : () -> Real = 1;
+rel_t ONE () -> Real = 1;
 
 net EMPTY {}", &mut diagnostics).tokenize();
 
@@ -417,7 +417,7 @@ let n = @;
     fn multiple_errors_2() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"rel_t A () -> Real = a;
+"rel_t A : () -> Real = a;
 
 net {
 

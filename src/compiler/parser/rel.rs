@@ -34,8 +34,6 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_rel_t(&mut self) -> Option<RelType> {
         let name = self.expect_ident(&SyncRule::Item)?;
 
-        self.expect(TokenKind::Colon, &SyncRule::Item)?;
-
         self.expect(TokenKind::LParen, &SyncRule::Item)?;
 
         let mut params = Vec::new();
@@ -98,8 +96,8 @@ mod tests {
 
     #[test]
     fn rel_and() {
-        // rel_t AND : (a:Bool, b:Bool) -> Bool = a*b;
-        let kinds: Vec<TokenKind> = vec![Ident("AND".to_string()), Colon, LParen, 
+        // rel_t AND (a:Bool, b:Bool) -> Bool = a*b;
+        let kinds: Vec<TokenKind> = vec![Ident("AND".to_string()), LParen, 
             Ident("a".to_string()), Colon, Bool, Comma,
             Ident("b".to_string()), Colon, Bool,
             RParen, Arrow, Bool, Equals, 
@@ -135,7 +133,7 @@ mod tests {
 
     #[test]
     fn rel_flip() {
-        // rel_t FLIP : () -> Bool = {
+        // rel_t FLIP () -> Bool = {
         //     let p = 0.5;
 
         //     sample {
@@ -143,7 +141,7 @@ mod tests {
         //         _ : false,
         //     }
         // };
-        let kinds: Vec<TokenKind> = vec![Ident("FLIP".to_string()), Colon, LParen, RParen, Arrow, Bool, Equals, LBrace,
+        let kinds: Vec<TokenKind> = vec![Ident("FLIP".to_string()), LParen, RParen, Arrow, Bool, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
             Sample, LBrace, Ident("p".to_string()), Colon, BoolLiteral(true), Comma,
             Underscore, Colon, BoolLiteral(false), Comma, RBrace,
@@ -187,8 +185,8 @@ mod tests {
 
     #[test]
     fn rel_mod() {
-        // rel_t MOD : () -> Mod(3) = 1;
-        let kinds: Vec<TokenKind> = vec![Ident("MOD".to_string()), Colon, 
+        // rel_t MOD () -> Mod(3) = 1;
+        let kinds: Vec<TokenKind> = vec![Ident("MOD".to_string()), 
             LParen, RParen, Arrow, 
             Mod, LParen, IntLiteral(3), RParen, Equals, 
             IntLiteral(1), Semicolon, Eof];
@@ -209,37 +207,13 @@ mod tests {
 
     #[test]
     fn bad_rel_1() {
-        // rel_t NUM  () -> Real = {  // missing colon
-        //     let p = 0.5;
-        //     let q = 0.4;
-        
-        //     p+q
-        // };
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
-            Ident("p".to_string()), Plus, Ident("q".to_string()),// Minus,
-            RBrace, Semicolon, Eof];
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_rel_t();
-
-        assert_eq!(result, None);
-        assert_eq!(diagnostics.num_errors(), 1);
-    }
-
-    #[test]
-    fn bad_rel_2() {
-        // rel_t NUM : () -> Real = {
+        // rel_t NUM () -> Real = {
         //     let p = 0.5     // missing semicolon
         //     let q = 0.4;
         
         //     p+q
         // };
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, LBrace,
+        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5),
             Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
             Ident("p".to_string()), Plus, Ident("q".to_string()),
@@ -279,12 +253,12 @@ mod tests {
     }
 
     #[test]
-    fn bad_rel_3() {
-        // rel_t NUM : () -> Real = {
+    fn bad_rel_2() {
+        // rel_t NUM () -> Real = {
         //     let p = 0.5;
         //     let q = 0.4; 
         // }; // missing expr
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, LBrace,
+        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
             Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
             RBrace, Semicolon, Eof];
@@ -320,14 +294,14 @@ mod tests {
     }
 
     #[test]
-    fn bad_rel_4() {
-        // rel_t NUM : () -> Real = {
+    fn bad_rel_3() {
+        // rel_t NUM () -> Real = {
         //     let p = 0.5;
         //     let q = 0.4;
         
         //     p+q
-        // // missing semicolon
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, LBrace,
+        // }// missing semicolon
+        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
             Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
             Ident("p".to_string()), Plus, Ident("q".to_string()),// Minus,
@@ -344,14 +318,14 @@ mod tests {
     }
 
     #[test]
-    fn bad_rel_5() {
-        // rel_t NUM : () -> Real = {
+    fn bad_rel_4() {
+        // rel_t NUM () -> Real = {
         //     let p = 0.5;
         //     let q = 0.4;
         
         //     p+q
         // // missing closing brace
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), Colon, LParen, RParen, Arrow, Real, Equals, LBrace,
+        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
             Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
             Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
             Ident("p".to_string()), Plus, Ident("q".to_string()),// Minus,

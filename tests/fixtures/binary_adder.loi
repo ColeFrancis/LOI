@@ -1,4 +1,4 @@
-rel_t NAND: (a: Bool, b: Bool) -> Bool = ~(a&b);
+rel_t NAND (a: Bool, b: Bool) -> Bool = ~(a&b);
 
 net XOR {
     input A: Bool;

@@ -1567,7 +1567,7 @@ let n = {
 
 ent_t SINGLE = {A};
 
-rel_t ADD : (b: Int) -> Int = n + b;
+rel_t ADD (b: Int) -> Int = n + b;
 
 net FIRST {
     input a: Int;
@@ -1628,7 +1628,7 @@ net SECOND {
             Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
-                span: Span {line: 9, col: 14},
+                span: Span {line: 9, col: 12},
             },
             Symbol {
                 name: "FIRST".to_string(),
@@ -1716,7 +1716,7 @@ net SECOND {
                     left: Box::new(Expr::Ident(Ident::Symbol(1))),
                     op: BinaryOp::Add,
                     right: Box::new(Expr::Ident(Ident::Symbol(5))),
-                    op_span: Span {line: 9, col: 33},
+                    op_span: Span {line: 9, col: 31},
                     expr_type: Type::Unknown,
                 }),
             }),

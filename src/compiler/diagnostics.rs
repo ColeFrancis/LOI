@@ -495,7 +495,7 @@ mod tests {
         
             let a = 1;
 
-            rel_t ONE : () -> Real = 1;
+            rel_t ONE () -> Real = 1;
 
             net EMPTY {}
         ", &mut diagnostics).tokenize();
@@ -534,15 +534,15 @@ mod tests {
     fn rel() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-        "rel_t A () -> Real a;
+        "rel_t A :() -> Real a;
         ", &mut diagnostics).tokenize();
 
         Parser::new(tokens, &mut diagnostics).parse();
 
         assert_eq!(diagnostics.errors, vec![
             Diagnostic::UnexpectedToken {
-                expected: vec![Expected::Token(TokenKind::Colon)],
-                found: TokenKind::LParen,
+                expected: vec![Expected::Token(TokenKind::LParen)],
+                found: TokenKind::Colon,
                 span: Span {
                     line: 1,
                     col: 9

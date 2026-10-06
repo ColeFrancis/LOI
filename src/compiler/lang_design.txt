@@ -55,14 +55,14 @@ Relations: Inspired by logic gates in a digital circuit. Implemented as mathemat
 
 Syntax is inspired by functions/maps in mathematics
 
-rel_t NAME : (param1: Type1, param2: Type2, ...) -> ReturnType = Expression; 
+rel_t NAME (param1: Type1, param2: Type2, ...) -> ReturnType = Expression; 
 
 // Simple adder
-rel_t ADD : (a: R, b: R) -> R = 
+rel_t ADD (a: R, b: R) -> R = 
     a + b;
 
 // Simple nand gate
-rel NAND : (a:Bool, b:Bool) -> Bool = 
+rel NAND (a:Bool, b:Bool) -> Bool = 
     cases (a, b) {
         (0, 0) : 1,
         (0, 1) : 1,
@@ -71,7 +71,7 @@ rel NAND : (a:Bool, b:Bool) -> Bool =
     };
 
 // Samples a conditional probability distribution, conditioned on the value of x
-rel_t COND_PROB : (x: COIN) -> COIN = 
+rel_t COND_PROB (x: COIN) -> COIN = 
     cases x {
         H : sample {
             0.9 : H,   // H with a 90% probability
@@ -85,7 +85,7 @@ rel_t COND_PROB : (x: COIN) -> COIN =
 
 
 // Returns a 1 if x is over some threshold
-rel_t THRESH : (x:Real) -> Bool = 
+rel_t THRESH (x:Real) -> Bool = 
     cases x {
         >= 1 : true,
         _ : false
@@ -93,17 +93,17 @@ rel_t THRESH : (x:Real) -> Bool =
 
 // or
 
-rel_t THRESH : (x:Real) -> Bool =
+rel_t THRESH (x:Real) -> Bool =
     x >= 1;
 
-rel_t CUSTOM_BINOM : (p : Real) -> Bool = 
+rel_t CUSTOM_BINOM (p : Real) -> Bool = 
     sample {
         p : true,
         _ : false
     };
 
 // Simulates the rule in the cellular atomata "conway's game of life". Each param is the value of a neighbor.
-rel_t LIFE : (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
+rel_t LIFE (u:Int, ur:Int, r:Int, rd:Int, d:Int, dl:Int, l:Int, ul:Int, c:Int) -> Int = {
     let n = u+ur+r+rd+d+dl+l+ul;
     
     cases (c) {
@@ -214,7 +214,7 @@ Let statements allow you to define variables that make the language more readabl
 
 let n = 4
 
-rel_t EXAMPLE : (a: Int) -> Int = {
+rel_t EXAMPLE (a: Int) -> Int = {
     let m = n * a;
 
     m + 4
@@ -223,14 +223,14 @@ rel_t EXAMPLE : (a: Int) -> Int = {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 Leaky integrate and fire neuron example
 
-rel_t SYNAPSE: (spike_in: Inpulse, weight: Real, last_potential: Real) -> Real = {
+rel_t SYNAPSE (spike_in: Inpulse, weight: Real, last_potential: Real) -> Real = {
     cases (spike_in) {
         true : last_potential + weight,
         _ : last_potential,
     }
 }
 
-rel_t AXON: (curr_potential: Real) -> Impulse = {
+rel_t AXON (curr_potential: Real) -> Impulse = {
     let threshold = 10;
 
     cases (curr_potential) {
@@ -239,7 +239,7 @@ rel_t AXON: (curr_potential: Real) -> Impulse = {
     }
 }
 
-rel_t BODY: (spike: Impulse, curr_potential: Real) -> Real {
+rel_t BODY (spike: Impulse, curr_potential: Real) -> Real {
     let refrac_potential = 0;
     let tau = 0.1;
 
@@ -275,8 +275,8 @@ net Neuron {
 //////////////////////////////////////////////////////////////////////////////////////////
 Edge triggered, async active low reset d-flipflop (same circuit I built)
 
-rel NAND2: (a: Bool, b: Bool) -> Bool = ~(a*b);
-rel NAND3: (a: Bool, b: Bool, c: Bool) -> Bool = ~(a*b*c);
+rel NAND2 (a: Bool, b: Bool) -> Bool = ~(a*b);
+rel NAND3 (a: Bool, b: Bool, c: Bool) -> Bool = ~(a*b*c);
 
 net FLIP_FLOP {
     input clk: Bool;
@@ -297,7 +297,7 @@ net FLIP_FLOP {
 /////////////////////////////////////////////////////////////////////////////////////////
 RULE 110 on a ring-shaped grid of length 5
 
-rel RULE_110(l: Bool, c: Bool, r: Bool) -> Bool = {
+rel_t RULE_110(l: Bool, c: Bool, r: Bool) -> Bool = {
     cases(l, c, r) {
         (true, true, true ) : false,
         (true, true, false) : true,

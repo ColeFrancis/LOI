@@ -1,6 +1,6 @@
 ent_t ABC = {A, B, C};
 
-rel_t LATCH_REL: (old: ABC, new:ABC, clk: Impulse) -> ABC = cases clk {
+rel_t LATCH_REL (old: ABC, new:ABC, clk: Impulse) -> ABC = cases clk {
     true: new,
     _ : old,
 };
