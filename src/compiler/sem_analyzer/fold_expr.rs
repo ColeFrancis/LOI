@@ -14,7 +14,7 @@
 
 //! # fold_expr
 //!
-//! Handles folding of compile-time constants in expressions. 
+//! Handles folding of compile-time constants in expressions.
 //! Verifies there are no duplicate patterns (including defaults) in cases arms
 //! Verifies there are no more than one default arms in samples and that literals in probabilities do not sum to greater than 1
 //!
@@ -29,31 +29,41 @@ use rand::Rng;
 
 use super::SemAnalyzer;
 use crate::compiler::{
-    error_handling::diagnostics::{Diagnostics, Diagnostic},
+    error_handling::diagnostics::{Diagnostic, Diagnostics},
     error_handling::span::Span,
     objects::{
         ast::*,
-        types::Type,
         symbol::{Symbol, SymbolKind},
+        types::Type,
     },
 };
 
-impl <'a> SemAnalyzer<'a> {
-    pub(super) fn fold_expr (&mut self, expr: Expr, fold_sample: bool) -> Expr {
+impl<'a> SemAnalyzer<'a> {
+    pub(super) fn fold_expr(&mut self, expr: Expr, fold_sample: bool) -> Expr {
         Self::fold_expr_inner(expr, fold_sample, &mut self.symbols, &mut self.diagnostics)
     }
 
-    pub fn fold_expr_inner(expr: Expr, fold_sample: bool, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> Expr {
+    pub fn fold_expr_inner(
+        expr: Expr,
+        fold_sample: bool,
+        symbols: &mut [Symbol],
+        diagnostics: &mut Diagnostics,
+    ) -> Expr {
         match expr {
             Expr::Literal(literal) => Expr::Literal(literal),
 
             Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
                 SymbolKind::Const(literal) => Expr::Literal(literal.clone()),
                 _ => Expr::Ident(Ident::Symbol(id)),
-            }
+            },
 
             Expr::Unary(mut unary) => {
-                unary.expr = Box::new(Self::fold_expr_inner(*unary.expr, fold_sample, symbols, diagnostics));
+                unary.expr = Box::new(Self::fold_expr_inner(
+                    *unary.expr,
+                    fold_sample,
+                    symbols,
+                    diagnostics,
+                ));
 
                 if let Expr::Literal(literal) = &*unary.expr {
                     if let Some(result) = Self::eval_unary(&unary.op, literal) {
@@ -65,8 +75,10 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             Expr::Binary(mut binary) => {
-                let mut expr_left = Self::fold_expr_inner(*binary.left, fold_sample, symbols, diagnostics);
-                let mut expr_right = Self::fold_expr_inner(*binary.right, fold_sample, symbols, diagnostics);
+                let mut expr_left =
+                    Self::fold_expr_inner(*binary.left, fold_sample, symbols, diagnostics);
+                let mut expr_right =
+                    Self::fold_expr_inner(*binary.right, fold_sample, symbols, diagnostics);
 
                 // if you have int + real convert to real + real to simplify eval_binary
                 if binary.expr_type == Type::Real {
@@ -82,8 +94,11 @@ impl <'a> SemAnalyzer<'a> {
                 binary.left = Box::new(expr_left);
                 binary.right = Box::new(expr_right);
 
-                if let (Expr::Literal(left), Expr::Literal(right)) = (&*binary.left, &*binary.right) {
-                    if let Some(result) = Self::eval_binary(&binary.op, left, right,binary.op_span, diagnostics) {
+                if let (Expr::Literal(left), Expr::Literal(right)) = (&*binary.left, &*binary.right)
+                {
+                    if let Some(result) =
+                        Self::eval_binary(&binary.op, left, right, binary.op_span, diagnostics)
+                    {
                         return Expr::Literal(result);
                     }
                 }
@@ -106,8 +121,12 @@ impl <'a> SemAnalyzer<'a> {
 
                 for statement in owned_statements {
                     if let Statement::Let(let_statement) = statement {
-                        if let Some(folded_let_statement) = Self::fold_let_inner(let_statement, fold_sample, symbols, diagnostics) {
-                            block_expr.statements.push(Statement::Let(folded_let_statement));
+                        if let Some(folded_let_statement) =
+                            Self::fold_let_inner(let_statement, fold_sample, symbols, diagnostics)
+                        {
+                            block_expr
+                                .statements
+                                .push(Statement::Let(folded_let_statement));
                         }
                     }
                 }
@@ -138,9 +157,12 @@ impl <'a> SemAnalyzer<'a> {
                 for arm in &mut cases_expr.arms {
                     for pattern in &mut arm.pattern {
                         let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
-                        *pattern = Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
+                        *pattern =
+                            Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
 
-                        if let Some((_, old_span)) = seen_patterns.iter().find(|(p, _)| *p == pattern) {
+                        if let Some((_, old_span)) =
+                            seen_patterns.iter().find(|(p, _)| *p == pattern)
+                        {
                             diagnostics.error(Diagnostic::DuplicatePattern {
                                 old_arm_span: old_span.clone(),
                                 arm_span: arm.arm_span,
@@ -153,18 +175,26 @@ impl <'a> SemAnalyzer<'a> {
                     }
                 }
                 // All cases must have a default arm
-                if !seen_patterns.iter().any(|(pattern, _)| matches!(pattern, SimplePattern::Default)) {
+                if !seen_patterns
+                    .iter()
+                    .any(|(pattern, _)| matches!(pattern, SimplePattern::Default))
+                {
                     diagnostics.error(Diagnostic::NoDefaultPattern {
                         cases_span: cases_expr.span.clone(),
                     });
-                    
+
                     has_errors = true;
                 }
                 if has_errors {
                     return Expr::Error;
                 }
 
-                cases_expr.scrutinee = Box::new(Self::fold_expr_inner(*cases_expr.scrutinee, fold_sample, symbols, diagnostics));
+                cases_expr.scrutinee = Box::new(Self::fold_expr_inner(
+                    *cases_expr.scrutinee,
+                    fold_sample,
+                    symbols,
+                    diagnostics,
+                ));
 
                 let mut foldable = true;
                 for arm in &mut cases_expr.arms {
@@ -172,7 +202,7 @@ impl <'a> SemAnalyzer<'a> {
                     arm.expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
 
                     let matches = arm.pattern.iter_mut().any(|pattern| {
-                        match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern){
+                        match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern) {
                             Some(res) => res,
                             None => {
                                 foldable = false;
@@ -209,8 +239,13 @@ impl <'a> SemAnalyzer<'a> {
                     match &mut arm.prob {
                         Prob::Expr(expr) => {
                             let owned_expr = std::mem::replace(expr, Expr::Error);
-                            let mut folded_expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
-                            // Convert prob to real number 
+                            let mut folded_expr = Self::fold_expr_inner(
+                                owned_expr,
+                                fold_sample,
+                                symbols,
+                                diagnostics,
+                            );
+                            // Convert prob to real number
                             if let Expr::Literal(Literal::Int(int)) = folded_expr {
                                 folded_expr = Expr::Literal(Literal::Real(int as f64));
                             }
@@ -241,8 +276,7 @@ impl <'a> SemAnalyzer<'a> {
                                     arm_span: arm.arm_span.clone(),
                                 });
                                 has_errors = true;
-                            }
-                            else {
+                            } else {
                                 has_default = true;
                             }
                         }
@@ -263,19 +297,18 @@ impl <'a> SemAnalyzer<'a> {
                 if !foldable || !fold_sample {
                     return Expr::Sample(sample_expr);
                 }
-                
+
                 let mut rng = rand::rng();
                 let random_val: f64 = rng.random();
                 running_prob = 0.0;
                 for arm in sample_expr.arms {
                     if let Prob::Expr(Expr::Literal(Literal::Real(prob))) = arm.prob {
                         running_prob += prob;
-                    
+
                         if random_val < running_prob {
                             return arm.expr;
                         }
-                    }
-                    else if let Prob::Default = arm.prob {
+                    } else if let Prob::Default = arm.prob {
                         return arm.expr;
                     }
                 }
@@ -299,63 +332,72 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn eval_binary(op: &BinaryOp, left: &Literal, right: &Literal, op_span: Span, diagnostics: &mut Diagnostics) -> Option<Literal> {
+    fn eval_binary(
+        op: &BinaryOp,
+        left: &Literal,
+        right: &Literal,
+        op_span: Span,
+        diagnostics: &mut Diagnostics,
+    ) -> Option<Literal> {
         match (op, left, right) {
             (BinaryOp::Or, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a || *b)),
             (BinaryOp::And, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a && *b)),
 
-            (BinaryOp::Lt,  Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a<b)),
-            (BinaryOp::Gt,  Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a>b)),
-            (BinaryOp::Le,  Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a<=b)),
-            (BinaryOp::Ge,  Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a>=b)),
-            (BinaryOp::Add, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a+b)),
-            (BinaryOp::Sub, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a-b)),
-            (BinaryOp::Mul, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a*b)),
-            (BinaryOp::Div, Literal::Int(a), Literal::Int(b)) => 
+            (BinaryOp::Lt, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a < b)),
+            (BinaryOp::Gt, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a > b)),
+            (BinaryOp::Le, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a <= b)),
+            (BinaryOp::Ge, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a >= b)),
+            (BinaryOp::Add, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a + b)),
+            (BinaryOp::Sub, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a - b)),
+            (BinaryOp::Mul, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a * b)),
+            (BinaryOp::Div, Literal::Int(a), Literal::Int(b)) => {
                 if *b != 0 {
                     Some(Literal::Int(a / b))
                 } else {
-                    diagnostics.error(Diagnostic::DivideByZero {
-                        op_span, 
-                    });
+                    diagnostics.error(Diagnostic::DivideByZero { op_span });
 
                     None
-                },
-            (BinaryOp::Pow, Literal::Int(a), Literal::Int(b)) => 
+                }
+            }
+            (BinaryOp::Pow, Literal::Int(a), Literal::Int(b)) => {
                 if *b >= 0 {
                     Some(Literal::Int(a.pow(*b as u32)))
-                } else { // negative exponent not allowed for ints
-                    diagnostics.error(Diagnostic::NegExpOnInt {
-                        op_span,
-                    });
+                } else {
+                    // negative exponent not allowed for ints
+                    diagnostics.error(Diagnostic::NegExpOnInt { op_span });
 
                     None
-                },
+                }
+            }
 
-            (BinaryOp::Lt,  Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a<b)),
-            (BinaryOp::Gt,  Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a>b)),
-            (BinaryOp::Le,  Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a<=b)),
-            (BinaryOp::Ge,  Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a>=b)),
-            (BinaryOp::Add, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a+b)),
-            (BinaryOp::Sub, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a-b)),
-            (BinaryOp::Mul, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a*b)),
-            (BinaryOp::Div, Literal::Real(a), Literal::Real(b)) => 
+            (BinaryOp::Lt, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a < b)),
+            (BinaryOp::Gt, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a > b)),
+            (BinaryOp::Le, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a <= b)),
+            (BinaryOp::Ge, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a >= b)),
+            (BinaryOp::Add, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a + b)),
+            (BinaryOp::Sub, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a - b)),
+            (BinaryOp::Mul, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a * b)),
+            (BinaryOp::Div, Literal::Real(a), Literal::Real(b)) => {
                 if *b != 0.0 {
                     Some(Literal::Real(a / b))
                 } else {
-                    diagnostics.error(Diagnostic::DivideByZero {
-                        op_span, 
-                    });
+                    diagnostics.error(Diagnostic::DivideByZero { op_span });
 
                     None
-                },
+                }
+            }
             (BinaryOp::Pow, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a.powf(*b))),
 
             _ => None,
         }
     }
 
-    fn fold_pattern(pattern: SimplePattern, fold_sample: bool, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> SimplePattern {
+    fn fold_pattern(
+        pattern: SimplePattern,
+        fold_sample: bool,
+        symbols: &mut [Symbol],
+        diagnostics: &mut Diagnostics,
+    ) -> SimplePattern {
         match pattern {
             SimplePattern::Default => SimplePattern::Default,
 
@@ -364,7 +406,7 @@ impl <'a> SemAnalyzer<'a> {
             SimplePattern::Ident(Ident::Symbol(id)) => match symbols[id].kind {
                 SymbolKind::Const(literal) => SimplePattern::Literal(literal.clone()),
                 _ => SimplePattern::Ident(Ident::Symbol(id)),
-            }
+            },
 
             SimplePattern::Tuple(mut patterns) => {
                 for pattern in &mut patterns {
@@ -377,7 +419,12 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             SimplePattern::Comparison(mut comp_pattern) => {
-                comp_pattern.expr = Box::new(Self::fold_expr_inner(*comp_pattern.expr, fold_sample, symbols, diagnostics));
+                comp_pattern.expr = Box::new(Self::fold_expr_inner(
+                    *comp_pattern.expr,
+                    fold_sample,
+                    symbols,
+                    diagnostics,
+                ));
 
                 SimplePattern::Comparison(comp_pattern)
             }
@@ -394,7 +441,7 @@ impl <'a> SemAnalyzer<'a> {
             Expr::Literal(expr_literal) => match pattern {
                 SimplePattern::Default => Some(true),
 
-                SimplePattern::Literal(pattern_literal) => Some(expr_literal == pattern_literal), 
+                SimplePattern::Literal(pattern_literal) => Some(expr_literal == pattern_literal),
 
                 SimplePattern::Comparison(comp_pattern) => {
                     if let Expr::Literal(pattern_literal) = *comp_pattern.expr {
@@ -406,16 +453,14 @@ impl <'a> SemAnalyzer<'a> {
                             CompOp::Le => Some(*expr_literal <= pattern_literal),
 
                             CompOp::Ge => Some(*expr_literal >= pattern_literal),
-                        } 
-                    }
-                    else {
+                        }
+                    } else {
                         None
                     }
                 }
-                
 
                 _ => None,
-            }
+            },
 
             Expr::Tuple(expr_tuple) => match pattern {
                 // default is true on tuple if the tuple is matchable (all literals)
@@ -435,23 +480,22 @@ impl <'a> SemAnalyzer<'a> {
                         match Self::expr_matches_pattern(expr, pattern) {
                             Some(true) => {}
                             Some(false) => return Some(false),
-                            None => return None, 
+                            None => return None,
                         }
                     }
                     Some(true)
                 }
 
                 _ => None,
-            }
+            },
 
-            _ => None // only literals can match
+            _ => None, // only literals can match
         }
     }
 
     pub fn pattern_matches_literal(pattern: &SimplePattern, literal: &Literal) -> bool {
         match pattern {
-            SimplePattern::Literal(pattern_literal) => 
-                literal == pattern_literal,
+            SimplePattern::Literal(pattern_literal) => literal == pattern_literal,
 
             SimplePattern::Ident(_) => false,
 
@@ -471,28 +515,22 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::error_handling::diagnostics::Diagnostics;
     use crate::compiler::objects::symbol::Symbol;
+    use crate::compiler::sem_analyzer::scope::Scope;
 
     #[test]
-    fn test_const () {
+    fn test_const() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "a".to_string(),
-                    kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Const(Literal::Int(1)),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 0)]),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -505,17 +543,17 @@ mod tests {
     #[test]
     fn test_unary_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
-        let result = sem_analyzer.fold_expr(Expr::Unary(UnaryExpr {
-            expr: Box::new(Expr::Literal(Literal::Bool(false))),
-            op: UnaryOp::BitNot,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Bool,
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Literal(Literal::Bool(false))),
+                op: UnaryOp::BitNot,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Bool,
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
@@ -524,31 +562,28 @@ mod tests {
     fn test_unary_2() {
         // -a
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "a".to_string(),
-                    kind: SymbolKind::Const(Literal::Real(1.0)),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Const(Literal::Real(1.0)),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 0)]),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Unary(UnaryExpr {
-            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
-            op: UnaryOp::Neg,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Real,
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Neg,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Real,
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Real(-1.0)));
     }
@@ -557,24 +592,24 @@ mod tests {
     fn test_binary_1() {
         // 1.0 + 2^3
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
-        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
-            left: Box::new(Expr::Literal(Literal::Real(1.0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Int(2))),
-                right: Box::new(Expr::Literal(Literal::Int(3))),
-                op: BinaryOp::Pow,
-                op_span: Span{line: 0, col: 1},
-                expr_type: Type::Int,
-            })),
-            op: BinaryOp::Add,
-            op_span: Span {line: 0, col: 0},
-            expr_type: Type::Real,
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                right: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Int(2))),
+                    right: Box::new(Expr::Literal(Literal::Int(3))),
+                    op: BinaryOp::Pow,
+                    op_span: Span { line: 0, col: 1 },
+                    expr_type: Type::Int,
+                })),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Real,
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Real(9.0)));
     }
@@ -583,29 +618,29 @@ mod tests {
     fn test_binary_2() {
         // 1.0 + 2^(-3) // Neg exp on integer error
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
-        let _result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
-            left: Box::new(Expr::Literal(Literal::Real(1.0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Int(2))),
-                right: Box::new(Expr::Unary(UnaryExpr {
-                    expr: Box::new(Expr::Literal(Literal::Int(3))),
-                    op: UnaryOp::Neg,
-                    op_span: Span{line: 0, col:2},
+        let _result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                right: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Int(2))),
+                    right: Box::new(Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: UnaryOp::Neg,
+                        op_span: Span { line: 0, col: 2 },
+                        expr_type: Type::Int,
+                    })),
+                    op: BinaryOp::Pow,
+                    op_span: Span { line: 0, col: 1 },
                     expr_type: Type::Int,
                 })),
-                op: BinaryOp::Pow,
-                op_span: Span{line: 0, col: 1},
-                expr_type: Type::Int,
-            })),
-            op: BinaryOp::Add,
-            op_span: Span {line: 0, col: 0},
-            expr_type: Type::Real,
-        }), true);
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Real,
+            }),
+            true,
+        );
 
         assert_eq!(diagnostics.num_errors(), 1);
     }
@@ -614,29 +649,29 @@ mod tests {
     fn test_binary_3() {
         // 1.0 + 2.0^(-3)
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
-        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
-            left: Box::new(Expr::Literal(Literal::Real(1.0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Real(2.0))),
-                right: Box::new(Expr::Unary(UnaryExpr {
-                    expr: Box::new(Expr::Literal(Literal::Int(3))),
-                    op: UnaryOp::Neg,
-                    op_span: Span{line: 0, col:2},
-                    expr_type: Type::Int,
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                right: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Real(2.0))),
+                    right: Box::new(Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(3))),
+                        op: UnaryOp::Neg,
+                        op_span: Span { line: 0, col: 2 },
+                        expr_type: Type::Int,
+                    })),
+                    op: BinaryOp::Pow,
+                    op_span: Span { line: 0, col: 1 },
+                    expr_type: Type::Real,
                 })),
-                op: BinaryOp::Pow,
-                op_span: Span{line: 0, col: 1},
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
                 expr_type: Type::Real,
-            })),
-            op: BinaryOp::Add,
-            op_span: Span {line: 0, col: 0},
-            expr_type: Type::Real,
-        }), true);
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Real(1.125)));
     }
@@ -646,70 +681,71 @@ mod tests {
         // n + (a + 1) where n is an unknown variable and a is a folded constant
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "n".to_string(),
                     kind: SymbolKind::Variable(Type::Int),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("n".to_string(), 0),
-                        ("a".to_string(), 1),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("n".to_string(), 0), ("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Ident(Ident::Symbol(0))),
-            right: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                right: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Int,
+                })),
                 op: BinaryOp::Add,
-                op_span: Span{line: 0, col: 0},
+                op_span: Span { line: 0, col: 0 },
                 expr_type: Type::Int,
-            })),
-            op: BinaryOp::Add,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Int,
-        }), true);
+            }),
+            true,
+        );
 
-        assert_eq!(result, Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Ident(Ident::Symbol(0))),
-            right: Box::new(Expr::Literal(Literal::Int(2))),
-            op: BinaryOp::Add,
-            op_span: Span{line: 0, col: 0},
-            expr_type: Type::Int,
-        }));
+        assert_eq!(
+            result,
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                right: Box::new(Expr::Literal(Literal::Int(2))),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Int,
+            })
+        );
     }
 
     #[test]
     fn test_binary_5() {
         // 1 < 2
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program {items: Vec::new()},
-            &mut diagnostics
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
-        let result = sem_analyzer.fold_expr(Expr::Binary(BinaryExpr{
-            left: Box::new(Expr::Literal(Literal::Int(1))),
-            right: Box::new(Expr::Literal(Literal::Int(2))),
-            op: BinaryOp::Lt,
-            op_span: Span {line: 0, col: 0},
-            expr_type: Type::Int,
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(1))),
+                right: Box::new(Expr::Literal(Literal::Int(2))),
+                op: BinaryOp::Lt,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Int,
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
@@ -723,41 +759,36 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "n".to_string(),
-                    kind: SymbolKind::Variable(Type::Int),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("n".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("n".to_string(), 0)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        let result = sem_analyzer.fold_expr(
+            Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(2)),
-                }),
-            ],
-            expr: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(0))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Sub,
-                op_span: Span{line: 0, col: 0},
+                })],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Sub,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Int,
+                })),
                 expr_type: Type::Int,
-            })),
-            expr_type: Type::Int
-        }), true);
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Int(1)));
     }
@@ -771,111 +802,106 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "n".to_string(),
-                    kind: SymbolKind::Variable(Type::Int),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("n".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("n".to_string(), 0)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        let result = sem_analyzer.fold_expr(
+            Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Error,
-                }),
-            ],
-            expr: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(0))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Sub,
-                op_span: Span{line: 0, col: 0},
+                })],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Sub,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Int,
+                })),
                 expr_type: Type::Int,
-            })),
-            expr_type: Type::Int
-        }), true);
+            }),
+            true,
+        );
 
-        assert_eq!(result, Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        assert_eq!(
+            result,
+            Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Error,
-                }),
-            ],
-            expr: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(0))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Sub,
-                op_span: Span{line: 0, col: 0},
-                expr_type: Type::Int,
-            })),
-            expr_type: Type::Int
-        }));
+                }),],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Sub,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Int,
+                })),
+                expr_type: Type::Int
+            })
+        );
     }
 
     #[test]
     fn test_block_3() {
         // {
-        //     let n =  bool; 
+        //     let n =  bool;
         //     n-1 // Expr error
         // }
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "n".to_string(),
-                    kind: SymbolKind::Variable(Type::Bool),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("n".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Bool),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("n".to_string(), 0)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        let result = sem_analyzer.fold_expr(
+            Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Bool(true)),
-                }),
-            ],
-            expr: Box::new(Expr::Error),
-            expr_type: Type::Int
-        }), true);
+                })],
+                expr: Box::new(Expr::Error),
+                expr_type: Type::Int,
+            }),
+            true,
+        );
 
-        assert_eq!(result, Expr::Block(BlockExpr {
-            statements: vec![],
-            expr: Box::new(Expr::Error),
-            expr_type: Type::Int
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
+        assert_eq!(
+            result,
+            Expr::Block(BlockExpr {
+                statements: vec![],
+                expr: Box::new(Expr::Error),
+                expr_type: Type::Int
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Const(Literal::Bool(true)),
-                span: Span{line: 0, col: 0},
-            },
-        ]);
+                span: Span { line: 0, col: 0 },
+            },]
+        );
     }
 
     #[test]
@@ -887,76 +913,73 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Ident(Ident::Symbol(1)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Ident(Ident::Symbol(1)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
                             SimplePattern::Ident(Ident::Symbol(2)),
                             SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
-                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                        op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+                        ])],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Int(2)));
     }
@@ -970,76 +993,73 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(2)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Ident(Ident::Symbol(1)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Ident(Ident::Symbol(1)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
                             SimplePattern::Ident(Ident::Symbol(2)),
                             SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
-                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                        op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+                        ])],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Int(6)));
     }
@@ -1053,110 +1073,106 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Int),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                    right: Box::new(Expr::Literal(Literal::Int(1))),
-                    op: BinaryOp::Add,
-                    op_span: Span{line: 0, col: 0},
-                    expr_type: Type::Int,
-                }),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Ident(Ident::Symbol(2)),
-                            SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Symbol(1))),
                         right: Box::new(Expr::Literal(Literal::Int(1))),
                         op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
+                        op_span: Span { line: 0, col: 0 },
                         expr_type: Type::Int,
                     }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ])],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
-        assert_eq!(result, Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Literal(Literal::Int(2)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
+        assert_eq!(
+            result,
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Literal(Literal::Int(2)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
                             SimplePattern::Literal(Literal::Int(1)),
                             SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Literal(Literal::Int(2)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Literal(Literal::Int(6)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }));
+                        ]),],
+                        expr: Expr::Literal(Literal::Int(2)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default,],
+                        expr: Expr::Literal(Literal::Int(6)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            })
+        );
     }
 
     #[test]
@@ -1168,110 +1184,106 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Variable(Type::Int),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                    right: Box::new(Expr::Literal(Literal::Int(1))),
-                    op: BinaryOp::Add,
-                    op_span: Span{line: 0, col: 0},
-                    expr_type: Type::Int,
-                }),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Ident(Ident::Symbol(2)),
-                            SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Symbol(1))),
                         right: Box::new(Expr::Literal(Literal::Int(1))),
                         op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
+                        op_span: Span { line: 0, col: 0 },
                         expr_type: Type::Int,
                     }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
-
-        assert_eq!(result, Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Literal(Literal::Int(1)),
-                Expr::Literal(Literal::Int(2)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
                             SimplePattern::Ident(Ident::Symbol(2)),
                             SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Literal(Literal::Int(2)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Literal(Literal::Int(6)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }));
+                        ])],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
+
+        assert_eq!(
+            result,
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Literal(Literal::Int(1)),
+                    Expr::Literal(Literal::Int(2)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Tuple(vec![
+                            SimplePattern::Ident(Ident::Symbol(2)),
+                            SimplePattern::Literal(Literal::Int(1)),
+                        ]),],
+                        expr: Expr::Literal(Literal::Int(2)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default,],
+                        expr: Expr::Literal(Literal::Int(6)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            })
+        );
     }
 
     #[test]
@@ -1283,252 +1295,248 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Ident(Ident::Symbol(1)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Ident(Ident::Symbol(2)),
-                            SimplePattern::Literal(Literal::Int(2)),
-                        ]),
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(1)),
-                            SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
-                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                        op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Ident(Ident::Symbol(1)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Ident(Ident::Symbol(2)),
+                                SimplePattern::Literal(Literal::Int(2)),
+                            ]),
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Literal(Literal::Int(1)),
+                                SimplePattern::Literal(Literal::Int(1)),
+                            ]),
+                        ],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Int(2)));
     }
 
     #[test]
     fn test_cases_6() {
-        // cases (a, b) {   
+        // cases (a, b) {
         //     (c, 1) | (1, 1) : 1+1, // duplicate patterns
         //     _ : 2*3,
         // }
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Const(Literal::Int(1)),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 0),
-                        ("b".to_string(), 1),
-                        ("c".to_string(), 2),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("a".to_string(), 0),
+                    ("b".to_string(), 1),
+                    ("c".to_string(), 2),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Tuple(vec![
-                Expr::Ident(Ident::Symbol(0)),
-                Expr::Ident(Ident::Symbol(1)),
-            ])),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Ident(Ident::Symbol(2)),
-                            SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                        SimplePattern::Tuple(vec![
-                            SimplePattern::Literal(Literal::Int(1)),
-                            SimplePattern::Literal(Literal::Int(1)),
-                        ]),
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(1))),
-                        right: Box::new(Expr::Literal(Literal::Int(1))),
-                        op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(2))),
-                        right: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    }),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Ident(Ident::Symbol(1)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Ident(Ident::Symbol(2)),
+                                SimplePattern::Literal(Literal::Int(1)),
+                            ]),
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Literal(Literal::Int(1)),
+                                SimplePattern::Literal(Literal::Int(1)),
+                            ]),
+                        ],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(1))),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Add,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Error);
     }
 
     #[test]
     fn test_cases_7() {
-        // cases 3.5 {    
+        // cases 3.5 {
         //     >= 3: true,
         //     _ : false,
         // }
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Literal(Literal::Real(3.5))),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Comparison(ComparisonPattern {
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Literal(Literal::Real(3.5))),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                             op: CompOp::Ge,
                             expr: Box::new(Expr::Literal(Literal::Int(3))),
-                        }),
-                    ],
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Default,
-                    ],
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+                        })],
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
     }
 
     #[test]
     fn test_cases_8() {
-        // cases 1 {    
+        // cases 1 {
         //     1: true,
         //     0 : false, // no default arm
         // }
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Literal(Literal::Int(1))),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Literal(Literal::Int(1)),
-                    ],
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![
-                        SimplePattern::Literal(Literal::Int(0)),
-                    ],
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Int,
-            span: Span{line: 0, col: 0},
-        }), true);
+        let result = sem_analyzer.fold_expr(
+            Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Literal(Literal::Int(1))),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Literal(Literal::Int(1))],
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Literal(Literal::Int(0))],
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Int,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
 
         assert_eq!(result, Expr::Error);
         assert_eq!(diagnostics.num_errors(), 1);
@@ -1543,36 +1551,39 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(0))),
-                        right: Box::new(Expr::Literal(Literal::Int(2))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    })),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Bool,
-            span: Span{line: 0, col: 0},
-        }), true);
-        
+        let result = sem_analyzer.fold_expr(
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(0))),
+                            right: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        })),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
+
         diagnostics.debug_print();
 
         assert_eq!(result, Expr::Literal(Literal::Bool(false)));
@@ -1587,52 +1598,58 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(0))),
-                        right: Box::new(Expr::Literal(Literal::Int(2))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    })),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Bool,
-            span: Span{line: 0, col: 0},
-        }), false);
+        let result = sem_analyzer.fold_expr(
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(0))),
+                            right: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        })),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }),
+            false,
+        );
 
-        assert_eq!(result, Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Bool,
-            span: Span{line: 0, col: 0},
-        }));
+        assert_eq!(
+            result,
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            })
+        );
     }
 
     #[test]
@@ -1645,35 +1662,38 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(1.2))),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(-0.1))),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Bool,
-            span: Span{line: 0, col: 0},
-        }), true);
-        
+        let result = sem_analyzer.fold_expr(
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Literal(Literal::Real(1.2))),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Literal(Literal::Real(-0.1))),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
+
         diagnostics.debug_print();
 
         assert_eq!(result, Expr::Error);
@@ -1690,42 +1710,44 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_expr(Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
-                        left: Box::new(Expr::Literal(Literal::Int(0))),
-                        right: Box::new(Expr::Literal(Literal::Int(2))),
-                        op: BinaryOp::Mul,
-                        op_span: Span{line: 0, col: 0},
-                        expr_type: Type::Int,
-                    })),
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-                
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(true)),
-                    arm_span: Span{line: 0, col: 0},
-                },
-            ],
-            expr_type: Type::Bool,
-            span: Span{line: 0, col: 0},
-        }), true);
-        
+        let result = sem_analyzer.fold_expr(
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(0))),
+                            right: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        })),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
+        );
+
         diagnostics.debug_print();
 
         assert_eq!(result, Expr::Error);

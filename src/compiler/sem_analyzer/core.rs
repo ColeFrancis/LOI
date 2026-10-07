@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
@@ -28,22 +28,17 @@ use super::SemAnalyzer;
 use super::scope::Scope;
 use crate::compiler::{
     error_handling::diagnostics::Diagnostics,
-    objects::{
-        symbol::Symbol,
-        ast::Program,
-    },
+    objects::{ast::Program, symbol::Symbol},
 };
 
-impl <'a> SemAnalyzer<'a> {
+impl<'a> SemAnalyzer<'a> {
     pub fn new(ast: Program, diagnostics: &'a mut Diagnostics) -> Self {
         Self {
             ast,
             symbols: Vec::new(),
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::new(),
-                }
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::new(),
+            }],
             diagnostics,
         }
     }
@@ -62,18 +57,19 @@ impl <'a> SemAnalyzer<'a> {
 mod tests {
     use super::*;
 
-    use crate::compiler::lexer::Lexer;
-    use crate::compiler::parser::Parser;
     use crate::compiler::error_handling::span::Span;
+    use crate::compiler::lexer::Lexer;
     use crate::compiler::objects::ast::*;
+    use crate::compiler::objects::symbol::{NetPort, SymbolKind};
     use crate::compiler::objects::types::Type;
-    use crate::compiler::objects::symbol::{SymbolKind, NetPort};
+    use crate::compiler::parser::Parser;
 
     #[test]
     fn integrate_front_end() {
         let mut diagnostics = Diagnostics::new();
 
-        let tokens = Lexer::new("
+        let tokens = Lexer::new(
+            "
 let n = {
     let a = 1;
     a+1
@@ -102,7 +98,10 @@ net SECOND {
         q := c,
     };
 }
-        ", &mut diagnostics).tokenize();
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         let program = Parser::new(tokens, &mut diagnostics).parse();
 
@@ -110,180 +109,196 @@ net SECOND {
 
         diagnostics.debug_print();
 
-        assert_eq!(symbols, vec![
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Const(Literal::Int(1)),
-                span: Span {line: 3, col: 9},
-            },
-            Symbol {
-                name: "n".to_string(),
-                kind: SymbolKind::Const(Literal::Int(2)),
-                span: Span {line: 2, col: 5},
-            },
-            Symbol {
-                name: "SINGLE".to_string(),
-                kind: SymbolKind::EntType,
-                span: Span {line: 7, col: 7},
-            },
-            Symbol {
-                name: "A".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 2,
-                    mapping: 0,
+        assert_eq!(
+            symbols,
+            vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span { line: 3, col: 9 },
                 },
-                span: Span {line: 7, col: 17},
-            },
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Int],
-                    return_type: Type::Int,
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(2)),
+                    span: Span { line: 2, col: 5 },
                 },
-                span: Span {line: 11, col: 7},
-            },
-            Symbol {
-                name: "b".to_string(),
-                kind: SymbolKind::Variable(Type::Int),
-                span: Span {line: 11, col: 12},
-            },
-            Symbol {
-                name: "FIRST".to_string(),
-                kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 7,
-                            input: true,
-                        }),
-                        ("q".to_string(), NetPort {
-                            symbol: 8,
-                            input: false,
-                        }),
-                    ])
+                Symbol {
+                    name: "SINGLE".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span { line: 7, col: 7 },
                 },
-                span: Span {line: 13, col: 5},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 14, col: 11},
-            },
-            Symbol {
-                name: "q".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 15, col: 12},
-            },
-            Symbol {
-                name: "SECOND".to_string(),
-                kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 10,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 11,
-                            input: false,
-                        }),
-                    ])
-                },
-                span: Span {line: 20, col: 5},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 21, col: 11},
-            },
-            Symbol {
-                name: "c".to_string(),
-                kind: SymbolKind::Ent(Type::Int),
-                span: Span {line: 22, col: 12},
-            },
-        ]);
-        assert_eq!(validated_program, Program {items: vec![
-            Item::Rel(RelType {
-                name: Ident::Symbol(4),
-                params: vec![
-                    Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Int,
+                Symbol {
+                    name: "A".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 2,
+                        mapping: 0,
                     },
-                ],
-                return_type: Type::Int,
-                body: Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Literal(Literal::Int(2))),
-                    op: BinaryOp::Add,
-                    right: Box::new(Expr::Ident(Ident::Symbol(5))),
-                    op_span: Span {line: 11, col: 31},
-                    expr_type: Type::Int,
-                }),
-            }),
-            Item::Net(Net {
-                name: Ident::Symbol(6),
+                    span: Span { line: 7, col: 17 },
+                },
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Int],
+                        return_type: Type::Int,
+                    },
+                    span: Span { line: 11, col: 7 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span { line: 11, col: 12 },
+                },
+                Symbol {
+                    name: "FIRST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "q".to_string(),
+                                NetPort {
+                                    symbol: 8,
+                                    input: false,
+                                }
+                            ),
+                        ])
+                    },
+                    span: Span { line: 13, col: 5 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span { line: 14, col: 11 },
+                },
+                Symbol {
+                    name: "q".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span { line: 15, col: 12 },
+                },
+                Symbol {
+                    name: "SECOND".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 10,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 11,
+                                    input: false,
+                                }
+                            ),
+                        ])
+                    },
+                    span: Span { line: 20, col: 5 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span { line: 21, col: 11 },
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Ent(Type::Int),
+                    span: Span { line: 22, col: 12 },
+                },
+            ]
+        );
+        assert_eq!(
+            validated_program,
+            Program {
                 items: vec![
-                    NetItem::Input(InputEnt {
-                        param: Param {
-                            name: Ident::Symbol(7),
+                    Item::Rel(RelType {
+                        name: Ident::Symbol(4),
+                        params: vec![Param {
+                            name: Ident::Symbol(5),
                             param_type: Type::Int,
-                        },
-                        span: Span{line: 14, col: 5},
+                        },],
+                        return_type: Type::Int,
+                        body: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: BinaryOp::Add,
+                            right: Box::new(Expr::Ident(Ident::Symbol(5))),
+                            op_span: Span { line: 11, col: 31 },
+                            expr_type: Type::Int,
+                        }),
                     }),
-                    NetItem::Output(OutputEnt {
-                        param: Param {
-                            name: Ident::Symbol(8),
-                            param_type: Type::Int,
-                        },
-                    }),
-                    NetItem::RelInst(RelInst {
-                        asignee: Ident::Symbol(8),
-                        rel: Ident::Symbol(4),
-                        args: vec![
-                            Ident::Symbol(7),
-                        ],
-                        span: Span {line: 17, col: 5},
-                    }),
-                ],
-            }),
-            Item::Net(Net {
-                name: Ident::Symbol(9),
-                items: vec![
-                    NetItem::Input(InputEnt {
-                        param: Param {
-                            name: Ident::Symbol(10),
-                            param_type: Type::Int,
-                        },
-                        span: Span{line: 21, col: 5},
-                    }),
-                    NetItem::Output(OutputEnt {
-                        param: Param {
-                            name: Ident::Symbol(11),
-                            param_type: Type::Int,
-                        },
-                    }),
-                    NetItem::Init(EntInit {
-                        param: Param {
-                            name: Ident::Symbol(10),
-                            param_type: Type::Int
-                        },
-                        val: Expr::Literal(Literal::Int(2)),
-                    }),
-                    NetItem::NetInst(NetInst {
-                        net: Ident::Symbol(6),
-                        connections: vec![
-                            Connection {
-                                port: Ident::Symbol(7),
-                                ent: Ident::Symbol(10),
-                                span: Span {line: 26, col: 11},
-                            },
-                            Connection {
-                                port: Ident::Symbol(8),
-                                ent: Ident::Symbol(11),
-                                span: Span {line: 27, col: 11},
-                            },
+                    Item::Net(Net {
+                        name: Ident::Symbol(6),
+                        items: vec![
+                            NetItem::Input(InputEnt {
+                                param: Param {
+                                    name: Ident::Symbol(7),
+                                    param_type: Type::Int,
+                                },
+                                span: Span { line: 14, col: 5 },
+                            }),
+                            NetItem::Output(OutputEnt {
+                                param: Param {
+                                    name: Ident::Symbol(8),
+                                    param_type: Type::Int,
+                                },
+                            }),
+                            NetItem::RelInst(RelInst {
+                                asignee: Ident::Symbol(8),
+                                rel: Ident::Symbol(4),
+                                args: vec![Ident::Symbol(7),],
+                                span: Span { line: 17, col: 5 },
+                            }),
                         ],
                     }),
-                ],
-            })
-        ]});
+                    Item::Net(Net {
+                        name: Ident::Symbol(9),
+                        items: vec![
+                            NetItem::Input(InputEnt {
+                                param: Param {
+                                    name: Ident::Symbol(10),
+                                    param_type: Type::Int,
+                                },
+                                span: Span { line: 21, col: 5 },
+                            }),
+                            NetItem::Output(OutputEnt {
+                                param: Param {
+                                    name: Ident::Symbol(11),
+                                    param_type: Type::Int,
+                                },
+                            }),
+                            NetItem::Init(EntInit {
+                                param: Param {
+                                    name: Ident::Symbol(10),
+                                    param_type: Type::Int
+                                },
+                                val: Expr::Literal(Literal::Int(2)),
+                            }),
+                            NetItem::NetInst(NetInst {
+                                net: Ident::Symbol(6),
+                                connections: vec![
+                                    Connection {
+                                        port: Ident::Symbol(7),
+                                        ent: Ident::Symbol(10),
+                                        span: Span { line: 26, col: 11 },
+                                    },
+                                    Connection {
+                                        port: Ident::Symbol(8),
+                                        ent: Ident::Symbol(11),
+                                        span: Span { line: 27, col: 11 },
+                                    },
+                                ],
+                            }),
+                        ],
+                    })
+                ]
+            }
+        );
     }
 }

@@ -14,7 +14,7 @@
 
 //! # core
 //!
-//! Lexer takes a string slice (the entire code) and becomes an iterator over tokens 
+//! Lexer takes a string slice (the entire code) and becomes an iterator over tokens
 //!
 //! ## Invariants
 //!
@@ -28,10 +28,9 @@ use super::Lexer;
 use super::token::{Token, TokenKind};
 
 use crate::compiler::{
-    error_handling::diagnostics::{Diagnostics, Diagnostic},
+    error_handling::diagnostics::{Diagnostic, Diagnostics},
     error_handling::span::Span,
 };
-
 
 impl<'a> Lexer<'a> {
     pub fn new(code: &'a str, diagnostics: &'a mut Diagnostics) -> Self {
@@ -71,20 +70,20 @@ impl<'a> Lexer<'a> {
     fn next_token(&mut self) -> Option<Token> {
         while let Some(c) = self.next() {
             let line = self.curr_line;
-            let col = self.curr_col; 
+            let col = self.curr_col;
             match c {
                 // Whitespace
                 b' ' | b'\r' => continue,
 
                 b'\t' => {
                     self.curr_col += 3;
-                    continue
+                    continue;
                 }
 
                 b'\n' => {
                     self.curr_line += 1;
                     self.curr_col = 0;
-                    continue
+                    continue;
                 }
 
                 // Comments
@@ -164,9 +163,9 @@ impl<'a> Lexer<'a> {
                 _ => {
                     self.diagnostics.error(Diagnostic::UnknownToken {
                         lexeme: (c as char).to_string(),
-                        span: Span {line, col},
+                        span: Span { line, col },
                     });
-                    return Some(Token::new(TokenKind::ErrorToken, line, col))
+                    return Some(Token::new(TokenKind::ErrorToken, line, col));
                 }
             }
         }
@@ -221,7 +220,7 @@ impl<'a> Lexer<'a> {
     }
 
     // Keywords, Identifiers
-    fn handle_letter_underscore(&mut self, first: u8) -> TokenKind  {
+    fn handle_letter_underscore(&mut self, first: u8) -> TokenKind {
         let mut buf = String::new();
         buf.push(first as char);
 
@@ -236,24 +235,24 @@ impl<'a> Lexer<'a> {
         }
 
         match buf.as_str() {
-            "ent_t"   => TokenKind::Ent_t,
-            "rel_t"   => TokenKind::Rel_t,
-            "net"     => TokenKind::NetToken,
-            "cases"   => TokenKind::Cases,
-            "sample"  => TokenKind::Sample,
-            "input"   => TokenKind::Input,
-            "output"  => TokenKind::Output,
-            "init"    => TokenKind::Init,
-            "let"     => TokenKind::Let,
-            "Bool"    => TokenKind::Bool,
+            "ent_t" => TokenKind::Ent_t,
+            "rel_t" => TokenKind::Rel_t,
+            "net" => TokenKind::NetToken,
+            "cases" => TokenKind::Cases,
+            "sample" => TokenKind::Sample,
+            "input" => TokenKind::Input,
+            "output" => TokenKind::Output,
+            "init" => TokenKind::Init,
+            "let" => TokenKind::Let,
+            "Bool" => TokenKind::Bool,
             "Impulse" => TokenKind::Impulse,
-            "Real"    => TokenKind::Real,
-            "Int"     => TokenKind::Int,
-            "Mod"     => TokenKind::Mod,
-            "true"    => TokenKind::BoolLiteral(true),
-            "false"   => TokenKind::BoolLiteral(false),
-            "_"       => TokenKind::Underscore,
-            _         => TokenKind::Ident(buf),
+            "Real" => TokenKind::Real,
+            "Int" => TokenKind::Int,
+            "Mod" => TokenKind::Mod,
+            "true" => TokenKind::BoolLiteral(true),
+            "false" => TokenKind::BoolLiteral(false),
+            "_" => TokenKind::Underscore,
+            _ => TokenKind::Ident(buf),
         }
     }
 
@@ -302,7 +301,7 @@ impl<'a> Lexer<'a> {
         if !is_valid {
             self.diagnostics.error(Diagnostic::InvalidNum {
                 lexeme: buf.clone(),
-                span: Span {line, col},
+                span: Span { line, col },
             });
             return TokenKind::ErrorToken;
         } else if is_float {
@@ -311,7 +310,7 @@ impl<'a> Lexer<'a> {
                 Err(_) => {
                     self.diagnostics.error(Diagnostic::InvalidNum {
                         lexeme: buf.clone(),
-                        span: Span {line, col},
+                        span: Span { line, col },
                     });
                     return TokenKind::ErrorToken;
                 }
@@ -322,7 +321,7 @@ impl<'a> Lexer<'a> {
                 Err(_) => {
                     self.diagnostics.error(Diagnostic::InvalidNum {
                         lexeme: buf.clone(),
-                        span: Span {line, col},
+                        span: Span { line, col },
                     });
                     return TokenKind::ErrorToken;
                 }
@@ -352,7 +351,7 @@ mod test {
 
         assert_eq!(kinds(&tokens), vec![Plus, Equals, Eof]);
     }
-    
+
     #[test]
     fn test_unknown() {
         let mut diagnostics = Diagnostics::new();
@@ -365,11 +364,24 @@ mod test {
     #[test]
     fn test_num() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000", &mut diagnostics).tokenize();
+        let tokens = Lexer::new(
+            "94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000",
+            &mut diagnostics,
+        )
+        .tokenize();
 
-        assert_eq!(kinds(&tokens), vec![ErrorToken, ErrorToken
-            , ErrorToken, IntLiteral(99)
-            , RealLiteral(9.8), IntLiteral(1000), Eof]);
+        assert_eq!(
+            kinds(&tokens),
+            vec![
+                ErrorToken,
+                ErrorToken,
+                ErrorToken,
+                IntLiteral(99),
+                RealLiteral(9.8),
+                IntLiteral(1000),
+                Eof
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 3);
     }
 
@@ -378,15 +390,24 @@ mod test {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("id ai_ _ai 9ai", &mut diagnostics).tokenize();
 
-        assert_eq!(kinds(&tokens), vec![Ident("id".to_string())
-            , Ident("ai_".to_string()), Ident("_ai".to_string()), ErrorToken, Eof]);
+        assert_eq!(
+            kinds(&tokens),
+            vec![
+                Ident("id".to_string()),
+                Ident("ai_".to_string()),
+                Ident("_ai".to_string()),
+                ErrorToken,
+                Eof
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
     fn test_every_token() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("
+        let tokens = Lexer::new(
+            "
             ent_t rel_t net cases sample 
             input output init let
             Bool Impulse Int Real Mod
@@ -399,23 +420,59 @@ mod test {
             | _
             = -> :=
             @
-            ", &mut diagnostics).tokenize();
+            ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
-        assert_eq!(kinds(&tokens), vec![
-            Ent_t, Rel_t, NetToken, Cases, Sample,
-            Input, Output, Init, Let,
-            Bool, Impulse, Int, Real, Mod,
-            Ident("apple".to_string()), BoolLiteral(true), IntLiteral(10), RealLiteral(1.0),
-            Colon, Semicolon, Comma, Period,
-            LParen, RParen, LBrace, RBrace,
-            Gt, Lt, Ge, Le,
-            Plus, Minus, Asterisk, Slash, Caret,
-            BitNot,
-            Pipe, Underscore,
-            Equals, Arrow, Connect,
-            ErrorToken,
-            Eof,
-        ]);
+        assert_eq!(
+            kinds(&tokens),
+            vec![
+                Ent_t,
+                Rel_t,
+                NetToken,
+                Cases,
+                Sample,
+                Input,
+                Output,
+                Init,
+                Let,
+                Bool,
+                Impulse,
+                Int,
+                Real,
+                Mod,
+                Ident("apple".to_string()),
+                BoolLiteral(true),
+                IntLiteral(10),
+                RealLiteral(1.0),
+                Colon,
+                Semicolon,
+                Comma,
+                Period,
+                LParen,
+                RParen,
+                LBrace,
+                RBrace,
+                Gt,
+                Lt,
+                Ge,
+                Le,
+                Plus,
+                Minus,
+                Asterisk,
+                Slash,
+                Caret,
+                BitNot,
+                Pipe,
+                Underscore,
+                Equals,
+                Arrow,
+                Connect,
+                ErrorToken,
+                Eof,
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -426,13 +483,13 @@ mod test {
 
         assert_eq!(tokens[0].span.line, 1);
         assert_eq!(tokens[0].span.col, 2);
-        
+
         assert_eq!(tokens[1].span.line, 2);
         assert_eq!(tokens[1].span.col, 1);
-        
+
         assert_eq!(tokens[2].span.line, 2);
         assert_eq!(tokens[2].span.col, 7);
-        
+
         assert_eq!(tokens[3].span.line, 2);
         assert_eq!(tokens[3].span.col, 10);
 

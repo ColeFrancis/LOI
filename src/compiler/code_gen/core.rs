@@ -28,16 +28,15 @@ use std::collections::HashMap;
 
 use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
-use crate::compiler::objects::{
-    ast::*,
-    compiled_rel::CompiledRel,
-    types::Type,
-    symbol::Symbol,
-};
-use crate::compiler::error_handling::diagnostics::{Diagnostics, Diagnostic};
+use crate::compiler::error_handling::diagnostics::{Diagnostic, Diagnostics};
+use crate::compiler::objects::{ast::*, compiled_rel::CompiledRel, symbol::Symbol, types::Type};
 
 impl<'a> CodeGen<'a> {
-    pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
+    pub fn compile(
+        relation: RelType,
+        symbol_table: &'a [Symbol],
+        diagnostics: &'a mut Diagnostics,
+    ) -> Option<CompiledRel> {
         let rel_symbol_id = match relation.name {
             Ident::Symbol(id) => id,
             _ => return None,
@@ -56,7 +55,7 @@ impl<'a> CodeGen<'a> {
 
     fn compile_relation(&mut self, relation: RelType) -> Option<CompiledRel> {
         // TODO: algebraically optimize relation body:
-        
+
         // r0 and r1 are reserved for timestep and delay, respectively
         self.reg_used[0] = true;
         self.reg_used[1] = true;
@@ -90,16 +89,14 @@ impl<'a> CodeGen<'a> {
             _ => return None,
         };
 
-        ir_bytecode.push(Instruction::RET {
-            src,
-        });
+        ir_bytecode.push(Instruction::RET { src });
 
         // TODO: remove deadcode
-            // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
-            //  if a variable is declared while not alive, remove that instruction
-            //
-            // Also remove all sample/cases arms past defaults?
-            //  take care to modify jump offsets if instructsions are removed between the jump and its target
+        // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
+        //  if a variable is declared while not alive, remove that instruction
+        //
+        // Also remove all sample/cases arms past defaults?
+        //  take care to modify jump offsets if instructsions are removed between the jump and its target
 
         let bytecode = Self::lower_ir(ir_bytecode);
 
@@ -117,7 +114,6 @@ impl<'a> CodeGen<'a> {
 
         if let Some(idx) = idx_option {
             self.reg_used[idx] = true;
-
         } else {
             self.diagnostics.error(Diagnostic::TooManySymbols {
                 rel_name: self.symbol_table[self.rel_symbol_id].name.clone(),
@@ -128,7 +124,12 @@ impl<'a> CodeGen<'a> {
         idx_option
     }
 
-    pub fn coerce_int(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type) -> Option<Source> {
+    pub fn coerce_int(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src: Source,
+        ty: &Type,
+    ) -> Option<Source> {
         match ty {
             Type::Mod(n) => {
                 let dest = match src {
@@ -146,12 +147,18 @@ impl<'a> CodeGen<'a> {
             }
             Type::Int => Some(src),
             Type::Custom(_) => Some(src), // custom types stored internally as ints which are mapped to the values the type takes
-            _ => unreachable!("cannot coerce {:?} to Int", ty.clone())
+            _ => unreachable!("cannot coerce {:?} to Int", ty.clone()),
         }
     }
 
     // Reduce mod should be false for add/sub/mul because (a + b) mod n == (a mod n + b mod n) mod n but it is not true for div nor the right side of pow
-    pub fn coerce_real(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, reduce_mod: bool) -> Option<Source> {
+    pub fn coerce_real(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src: Source,
+        ty: &Type,
+        reduce_mod: bool,
+    ) -> Option<Source> {
         match ty {
             Type::Mod(n) => {
                 let src = if reduce_mod {
@@ -175,10 +182,7 @@ impl<'a> CodeGen<'a> {
                     Source::RegInter(reg) => reg,
                     _ => self.get_next_reg()?,
                 };
-                bytecode.push(Instruction::I2F {
-                    dest,
-                    src,
-                });
+                bytecode.push(Instruction::I2F { dest, src });
 
                 Some(Source::RegInter(dest))
             }
@@ -187,10 +191,7 @@ impl<'a> CodeGen<'a> {
                     Source::RegInter(reg) => reg,
                     _ => self.get_next_reg()?,
                 };
-                bytecode.push(Instruction::I2F {
-                    dest,
-                    src,
-                });
+                bytecode.push(Instruction::I2F { dest, src });
 
                 Some(Source::RegInter(dest))
             }
@@ -200,7 +201,12 @@ impl<'a> CodeGen<'a> {
     }
 
     // Converts all impulse type to bool with an IEQ
-    pub fn coerce_bool(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, ) -> Option<Source> {
+    pub fn coerce_bool(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src: Source,
+        ty: &Type,
+    ) -> Option<Source> {
         match ty {
             Type::Impulse => {
                 let dest = match src {
@@ -220,7 +226,12 @@ impl<'a> CodeGen<'a> {
         }
     }
 
-    pub fn coerce_impulse(&mut self, bytecode: &mut Vec<Instruction>, src: Source, ty: &Type, ) -> Option<Source> {
+    pub fn coerce_impulse(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src: Source,
+        ty: &Type,
+    ) -> Option<Source> {
         match ty {
             Type::Impulse => {
                 let dest = match src {
@@ -250,26 +261,40 @@ impl<'a> CodeGen<'a> {
                     src2: Source::RegVar(1),
                 });
                 bytecode.push(Instruction::IMUL {
-                    dest, 
+                    dest,
                     src1: src,
                     src2: Source::RegInter(time_reg),
                 });
 
                 Some(Source::RegInter(dest))
-            },
+            }
             _ => unreachable!("cannot coerce {:?} into Bool", ty.clone()),
         }
     }
 
     // Used in cases pattern matching to ensure the sources are the same type
-    pub fn coerce_equal(&mut self, bytecode: &mut Vec<Instruction>, src_l: Source, type_l: &Type, src_r: Source, type_r: &Type) -> Option<(Source, Source, Type)> {
+    pub fn coerce_equal(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src_l: Source,
+        type_l: &Type,
+        src_r: Source,
+        type_r: &Type,
+    ) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
-            Type::Real => (self.coerce_real(bytecode, src_l, &type_l, true)?, Type::Real),
+            Type::Real => (
+                self.coerce_real(bytecode, src_l, &type_l, true)?,
+                Type::Real,
+            ),
 
             // Need to be careful not to try and coerce real to be int (the next match will take that int to be real)
-            Type::Int if *type_l != Type::Real => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int),
+            Type::Int if *type_l != Type::Real => {
+                (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int)
+            }
 
-            Type::Mod(n) if (*type_l != Type::Real && *type_l != Type::Int) => (self.coerce_int(bytecode, src_l, &type_l)?, Type::Mod(*n)),
+            Type::Mod(n) if (*type_l != Type::Real && *type_l != Type::Int) => {
+                (self.coerce_int(bytecode, src_l, &type_l)?, Type::Mod(*n))
+            }
 
             Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
 
@@ -288,7 +313,7 @@ impl<'a> CodeGen<'a> {
 
             _ => src_r,
         };
-        
+
         Some((new_src_l, new_src_r, new_type))
     }
 
@@ -298,7 +323,7 @@ impl<'a> CodeGen<'a> {
             (Source::RegInter(reg1), Source::RegInter(reg2)) => {
                 self.reg_used[reg2] = false;
                 Some(reg1)
-            }, 
+            }
             (Source::RegInter(reg), _) => Some(reg),
             (_, Source::RegInter(reg)) => Some(reg),
             _ => Some(self.get_next_reg()?),
@@ -309,56 +334,134 @@ impl<'a> CodeGen<'a> {
         let mut num = 0;
         for instruction in instrcutions {
             num += match instruction {
-                Instruction::IADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ISUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::IMOD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FADD{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FSUB{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FMUL{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FDIV{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FPOW{src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FABS{src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::AND {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::OR  {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::NOT {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::XOR {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::I2F {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::JMP {..}              => 3,
-                Instruction::IJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJEQ{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJNE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGT{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJLE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FJGE{src1, src2, ..}  => 3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IEQ {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::INE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ILT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IGT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::ILE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::IGE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FEQ {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FNE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FLT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FGT {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FLE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::FGE {src1, src2, ..}  => 2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2),
-                Instruction::MOV {src, ..}         => 2 + Self::get_num_source_bytes(src),
-                Instruction::RET {src, ..}         => 1 + Self::get_num_source_bytes(src),
-                Instruction::ERR {src, ..}         => 2 + match src {
-                    Some(src) => Self::get_num_source_bytes(src),
-                    None      => 0
-                },
-                Instruction::RND {..}              => 2,
+                Instruction::IADD { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::ISUB { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IMUL { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IDIV { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IPOW { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IABS { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::IMOD { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FADD { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FSUB { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FMUL { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FDIV { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FPOW { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FABS { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::AND { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::OR { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::NOT { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::XOR { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::I2F { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::JMP { .. } => 3,
+                Instruction::IJEQ { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IJNE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IJLT { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IJGT { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IJLE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IJGE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJEQ { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJNE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJLT { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJGT { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJLE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FJGE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IEQ { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::INE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::ILT { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IGT { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::ILE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::IGE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FEQ { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FNE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FLT { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FGT { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FLE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::FGE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::MOV { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::RET { src, .. } => 1 + Self::get_num_source_bytes(src),
+                Instruction::ERR { src, .. } => {
+                    2 + match src {
+                        Some(src) => Self::get_num_source_bytes(src),
+                        None => 0,
+                    }
+                }
+                Instruction::RND { .. } => 2,
             }
         }
 
@@ -375,14 +478,14 @@ impl<'a> CodeGen<'a> {
     pub fn update_jmp_offset(inst: &mut Instruction, change: i16) {
         match inst {
             Instruction::JMP { offset } => *offset += change,
-            
+
             Instruction::IJEQ { offset, .. } => *offset += change,
             Instruction::IJNE { offset, .. } => *offset += change,
             Instruction::IJLT { offset, .. } => *offset += change,
             Instruction::IJGT { offset, .. } => *offset += change,
             Instruction::IJLE { offset, .. } => *offset += change,
             Instruction::IJGE { offset, .. } => *offset += change,
-            
+
             Instruction::FJEQ { offset, .. } => *offset += change,
             Instruction::FJNE { offset, .. } => *offset += change,
             Instruction::FJLT { offset, .. } => *offset += change,
@@ -399,11 +502,8 @@ impl<'a> CodeGen<'a> {
 mod tests {
     use super::*;
     use crate::compiler::{
-        lexer::Lexer,
-        parser::Parser,
+        error_handling::span::Span, lexer::Lexer, objects::symbol::SymbolKind, parser::Parser,
         sem_analyzer::SemAnalyzer,
-        error_handling::span::Span,
-        objects::symbol::SymbolKind,
     };
     use crate::simulator::rel_interpreter::{RelInterpreter, test_assembler::assemble};
 
@@ -420,17 +520,17 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -451,23 +551,29 @@ mod tests {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Ident(Ident::Symbol(2))),
                 op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 0},
+                op_span: Span { line: 0, col: 0 },
                 expr_type: Type::Int,
             }),
         };
 
         let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
-        let bytecode = assemble("
+        let bytecode = assemble(
+            "
             IADD r4 r2 r3
             RET r4
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
-        assert_eq!(result, Some(CompiledRel {
-            name: "ADD".to_string(),
-            complexity: 0,
-            bytecode,
-        }));
+        assert_eq!(
+            result,
+            Some(CompiledRel {
+                name: "ADD".to_string(),
+                complexity: 0,
+                bytecode,
+            })
+        );
     }
 
     #[test]
@@ -483,39 +589,43 @@ mod tests {
                     input_types: vec![Type::Impulse],
                     return_type: Type::Impulse,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Impulse),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
         let relation = RelType {
             name: Ident::Symbol(0),
-            params: vec![
-                Param {
-                    name: Ident::Symbol(1),
-                    param_type: Type::Impulse,
-                },
-            ],
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Impulse,
+            }],
             return_type: Type::Impulse,
             body: Expr::Ident(Ident::Symbol(1)),
         };
 
         let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
-        let bytecode = assemble("
+        let bytecode = assemble(
+            "
             IADD r3 r2 r1
             RET r3
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
-        assert_eq!(result, Some(CompiledRel {
-            name: "DELAY".to_string(),
-            complexity: 0,
-            bytecode,
-        }));
+        assert_eq!(
+            result,
+            Some(CompiledRel {
+                name: "DELAY".to_string(),
+                complexity: 0,
+                bytecode,
+            })
+        );
     }
 
     #[test]
@@ -531,17 +641,17 @@ mod tests {
                     input_types: vec![Type::Impulse, Type::Impulse],
                     return_type: Type::Impulse,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Impulse),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Impulse),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -562,33 +672,39 @@ mod tests {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Ident(Ident::Symbol(2))),
                 op: BinaryOp::And,
-                op_span: Span {line: 0, col: 0},
+                op_span: Span { line: 0, col: 0 },
                 expr_type: Type::Bool,
             }),
         };
 
         let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
-        let bytecode = assemble("
+        let bytecode = assemble(
+            "
             IEQ r4 r2 r0
             IEQ r5 r3 r0
             AND r4 r4 r5
             IADD r5 r0 r1
             IMUL r4 r4 r5
             RET r4
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
-        assert_eq!(result, Some(CompiledRel {
-            name: "AND".to_string(),
-            complexity: 0,
-            bytecode,
-        }));
+        assert_eq!(
+            result,
+            Some(CompiledRel {
+                name: "AND".to_string(),
+                complexity: 0,
+                bytecode,
+            })
+        );
     }
 
     #[test]
     fn custom_cases() {
         // ent_t coin = {H, T};
-        // rel_t REVERSE : (a: coin) -> coin = cases a { 
+        // rel_t REVERSE : (a: coin) -> coin = cases a {
         //     H : T,
         //     _ : H,
         // };
@@ -597,7 +713,7 @@ mod tests {
             Symbol {
                 name: "coin".to_string(),
                 kind: SymbolKind::EntType,
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "H".to_string(),
@@ -605,7 +721,7 @@ mod tests {
                     parent: 0,
                     mapping: 0,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "T".to_string(),
@@ -613,7 +729,7 @@ mod tests {
                     parent: 0,
                     mapping: 1,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "REVERSE".to_string(),
@@ -621,62 +737,62 @@ mod tests {
                     input_types: vec![Type::Custom(Ident::Symbol(0))],
                     return_type: Type::Custom(Ident::Symbol(0)),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Custom(Ident::Symbol(0))),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
         let relation = RelType {
             name: Ident::Symbol(3),
-            params: vec![
-                Param {
-                    name: Ident::Symbol(4),
-                    param_type: Type::Custom(Ident::Symbol(0)),
-                },
-            ],
+            params: vec![Param {
+                name: Ident::Symbol(4),
+                param_type: Type::Custom(Ident::Symbol(0)),
+            }],
             return_type: Type::Custom(Ident::Symbol(0)),
             body: Expr::Cases(CasesExpr {
                 scrutinee: Box::new(Expr::Ident(Ident::Symbol(4))),
                 arms: vec![
                     CasesArm {
-                        pattern: vec![
-                            SimplePattern::Ident(Ident::Symbol(1)),
-                        ],
+                        pattern: vec![SimplePattern::Ident(Ident::Symbol(1))],
                         expr: Expr::Ident(Ident::Symbol(2)),
-                        arm_span: Span{line: 0, col: 0},
+                        arm_span: Span { line: 0, col: 0 },
                     },
                     CasesArm {
-                        pattern: vec![
-                            SimplePattern::Default,
-                        ],
+                        pattern: vec![SimplePattern::Default],
                         expr: Expr::Ident(Ident::Symbol(1)),
-                        arm_span: Span{line: 0, col: 0},
+                        arm_span: Span { line: 0, col: 0 },
                     },
                 ],
                 expr_type: Type::Custom(Ident::Symbol(0)),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             }),
         };
 
         let result = CodeGen::compile(relation, &symbol_table, &mut diagnostics);
 
-        let bytecode = assemble("
+        let bytecode = assemble(
+            "
             IJNE o13 r2 i0
             MOV r3 i1
             JMP o10
             MOV r3 i0
             RET r3
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
-        assert_eq!(result, Some(CompiledRel {
-            name: "REVERSE".to_string(),
-            complexity: 0,
-            bytecode,
-        }));
+        assert_eq!(
+            result,
+            Some(CompiledRel {
+                name: "REVERSE".to_string(),
+                complexity: 0,
+                bytecode,
+            })
+        );
     }
 
     #[test]
@@ -698,33 +814,31 @@ mod tests {
                     input_types: vec![Type::Int],
                     return_type: Type::Real,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "c".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
         let relation = RelType {
             name: Ident::Symbol(0),
-            params: vec![
-                Param {
-                    name: Ident::Symbol(1),
-                    param_type: Type::Int,
-                },
-            ],
+            params: vec![Param {
+                name: Ident::Symbol(1),
+                param_type: Type::Int,
+            }],
             return_type: Type::Real,
             body: Expr::Block(BlockExpr {
                 statements: vec![
@@ -742,24 +856,24 @@ mod tests {
                                         SampleArm {
                                             prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
                                             expr: Expr::Literal(Literal::Int(3)),
-                                            arm_span: Span{line: 0, col: 0},
+                                            arm_span: Span { line: 0, col: 0 },
                                         },
                                         SampleArm {
                                             prob: Prob::Default,
                                             expr: Expr::Literal(Literal::Int(4)),
-                                            arm_span: Span{line: 0, col: 0},
+                                            arm_span: Span { line: 0, col: 0 },
                                         },
                                     ],
                                     expr_type: Type::Int,
-                                    span: Span{line: 0, col: 0},
+                                    span: Span { line: 0, col: 0 },
                                 })),
                                 op: BinaryOp::Add,
-                                op_span: Span{line: 0, col: 0},
+                                op_span: Span { line: 0, col: 0 },
                                 expr_type: Type::Int,
                             })),
                             right: Box::new(Expr::Ident(Ident::Symbol(2))),
                             op: BinaryOp::Add,
-                            op_span: Span{line: 0, col: 0},
+                            op_span: Span { line: 0, col: 0 },
                             expr_type: Type::Int,
                         }),
                     }),
@@ -768,7 +882,7 @@ mod tests {
                     left: Box::new(Expr::Ident(Ident::Symbol(3))),
                     right: Box::new(Expr::Literal(Literal::Real(1.5))),
                     op: BinaryOp::Div,
-                    op_span: Span{line: 0, col: 0},
+                    op_span: Span { line: 0, col: 0 },
                     expr_type: Type::Real,
                 })),
                 expr_type: Type::Real,
@@ -785,7 +899,8 @@ mod tests {
         // r5: 1st element of cdf
         // r6: 2nd element of cdf
         // r7: ret of sample
-        let bytecode = assemble("
+        let bytecode = assemble(
+            "
             # let b = 1;
             MOV r3 i1
 
@@ -810,13 +925,18 @@ mod tests {
             FDIV r4 r4 f1.5
 
             RET r4
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
-        assert_eq!(result, Some(CompiledRel {
-            name: "RND".to_string(),
-            complexity: 0,
-            bytecode,
-        }));
+        assert_eq!(
+            result,
+            Some(CompiledRel {
+                name: "RND".to_string(),
+                complexity: 0,
+                bytecode,
+            })
+        );
     }
 
     #[test]
@@ -851,12 +971,13 @@ mod tests {
         let mut compiled_relations = Vec::new();
         for item in validated_program.items {
             if let Item::Rel(relation) = item {
-                let compiled_relation = CodeGen::compile(relation, &symbols, &mut diagnostics).unwrap();
+                let compiled_relation =
+                    CodeGen::compile(relation, &symbols, &mut diagnostics).unwrap();
 
                 compiled_relations.push(compiled_relation);
             }
-        } 
-        
+        }
+
         // Interpreter
         let mut interpreter = RelInterpreter::new(compiled_relations);
 
@@ -864,7 +985,7 @@ mod tests {
         let args_1 = vec![0];
         let args_2 = vec![1];
         let args_3 = vec![2];
-        
+
         // NAND args
         let args_4 = vec![false as u64, false as u64];
         let args_5 = vec![true as u64, false as u64];

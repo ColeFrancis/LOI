@@ -18,10 +18,9 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
-
 
 #[derive(PartialEq, Debug)]
 pub struct CompiledRel {

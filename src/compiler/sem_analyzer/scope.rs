@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 

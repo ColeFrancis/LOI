@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+mod code_gen;
 mod core;
 mod lexer;
 mod parser;
 pub mod sem_analyzer;
-mod code_gen;
 mod synthesis;
 
 pub mod error_handling;

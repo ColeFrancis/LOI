@@ -20,11 +20,14 @@
 
 use loi::compiler::Compiler;
 
-use loi::simulator::{Simulator, IoVal, io_file::IoFile};
+use loi::simulator::{IoVal, Simulator, io_file::IoFile};
 
 #[test]
 fn flip_flop() {
-    let path = format!("{}/tests/fixtures/binary_adder.loi", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/fixtures/binary_adder.loi",
+        env!("CARGO_MANIFEST_DIR")
+    );
     println!("path: {}", path);
 
     let result = Compiler::compile(&path, "d_FLIP_FLOP");
@@ -38,21 +41,27 @@ fn flip_flop() {
     let mut sim = Simulator::new(netlist, interface, relations, inits);
 
     let inputs = vec![
-        ("D".to_string(), vec![
-            (0, IoVal::Bool(false)),
-            (11, IoVal::Bool(true)),
-            (31, IoVal::Bool(false)),
-        ]),
-        ("clk".to_string(), vec![
-            (10, IoVal::Bool(true)),
-            (15, IoVal::Bool(false)),
-            (20, IoVal::Bool(true)),
-            (25, IoVal::Bool(false)),
-            (30, IoVal::Bool(true)),
-            (35, IoVal::Bool(false)),
-            (40, IoVal::Bool(true)),
-            (45, IoVal::Bool(false)),
-        ]),
+        (
+            "D".to_string(),
+            vec![
+                (0, IoVal::Bool(false)),
+                (11, IoVal::Bool(true)),
+                (31, IoVal::Bool(false)),
+            ],
+        ),
+        (
+            "clk".to_string(),
+            vec![
+                (10, IoVal::Bool(true)),
+                (15, IoVal::Bool(false)),
+                (20, IoVal::Bool(true)),
+                (25, IoVal::Bool(false)),
+                (30, IoVal::Bool(true)),
+                (35, IoVal::Bool(false)),
+                (40, IoVal::Bool(true)),
+                (45, IoVal::Bool(false)),
+            ],
+        ),
     ];
 
     let success = sim.load_inputs(inputs);
@@ -63,23 +72,35 @@ fn flip_flop() {
 
     let output = sim.dump_outputs();
 
-    assert_eq!(output, vec![
-        ("Q".to_string(), vec![
-            (0, IoVal::Bool(false)),
-            (24, IoVal::Bool(true)),
-            (45, IoVal::Bool(false)),
-        ]),
-        ("Qp".to_string(), vec![
-            (0, IoVal::Bool(true)),
-            (25, IoVal::Bool(false)),
-            (44, IoVal::Bool(true)),
-        ]),
-    ]);
+    assert_eq!(
+        output,
+        vec![
+            (
+                "Q".to_string(),
+                vec![
+                    (0, IoVal::Bool(false)),
+                    (24, IoVal::Bool(true)),
+                    (45, IoVal::Bool(false)),
+                ]
+            ),
+            (
+                "Qp".to_string(),
+                vec![
+                    (0, IoVal::Bool(true)),
+                    (25, IoVal::Bool(false)),
+                    (44, IoVal::Bool(true)),
+                ]
+            ),
+        ]
+    );
 }
 
 #[test]
 fn adder() {
-    let path = format!("{}/tests/fixtures/binary_adder.loi", env!("CARGO_MANIFEST_DIR"));
+    let path = format!(
+        "{}/tests/fixtures/binary_adder.loi",
+        env!("CARGO_MANIFEST_DIR")
+    );
     println!("path: {}", path);
 
     let result = Compiler::compile(&path, "ADDER");
@@ -93,19 +114,22 @@ fn adder() {
     let mut sim = Simulator::new(netlist, interface, relations, inits);
 
     let inputs = vec![
-        ("cin".to_string(), vec![
-            (0, IoVal::Bool(false)),
-            (30, IoVal::Bool(true)),
-        ]),
-        ("A".to_string(), vec![
-            (0, IoVal::Bool(false)),
-            (10, IoVal::Bool(true)),
-            (40, IoVal::Bool(false)),
-        ]),
-        ("B".to_string(), vec![
-            (0, IoVal::Bool(false)),
-            (20, IoVal::Bool(true)),
-        ]),
+        (
+            "cin".to_string(),
+            vec![(0, IoVal::Bool(false)), (30, IoVal::Bool(true))],
+        ),
+        (
+            "A".to_string(),
+            vec![
+                (0, IoVal::Bool(false)),
+                (10, IoVal::Bool(true)),
+                (40, IoVal::Bool(false)),
+            ],
+        ),
+        (
+            "B".to_string(),
+            vec![(0, IoVal::Bool(false)), (20, IoVal::Bool(true))],
+        ),
     ];
 
     let success = sim.load_inputs(inputs);
@@ -116,28 +140,42 @@ fn adder() {
 
     let output = sim.dump_outputs();
 
-    assert_eq!(output, vec![
-        ("S".to_string(), vec![
-            (6, IoVal::Bool(false)),
-            (14, IoVal::Bool(true)),
-            (25, IoVal::Bool(false)),
-            (32, IoVal::Bool(true)),
-            (46, IoVal::Bool(false)),
-        ]),
-        ("cout".to_string(), vec![
-            (5, IoVal::Bool(false)),
-            (22, IoVal::Bool(true)),
-            (42, IoVal::Bool(false)),
-            (45, IoVal::Bool(true)),
-        ]),
-    ]);
+    assert_eq!(
+        output,
+        vec![
+            (
+                "S".to_string(),
+                vec![
+                    (6, IoVal::Bool(false)),
+                    (14, IoVal::Bool(true)),
+                    (25, IoVal::Bool(false)),
+                    (32, IoVal::Bool(true)),
+                    (46, IoVal::Bool(false)),
+                ]
+            ),
+            (
+                "cout".to_string(),
+                vec![
+                    (5, IoVal::Bool(false)),
+                    (22, IoVal::Bool(true)),
+                    (42, IoVal::Bool(false)),
+                    (45, IoVal::Bool(true)),
+                ]
+            ),
+        ]
+    );
 }
 
 #[test]
 fn impulse_and_custom() {
-    let loi_path = format!("{}/tests/fixtures/custom_type_latch.loi", env!("CARGO_MANIFEST_DIR"));
-    let input_path = format!("{}/tests/fixtures/latch_inputs.txt", env!("CARGO_MANIFEST_DIR"));
-
+    let loi_path = format!(
+        "{}/tests/fixtures/custom_type_latch.loi",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let input_path = format!(
+        "{}/tests/fixtures/latch_inputs.txt",
+        env!("CARGO_MANIFEST_DIR")
+    );
 
     let result = Compiler::compile(&loi_path, "LATCH");
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
@@ -154,11 +192,15 @@ fn impulse_and_custom() {
     let _steps = sim.run(256, false);
 
     let output = sim.dump_outputs();
-    assert_eq!(output, vec![
-        ("out".to_string(), vec![
-            (0, IoVal::Custom("A".to_string())),
-            (3, IoVal::Custom("B".to_string())),
-            (9, IoVal::Custom("A".to_string())),
-        ]),
-    ]);
+    assert_eq!(
+        output,
+        vec![(
+            "out".to_string(),
+            vec![
+                (0, IoVal::Custom("A".to_string())),
+                (3, IoVal::Custom("B".to_string())),
+                (9, IoVal::Custom("A".to_string())),
+            ]
+        ),]
+    );
 }

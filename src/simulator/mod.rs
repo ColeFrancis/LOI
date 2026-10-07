@@ -13,20 +13,17 @@
 // limitations under the License.
 
 mod core;
-pub mod rel_interpreter;
 pub mod io_file;
+pub mod rel_interpreter;
 
 pub mod error_handling;
 pub mod objects;
 
 use std::collections::HashMap;
 
-use crate::simulator::{
-    objects::scheduler::Scheduler,
-    rel_interpreter::RelInterpreter,
-};
+use crate::simulator::{objects::scheduler::Scheduler, rel_interpreter::RelInterpreter};
 
-use crate::compiler::objects::netlist::{Netlist, Interface, EntId};
+use crate::compiler::objects::netlist::{EntId, Interface, Netlist};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum IoVal {

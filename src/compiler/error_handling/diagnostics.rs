@@ -25,10 +25,7 @@
 use super::span::Span;
 use crate::compiler::{
     lexer::token::TokenKind,
-    objects::{
-        types::Type,
-        symbol::SymbolKind,
-    },
+    objects::{symbol::SymbolKind, types::Type},
 };
 
 #[derive(PartialEq, Debug)]
@@ -38,9 +35,7 @@ pub struct Diagnostics {
 
 impl Diagnostics {
     pub fn new() -> Self {
-        Self {
-            errors: Vec::new(),
-        }
+        Self { errors: Vec::new() }
     }
 
     pub fn error(&mut self, error: Diagnostic) {
@@ -73,7 +68,6 @@ pub enum Diagnostic {
     ////////////////////
     // Lexer
     ////////////////////
-
     UnknownToken {
         lexeme: String,
         span: Span,
@@ -87,7 +81,6 @@ pub enum Diagnostic {
     ////////////////////
     // Parser
     ////////////////////
-
     UnexpectedToken {
         expected: Vec<Expected>,
         found: TokenKind,
@@ -102,7 +95,6 @@ pub enum Diagnostic {
     ////////////////////
     // Semantic Analysis
     ////////////////////
-
     DuplicateDefinition {
         name: String,
         old_span: Span,
@@ -126,7 +118,7 @@ pub enum Diagnostic {
         name: String,
         span: Span,
     },
-    
+
     // When processing instantiations
     UnexpectedIdent {
         expected: Vec<SymbolKind>,
@@ -143,7 +135,7 @@ pub enum Diagnostic {
     },
 
     // Unary/binary expressions
-    IncompatibleOp { 
+    IncompatibleOp {
         expr_type: Type,
         op: Operation,
         op_span: Span,
@@ -177,11 +169,11 @@ pub enum Diagnostic {
     MismatchedEntType {
         expected: Type,
         found: Type,
-        span: Span
+        span: Span,
     },
 
     // for rel_inst
-    IncorrectNumberOfArgs { 
+    IncorrectNumberOfArgs {
         expected_len: usize,
         actual_len: usize,
         rel_span: Span,
@@ -230,7 +222,7 @@ pub enum Diagnostic {
     MultipleEntDrivers {
         name: String,
         first_span: Span,
-        last_span: Span
+        last_span: Span,
     },
 
     ///////////////
@@ -238,7 +230,7 @@ pub enum Diagnostic {
     ///////////////
 
     // There are only 62 registers available for use in the interpreter
-    TooManySymbols { 
+    TooManySymbols {
         rel_name: String,
         rel_span: Span,
     },
@@ -246,7 +238,6 @@ pub enum Diagnostic {
     ////////////////
     // Synthesize
     ////////////////
-
     NonexistantTopLevelNet {
         name: String,
     },
@@ -267,7 +258,7 @@ pub enum Operation {
     Add,
     Sub,
     Mul,
-    Div, 
+    Div,
     Pow,
     Or,
     And,
@@ -299,141 +290,317 @@ impl std::fmt::Display for Diagnostics {
 }
 
 impl std::fmt::Display for Diagnostic {
-    fn fmt (&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ///////////////
             // Lexer Errors
             ///////////////
-            Diagnostic::UnknownToken {lexeme, span} => {
-                write!(f, "Unknown token \"{}\"\nat line {}:{}", lexeme, span.line, span.col)
+            Diagnostic::UnknownToken { lexeme, span } => {
+                write!(
+                    f,
+                    "Unknown token \"{}\"\nat line {}:{}",
+                    lexeme, span.line, span.col
+                )
             }
 
-            Diagnostic::InvalidNum {lexeme, span} => {
-                write!(f, "Invalid number \"{}\"\nat line {}:{}", lexeme, span.line, span.col)
+            Diagnostic::InvalidNum { lexeme, span } => {
+                write!(
+                    f,
+                    "Invalid number \"{}\"\nat line {}:{}",
+                    lexeme, span.line, span.col
+                )
             }
 
             ////////////////
             // Parser Errors
             ////////////////
-            Diagnostic::UnexpectedToken {expected, found, span} => {
-                let expected = expected.iter().map(|token| format!("{token}")).collect::<Vec<_>>().join(", ");
+            Diagnostic::UnexpectedToken {
+                expected,
+                found,
+                span,
+            } => {
+                let expected = expected
+                    .iter()
+                    .map(|token| format!("{token}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
-                write!(f, "Unexpected token: {}. Expected one of: {}\nat line {}:{}", found, expected, span.line, span.col)
+                write!(
+                    f,
+                    "Unexpected token: {}. Expected one of: {}\nat line {}:{}",
+                    found, expected, span.line, span.col
+                )
             }
 
-            Diagnostic::NestedTupleExpr {span} => {
-                write!(f, "Nested Tuple Expressions\nat line {}:{}", span.line, span.col)
+            Diagnostic::NestedTupleExpr { span } => {
+                write!(
+                    f,
+                    "Nested Tuple Expressions\nat line {}:{}",
+                    span.line, span.col
+                )
             }
 
             ///////////////////////////
             // Semantic Analysis Errors
             ///////////////////////////
-            Diagnostic::DuplicateDefinition {name, old_span, new_span} => {
-                write!(f, "Duplicate definition of \"{}\", previously defined at {}:{}\nat line {}:{}", name, old_span.line, old_span.col, new_span.line, new_span.col)
+            Diagnostic::DuplicateDefinition {
+                name,
+                old_span,
+                new_span,
+            } => {
+                write!(
+                    f,
+                    "Duplicate definition of \"{}\", previously defined at {}:{}\nat line {}:{}",
+                    name, old_span.line, old_span.col, new_span.line, new_span.col
+                )
             }
 
-            Diagnostic::UndefinedIdent {name, span} => {
-                write!(f, "Undefined identifier: \"{}\"\nat line {}:{}", name, span.line, span.col)
+            Diagnostic::UndefinedIdent { name, span } => {
+                write!(
+                    f,
+                    "Undefined identifier: \"{}\"\nat line {}:{}",
+                    name, span.line, span.col
+                )
             }
 
-            Diagnostic::UndefinedPort {name, span} => {
-                write!(f, "Undefined net port: \"{}\"\nat line {}:{}", name, span.line, span.col)
+            Diagnostic::UndefinedPort { name, span } => {
+                write!(
+                    f,
+                    "Undefined net port: \"{}\"\nat line {}:{}",
+                    name, span.line, span.col
+                )
             }
 
-            Diagnostic::DuplicatePort {name, span} => {
-                write!(f, "Port \"{}\" assigned multiple times\nat line {}:{}", name, span.line, span.col)
+            Diagnostic::DuplicatePort { name, span } => {
+                write!(
+                    f,
+                    "Port \"{}\" assigned multiple times\nat line {}:{}",
+                    name, span.line, span.col
+                )
             }
 
-            Diagnostic::UnexpectedIdent {expected, found, span} => {
-                let expected = expected.iter().map(|ident| format!("{ident}")).collect::<Vec<_>>().join(", ");
+            Diagnostic::UnexpectedIdent {
+                expected,
+                found,
+                span,
+            } => {
+                let expected = expected
+                    .iter()
+                    .map(|ident| format!("{ident}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
-                write!(f, "Unexpected Identifer: {}. Expected one of: {}\nat line {}:{}", found, expected, span.line, span.col)
+                write!(
+                    f,
+                    "Unexpected Identifer: {}. Expected one of: {}\nat line {}:{}",
+                    found, expected, span.line, span.col
+                )
             }
 
-            Diagnostic::IncompatibleTypes {left, right, op_span} => {
-                write!(f, "Incompatible variable types: {} and {}\nat line {}:{}", left, right, op_span.line, op_span.col)
+            Diagnostic::IncompatibleTypes {
+                left,
+                right,
+                op_span,
+            } => {
+                write!(
+                    f,
+                    "Incompatible variable types: {} and {}\nat line {}:{}",
+                    left, right, op_span.line, op_span.col
+                )
             }
 
-            Diagnostic::IncompatibleOp {expr_type, op, op_span} => {
-                write!(f, "Incompatible operation {} given expression type: {}\nat line {}:{}", op, expr_type, op_span.line, op_span.col)
+            Diagnostic::IncompatibleOp {
+                expr_type,
+                op,
+                op_span,
+            } => {
+                write!(
+                    f,
+                    "Incompatible operation {} given expression type: {}\nat line {}:{}",
+                    op, expr_type, op_span.line, op_span.col
+                )
             }
 
-            Diagnostic::NonRealProb {prob_type, arm_span} => {
-                write!(f, "Probability type must be Real. Instead found: {}\nat line {}:{}", prob_type, arm_span.line, arm_span.col)
+            Diagnostic::NonRealProb {
+                prob_type,
+                arm_span,
+            } => {
+                write!(
+                    f,
+                    "Probability type must be Real. Instead found: {}\nat line {}:{}",
+                    prob_type, arm_span.line, arm_span.col
+                )
             }
 
-            Diagnostic::UnequalTupleLength {left_len, right_len, right_span} => {
-                write!(f, "Tuple lengths are not equal: {} and {}\nat line {}:{}", left_len, right_len, right_span.line, right_span.col)
+            Diagnostic::UnequalTupleLength {
+                left_len,
+                right_len,
+                right_span,
+            } => {
+                write!(
+                    f,
+                    "Tuple lengths are not equal: {} and {}\nat line {}:{}",
+                    left_len, right_len, right_span.line, right_span.col
+                )
             }
 
-            Diagnostic::IllegalScrutineeExpr {expected, found, cases_span} => {
-                let expected = expected.iter().map(|expr_type| format!("{expr_type}")).collect::<Vec<_>>().join(", ");
+            Diagnostic::IllegalScrutineeExpr {
+                expected,
+                found,
+                cases_span,
+            } => {
+                let expected = expected
+                    .iter()
+                    .map(|expr_type| format!("{expr_type}"))
+                    .collect::<Vec<_>>()
+                    .join(", ");
 
-                write!(f, "Illegal scrutinee expression type: {}. Expected one of: {}\nat line {}:{}", found, expected, cases_span.line, cases_span.col)
+                write!(
+                    f,
+                    "Illegal scrutinee expression type: {}. Expected one of: {}\nat line {}:{}",
+                    found, expected, cases_span.line, cases_span.col
+                )
             }
 
-            Diagnostic::IncompatibleReturnType {return_type, expr_type, rel_span} => {
-                write!(f, "Incompatible expression return type: {}. Expected type: {}\nat line {}:{}", expr_type, return_type, rel_span.line, rel_span.col)
+            Diagnostic::IncompatibleReturnType {
+                return_type,
+                expr_type,
+                rel_span,
+            } => {
+                write!(
+                    f,
+                    "Incompatible expression return type: {}. Expected type: {}\nat line {}:{}",
+                    expr_type, return_type, rel_span.line, rel_span.col
+                )
             }
 
-            Diagnostic::MismatchedEntType {expected, found, span} => {
-                write!(f, "Mismatched entity types. Expected: {}, found: {}\nat line {}:{}", expected, found, span.line, span.col)
+            Diagnostic::MismatchedEntType {
+                expected,
+                found,
+                span,
+            } => {
+                write!(
+                    f,
+                    "Mismatched entity types. Expected: {}, found: {}\nat line {}:{}",
+                    expected, found, span.line, span.col
+                )
             }
 
-            Diagnostic::IncorrectNumberOfArgs {expected_len, actual_len, rel_span} => {
-                write!(f, "Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}", expected_len, actual_len, rel_span.line, rel_span.col)
+            Diagnostic::IncorrectNumberOfArgs {
+                expected_len,
+                actual_len,
+                rel_span,
+            } => {
+                write!(
+                    f,
+                    "Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}",
+                    expected_len, actual_len, rel_span.line, rel_span.col
+                )
             }
 
-            Diagnostic::NonexistantNetPort {name, span} => {
-                write!(f, "Net port \"{}\" used but not found.\nat line {}:{}", name, span.line, span.col)
+            Diagnostic::NonexistantNetPort { name, span } => {
+                write!(
+                    f,
+                    "Net port \"{}\" used but not found.\nat line {}:{}",
+                    name, span.line, span.col
+                )
             }
 
-            Diagnostic::DivideByZero {op_span} => {
-                write!(f, "Divide by zero while folding expression.\nat line {}:{}", op_span.line, op_span.line)
+            Diagnostic::DivideByZero { op_span } => {
+                write!(
+                    f,
+                    "Divide by zero while folding expression.\nat line {}:{}",
+                    op_span.line, op_span.line
+                )
             }
 
-            Diagnostic::NegExpOnInt {op_span} => {
-                write!(f, "Integer raised to negative power.\nat line {}:{}", op_span.line, op_span.line)
+            Diagnostic::NegExpOnInt { op_span } => {
+                write!(
+                    f,
+                    "Integer raised to negative power.\nat line {}:{}",
+                    op_span.line, op_span.line
+                )
             }
 
-            Diagnostic::NoReturnArm {span} => {
-                write!(f, "No return arms on expression.\nat line {}:{}", span.line, span.col)
+            Diagnostic::NoReturnArm { span } => {
+                write!(
+                    f,
+                    "No return arms on expression.\nat line {}:{}",
+                    span.line, span.col
+                )
             }
 
-            Diagnostic::DuplicatePattern {old_arm_span, arm_span} => {
-                write!(f, "Duplicate pattern on cases arm. First pattern at {}:{}\nat line {}:{}", old_arm_span.line, old_arm_span.col, arm_span.line, arm_span.col)
+            Diagnostic::DuplicatePattern {
+                old_arm_span,
+                arm_span,
+            } => {
+                write!(
+                    f,
+                    "Duplicate pattern on cases arm. First pattern at {}:{}\nat line {}:{}",
+                    old_arm_span.line, old_arm_span.col, arm_span.line, arm_span.col
+                )
             }
 
-            Diagnostic::NoDefaultPattern {cases_span} => {
-                write!(f, "No default pattern given.\nat line {}:{}", cases_span.line, cases_span.col)
+            Diagnostic::NoDefaultPattern { cases_span } => {
+                write!(
+                    f,
+                    "No default pattern given.\nat line {}:{}",
+                    cases_span.line, cases_span.col
+                )
             }
 
-            Diagnostic::ProbOutOfRange {total_prob, val, span} => {
-                match total_prob {
-                    true => write!(f, "Arm's probability value \"{}\" out of range. Should be >= 0 and <= 1.\nat line {}:{}", val, span.line, span.col),
-                    false => write!(f, "Total probability value \"{}\" out of range. Should be 1.\nat line {}:{}", val, span.line, span.col),
-                }
+            Diagnostic::ProbOutOfRange {
+                total_prob,
+                val,
+                span,
+            } => match total_prob {
+                true => write!(
+                    f,
+                    "Arm's probability value \"{}\" out of range. Should be >= 0 and <= 1.\nat line {}:{}",
+                    val, span.line, span.col
+                ),
+                false => write!(
+                    f,
+                    "Total probability value \"{}\" out of range. Should be 1.\nat line {}:{}",
+                    val, span.line, span.col
+                ),
+            },
+
+            Diagnostic::MultipleDefaultProb { arm_span } => {
+                write!(
+                    f,
+                    "Multiple default probabilites given.\nat line {}:{}",
+                    arm_span.line, arm_span.col
+                )
             }
 
-            Diagnostic::MultipleDefaultProb {arm_span} => {
-                write!(f, "Multiple default probabilites given.\nat line {}:{}", arm_span.line, arm_span.col)
-            }
-
-            Diagnostic::MultipleEntDrivers {name, first_span, last_span} => {
-                write!(f, "Entity \"{}\" driven by multiple sources. First driven at {}:{}\nat line {}:{}", name, first_span.line, first_span.col, last_span.line, last_span.col)
+            Diagnostic::MultipleEntDrivers {
+                name,
+                first_span,
+                last_span,
+            } => {
+                write!(
+                    f,
+                    "Entity \"{}\" driven by multiple sources. First driven at {}:{}\nat line {}:{}",
+                    name, first_span.line, first_span.col, last_span.line, last_span.col
+                )
             }
 
             /////////////////
             // CodeGen Errors
             /////////////////
-            Diagnostic::TooManySymbols {rel_name, rel_span} => {
-                write!(f, "Too many internal registers needed to evaluate rel_t: \"{}\". Please reduce the number of variables, cases or probability arms, or simplify expressions.\nat line {}:{}\n\n", rel_name, rel_span.line, rel_span.col)
+            Diagnostic::TooManySymbols { rel_name, rel_span } => {
+                write!(
+                    f,
+                    "Too many internal registers needed to evaluate rel_t: \"{}\". Please reduce the number of variables, cases or probability arms, or simplify expressions.\nat line {}:{}\n\n",
+                    rel_name, rel_span.line, rel_span.col
+                )
             }
 
             ////////////////////
             // Syntehsize Errors
             ////////////////////
-            Diagnostic::NonexistantTopLevelNet {name} => {
+            Diagnostic::NonexistantTopLevelNet { name } => {
                 write!(f, "Given top level net \"{}\" does not exist.", name)
             }
         }
@@ -461,10 +628,10 @@ impl std::fmt::Display for Operation {
             Operation::Mul => write!(f, "Multiply"),
             Operation::Div => write!(f, "Divide"),
             Operation::Pow => write!(f, "Power"),
-            Operation::Or  => write!(f, "Boolean Or"),
+            Operation::Or => write!(f, "Boolean Or"),
             Operation::And => write!(f, "Boolean And"),
             Operation::Not => write!(f, "Boolean Not"),
-        }   
+        }
     }
 }
 
@@ -472,29 +639,30 @@ impl std::fmt::Display for ExprType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ExprType::Literal => write!(f, "Literal"),
-            ExprType::Ident   => write!(f, "Ident"),
-            ExprType::Unary   => write!(f, "Unary"),
-            ExprType::Binary  => write!(f, "Binary"),
-            ExprType::Tuple   => write!(f, "Tuple"),
-            ExprType::Block   => write!(f, "Block"),
-            ExprType::Cases   => write!(f, "Cases"),
-            ExprType::Sample  => write!(f, "Sample"),
-            ExprType::Error   => write!(f, "Error"),
-        }   
+            ExprType::Ident => write!(f, "Ident"),
+            ExprType::Unary => write!(f, "Unary"),
+            ExprType::Binary => write!(f, "Binary"),
+            ExprType::Tuple => write!(f, "Tuple"),
+            ExprType::Block => write!(f, "Block"),
+            ExprType::Cases => write!(f, "Cases"),
+            ExprType::Sample => write!(f, "Sample"),
+            ExprType::Error => write!(f, "Error"),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compiler::error_handling::span::Span;
     use crate::compiler::lexer::Lexer;
     use crate::compiler::parser::Parser;
-    use crate::compiler::error_handling::span::Span;
 
     #[test]
     fn no_errors() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("
+        let tokens = Lexer::new(
+            "
             ent_t COIN = {H, T};
         
             let a = 1;
@@ -502,7 +670,10 @@ mod tests {
             rel_t ONE () -> Real = 1;
 
             net EMPTY {}
-        ", &mut diagnostics).tokenize();
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         Parser::new(tokens, &mut diagnostics).parse();
 
@@ -513,137 +684,127 @@ mod tests {
     fn lexer_1() {
         let mut diagnostics = Diagnostics::new();
         Lexer::new(
-        "@ 9a
-        ", &mut diagnostics).tokenize();
+            "@ 9a
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
-        assert_eq!(diagnostics.errors, vec![
-            Diagnostic::UnknownToken{
-                lexeme: "@".to_string(),
-                span: Span {
-                    line: 1,
-                    col: 1
-                }
-            },
-            Diagnostic::InvalidNum{
-                lexeme: "9a".to_string(),
-                span: Span {
-                    line: 1,
-                    col: 3
-                }
-            },
-        ]);
+        assert_eq!(
+            diagnostics.errors,
+            vec![
+                Diagnostic::UnknownToken {
+                    lexeme: "@".to_string(),
+                    span: Span { line: 1, col: 1 }
+                },
+                Diagnostic::InvalidNum {
+                    lexeme: "9a".to_string(),
+                    span: Span { line: 1, col: 3 }
+                },
+            ]
+        );
     }
 
     #[test]
     fn rel() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-        "rel_t A :() -> Real a;
-        ", &mut diagnostics).tokenize();
+            "rel_t A :() -> Real a;
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(diagnostics.errors, vec![
-            Diagnostic::UnexpectedToken {
+        assert_eq!(
+            diagnostics.errors,
+            vec![Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Token(TokenKind::LParen)],
                 found: TokenKind::Colon,
-                span: Span {
-                    line: 1,
-                    col: 9
-                }
-            }
-        ]);
+                span: Span { line: 1, col: 9 }
+            }]
+        );
     }
 
     #[test]
     fn expr() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"let n = cases a {
+            "let n = cases a {
     let => 1,
-};", &mut diagnostics).tokenize();
+};",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(diagnostics.errors, vec![
-            Diagnostic::UnexpectedToken {
+        assert_eq!(
+            diagnostics.errors,
+            vec![Diagnostic::UnexpectedToken {
                 expected: vec![Expected::Pattern],
                 found: TokenKind::Let,
-                span: Span {
-                    line: 2,
-                    col: 5,
-                }
-            }
-        ]);
+                span: Span { line: 2, col: 5 }
+            }]
+        );
     }
 
     #[test]
     fn multiple_errors_1() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"let n = 1;
+            "let n = 1;
 n = 2;
 let n = 3;
 let 9n = 4;
 let n = 5;
 let n = 6
 let n = 7;
-let n = @;", &mut diagnostics).tokenize();
+let n = @;",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(diagnostics.errors, vec![
-            Diagnostic::InvalidNum {
-                lexeme: "9n".to_string(),
-                span: Span {
-                    line: 4,
-                    col: 5,
-                }
-            },
-            Diagnostic::UnknownToken {
-                lexeme: "@".to_string(),
-                span: Span {
-                    line: 8,
-                    col: 9,
-                }
-            },
-            Diagnostic::UnexpectedToken {
-                expected: vec![
-                    Expected::Token(TokenKind::Let),
-                    Expected::Token(TokenKind::Ent_t),
-                    Expected::Token(TokenKind::Rel_t),
-                    Expected::Token(TokenKind::NetToken),
-                ],
-                found: TokenKind::Ident("n".to_string()),
-                span: Span {
-                    line: 2,
-                    col: 1,
-                }
-            },
-            Diagnostic::UnexpectedToken {
-                expected: vec![Expected::Ident],
-                found: TokenKind::ErrorToken,
-                span: Span {
-                    line: 4,
-                    col: 5,
-                }
-            },
-            Diagnostic::UnexpectedToken {
-                expected: vec![Expected::Token(TokenKind::Semicolon)],
-                found: TokenKind::Let,
-                span: Span {
-                    line: 7,
-                    col: 1,
-                }
-            },
-            Diagnostic::UnexpectedToken {
-                expected: vec![Expected::Expr],
-                found: TokenKind::ErrorToken,
-                span: Span {
-                    line: 8,
-                    col: 9,
-                }
-            },
-        ]);
+        assert_eq!(
+            diagnostics.errors,
+            vec![
+                Diagnostic::InvalidNum {
+                    lexeme: "9n".to_string(),
+                    span: Span { line: 4, col: 5 }
+                },
+                Diagnostic::UnknownToken {
+                    lexeme: "@".to_string(),
+                    span: Span { line: 8, col: 9 }
+                },
+                Diagnostic::UnexpectedToken {
+                    expected: vec![
+                        Expected::Token(TokenKind::Let),
+                        Expected::Token(TokenKind::Ent_t),
+                        Expected::Token(TokenKind::Rel_t),
+                        Expected::Token(TokenKind::NetToken),
+                    ],
+                    found: TokenKind::Ident("n".to_string()),
+                    span: Span { line: 2, col: 1 }
+                },
+                Diagnostic::UnexpectedToken {
+                    expected: vec![Expected::Ident],
+                    found: TokenKind::ErrorToken,
+                    span: Span { line: 4, col: 5 }
+                },
+                Diagnostic::UnexpectedToken {
+                    expected: vec![Expected::Token(TokenKind::Semicolon)],
+                    found: TokenKind::Let,
+                    span: Span { line: 7, col: 1 }
+                },
+                Diagnostic::UnexpectedToken {
+                    expected: vec![Expected::Expr],
+                    found: TokenKind::ErrorToken,
+                    span: Span { line: 8, col: 9 }
+                },
+            ]
+        );
     }
 }

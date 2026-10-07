@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
@@ -51,10 +51,10 @@ pub enum SymbolKind {
     Ent(Type),
     Rel_t {
         input_types: Vec<Type>,
-        return_type: Type
+        return_type: Type,
     },
     Net {
-       ports: HashMap<String, NetPort>
+        ports: HashMap<String, NetPort>,
     },
 }
 
@@ -64,10 +64,10 @@ impl std::fmt::Display for SymbolKind {
             SymbolKind::Const(_) => write!(f, "Constant Variable"),
             SymbolKind::Variable(_) => write!(f, "Variable"),
             SymbolKind::EntType => write!(f, "Custom Ent Type"),
-            SymbolKind::EntMember{..} => write!(f, "Custom Ent Type Member"),
+            SymbolKind::EntMember { .. } => write!(f, "Custom Ent Type Member"),
             SymbolKind::Ent(_) => write!(f, "Ent"),
-            SymbolKind::Rel_t {..} => write!(f, "Relation Type"),
-            SymbolKind::Net {..} => write!(f, "Net"),
+            SymbolKind::Rel_t { .. } => write!(f, "Relation Type"),
+            SymbolKind::Net { .. } => write!(f, "Net"),
         }
     }
 }

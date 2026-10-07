@@ -10,8 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod token;
 mod core;
+pub mod token;
 
 use crate::compiler::error_handling::diagnostics::Diagnostics;
 

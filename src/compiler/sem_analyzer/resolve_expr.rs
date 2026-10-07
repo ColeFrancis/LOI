@@ -25,12 +25,12 @@
 use super::SemAnalyzer;
 use crate::compiler::objects::ast::*;
 
-impl <'a> SemAnalyzer<'a> {
+impl<'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
     //  then the whole expression does not become an error, only that portion. This allows for
     //  more helpful diagnostics
     pub(super) fn resolve_expr(&mut self, expr: Expr) -> Option<Expr> {
-        match expr { 
+        match expr {
             Expr::Literal(literal) => Some(Expr::Literal(literal)),
 
             Expr::Ident(ident) => {
@@ -39,22 +39,22 @@ impl <'a> SemAnalyzer<'a> {
                 let symbol_id = self.find_symbol(&name, span)?;
 
                 Some(Expr::Ident(Ident::Symbol(symbol_id)))
-            },
+            }
 
             Expr::Unary(mut unary_expr) => {
-                unary_expr.expr = Box::new(self.resolve_expr(*unary_expr.expr)
-                    .unwrap_or(Expr::Error));
-                    
+                unary_expr.expr =
+                    Box::new(self.resolve_expr(*unary_expr.expr).unwrap_or(Expr::Error));
+
                 Some(Expr::Unary(unary_expr))
             }
 
             Expr::Binary(mut binary_expr) => {
-                binary_expr.left = Box::new(self.resolve_expr(*binary_expr.left)
-                    .unwrap_or(Expr::Error));
-                
-                binary_expr.right = Box::new(self.resolve_expr(*binary_expr.right)
-                    .unwrap_or(Expr::Error));
-                    
+                binary_expr.left =
+                    Box::new(self.resolve_expr(*binary_expr.left).unwrap_or(Expr::Error));
+
+                binary_expr.right =
+                    Box::new(self.resolve_expr(*binary_expr.right).unwrap_or(Expr::Error));
+
                 Some(Expr::Binary(binary_expr))
             }
 
@@ -62,65 +62,62 @@ impl <'a> SemAnalyzer<'a> {
                 for expr in &mut tuple_expr {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
 
-                    *expr = self.resolve_expr(owned_expr)
-                        .unwrap_or(Expr::Error);
+                    *expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
                 }
 
                 Some(Expr::Tuple(tuple_expr))
             }
 
-            Expr::Block(mut block_expr) => { // TODO: Refactor
+            Expr::Block(mut block_expr) => {
+                // TODO: Refactor
                 self.create_scope();
 
                 for stmt in &mut block_expr.statements {
                     let owned_stmt = std::mem::replace(stmt, Statement::Error);
 
                     *stmt = match owned_stmt {
-                        Statement::Let(let_stmt) => {
-                            match self.resolve_let(let_stmt) {
-                                Some(resolved_let) => Statement::Let(resolved_let),
-                                None => Statement::Error,
-                            }
-                        }
-                        Statement::Error => Statement::Error
+                        Statement::Let(let_stmt) => match self.resolve_let(let_stmt) {
+                            Some(resolved_let) => Statement::Let(resolved_let),
+                            None => Statement::Error,
+                        },
+                        Statement::Error => Statement::Error,
                     }
                 }
 
-                block_expr.expr = Box::new(self.resolve_expr(*block_expr.expr)
-                    .unwrap_or(Expr::Error));
+                block_expr.expr =
+                    Box::new(self.resolve_expr(*block_expr.expr).unwrap_or(Expr::Error));
 
                 self.exit_scope();
-                
+
                 Some(Expr::Block(block_expr))
             }
 
-            Expr::Cases(match_expr) => {
-                match self.resolve_match_expr(match_expr) {
-                    Some(expr) => Some(Expr::Cases(expr)),
-                    None => Some(Expr::Error),
-                }
-            }
+            Expr::Cases(match_expr) => match self.resolve_match_expr(match_expr) {
+                Some(expr) => Some(Expr::Cases(expr)),
+                None => Some(Expr::Error),
+            },
 
-            Expr::Sample(sample_expr) => {
-                match self.resolve_sample_expr(sample_expr) {
-                    Some(expr) => Some(Expr::Sample(expr)),
-                    None => Some(Expr::Error),
-                }
-            }
+            Expr::Sample(sample_expr) => match self.resolve_sample_expr(sample_expr) {
+                Some(expr) => Some(Expr::Sample(expr)),
+                None => Some(Expr::Error),
+            },
 
             Expr::Error => Some(Expr::Error),
         }
     }
 
     fn resolve_match_expr(&mut self, mut match_expr: CasesExpr) -> Option<CasesExpr> {
-        match_expr.scrutinee = Box::new(self.resolve_expr(*match_expr.scrutinee)
-            .unwrap_or(Expr::Error));
+        match_expr.scrutinee = Box::new(
+            self.resolve_expr(*match_expr.scrutinee)
+                .unwrap_or(Expr::Error),
+        );
 
         for arm in &mut match_expr.arms {
             for simple_pattern in &mut arm.pattern {
                 let owned_pattern = std::mem::replace(simple_pattern, SimplePattern::Error);
 
-                *simple_pattern = self.resolve_simple_pattern(owned_pattern)
+                *simple_pattern = self
+                    .resolve_simple_pattern(owned_pattern)
                     .unwrap_or(SimplePattern::Error);
             }
 
@@ -150,7 +147,8 @@ impl <'a> SemAnalyzer<'a> {
                 for pattern in &mut tuple_pattern {
                     let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
 
-                    *pattern = self.resolve_simple_pattern(owned_pattern)
+                    *pattern = self
+                        .resolve_simple_pattern(owned_pattern)
                         .unwrap_or(SimplePattern::Error);
                 }
 
@@ -158,8 +156,10 @@ impl <'a> SemAnalyzer<'a> {
             }
 
             SimplePattern::Comparison(mut comparison_pattern) => {
-                comparison_pattern.expr = Box::new(self.resolve_expr(*comparison_pattern.expr)
-                    .unwrap_or(Expr::Error));
+                comparison_pattern.expr = Box::new(
+                    self.resolve_expr(*comparison_pattern.expr)
+                        .unwrap_or(Expr::Error),
+                );
 
                 Some(SimplePattern::Comparison(comparison_pattern))
             }
@@ -173,15 +173,14 @@ impl <'a> SemAnalyzer<'a> {
             let owned_prob = std::mem::replace(&mut arm.prob, Prob::Default);
             arm.prob = match owned_prob {
                 Prob::Default => Prob::Default,
-                Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr)
-                    .unwrap_or(Expr::Error)),
+                Prob::Expr(expr) => Prob::Expr(self.resolve_expr(expr).unwrap_or(Expr::Error)),
             };
 
             let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
 
             arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
         }
-        
+
         Some(sample_expr)
     }
 }
@@ -189,27 +188,25 @@ impl <'a> SemAnalyzer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use crate::compiler::{
-        sem_analyzer::scope::Scope,
         error_handling::diagnostics::Diagnostics,
         error_handling::span::Span,
         objects::{
-            types::Type,
             symbol::{Symbol, SymbolKind},
+            types::Type,
         },
+        sem_analyzer::scope::Scope,
     };
+    use std::collections::HashMap;
 
     #[test]
     fn expr_literal() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::new(),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::new(),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -218,24 +215,22 @@ mod tests {
 
         assert_eq!(result, Some(Expr::Literal(Literal::Bool(false))));
     }
-    
+
     #[test]
     fn expr_ident_fail() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::new(),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::new(),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
 
         let result = sem_analyzer.resolve_expr(Expr::Ident(Ident::Str {
             val: "a".to_string(),
-            span: Span{line: 1, col: 0},
+            span: Span { line: 1, col: 0 },
         }));
 
         assert_eq!(result, None);
@@ -244,22 +239,18 @@ mod tests {
     #[test]
     fn expr_ident() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 1),
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
 
         let result = sem_analyzer.resolve_expr(Expr::Ident(Ident::Str {
             val: "a".to_string(),
-            span: Span{line: 2, col: 0},
+            span: Span { line: 2, col: 0 },
         }));
 
         assert_eq!(result, Some(Expr::Ident(Ident::Symbol(1))));
@@ -270,14 +261,11 @@ mod tests {
         // a + 1  // a undefined
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -285,36 +273,35 @@ mod tests {
         let result = sem_analyzer.resolve_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Ident(Ident::Str {
                 val: "a".to_string(),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             })),
             op: BinaryOp::Add,
             right: Box::new(Expr::Literal(Literal::Int(1))),
-            op_span: Span {line: 0, col: 0},
+            op_span: Span { line: 0, col: 0 },
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Error),
-            op: BinaryOp::Add,
-            right: Box::new(Expr::Literal(Literal::Int(1))),
-            op_span: Span {line: 0, col: 0},
-            expr_type: Type::Unknown,
-        })));
+        assert_eq!(
+            result,
+            Some(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Error),
+                op: BinaryOp::Add,
+                right: Box::new(Expr::Literal(Literal::Int(1))),
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Unknown,
+            }))
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]
     fn expr_tuple() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 1),
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut Diagnostics::new(),
         };
@@ -322,15 +309,21 @@ mod tests {
         let result = sem_analyzer.resolve_expr(Expr::Tuple(vec![
             Expr::Ident(Ident::Str {
                 val: "a".to_string(),
-                span: Span{line: 2, col: 0},
+                span: Span { line: 2, col: 0 },
             }),
             Expr::Ident(Ident::Str {
                 val: "b".to_string(),
-                span: Span{line: 2, col: 1},
+                span: Span { line: 2, col: 1 },
             }),
         ]));
 
-        assert_eq!(result, Some(Expr::Tuple(vec![Expr::Ident(Ident::Symbol(1)), Expr::Error])));
+        assert_eq!(
+            result,
+            Some(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(1)),
+                Expr::Error
+            ]))
+        );
     }
 
     #[test]
@@ -340,50 +333,48 @@ mod tests {
         //     n
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program{items: vec![]},
-            &mut diagnostics,
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
-                    name: Ident::Str {
-                        val: "n".to_string(),
-                        span: Span{line: 2, col: 0},
-                    },
-                    expr: Expr::Literal(Literal::Int(1)),
-                }),
-            ],
+            statements: vec![Statement::Let(LetStatement {
+                name: Ident::Str {
+                    val: "n".to_string(),
+                    span: Span { line: 2, col: 0 },
+                },
+                expr: Expr::Literal(Literal::Int(1)),
+            })],
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "n".to_string(),
-                span: Span{line: 3, col: 0},
+                span: Span { line: 3, col: 0 },
             })),
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        assert_eq!(
+            result,
+            Some(Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(1)),
-                })
-            ],
-            expr: Box::new(Expr::Ident(Ident::Symbol(0))),
-            expr_type: Type::Unknown,
-        })));
-        assert_eq!(sem_analyzer.scopes, vec![
-            Scope {
+                })],
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                expr_type: Type::Unknown,
+            }))
+        );
+        assert_eq!(
+            sem_analyzer.scopes,
+            vec![Scope {
                 symbols: HashMap::new(),
-            },
-        ]);
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
+            },]
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
-                span: Span{line: 2, col: 0},
-            }
-        ]);
+                span: Span { line: 2, col: 0 },
+            }]
+        );
     }
 
     #[test]
@@ -402,115 +393,100 @@ mod tests {
         //     n
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program{items: vec![]},
-            &mut diagnostics,
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
-                    name: Ident::Str {
-                        val: "n".to_string(),
-                        span: Span{line: 0, col: 0},
-                    },
-                    expr: Expr::Block(BlockExpr {
-                        statements: vec![
-                            Statement::Let(LetStatement {
+            statements: vec![Statement::Let(LetStatement {
+                name: Ident::Str {
+                    val: "n".to_string(),
+                    span: Span { line: 0, col: 0 },
+                },
+                expr: Expr::Block(BlockExpr {
+                    statements: vec![Statement::Let(LetStatement {
+                        name: Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 0, col: 0 },
+                        },
+                        expr: Expr::Block(BlockExpr {
+                            statements: vec![Statement::Let(LetStatement {
                                 name: Ident::Str {
                                     val: "n".to_string(),
-                                    span: Span{line: 0, col: 0},
+                                    span: Span { line: 0, col: 0 },
                                 },
                                 expr: Expr::Block(BlockExpr {
-                                    statements: vec![
-                                        Statement::Let(LetStatement {
-                                            name: Ident::Str {
-                                                val: "n".to_string(),
-                                                span: Span{line: 0, col: 0},
-                                            },
-                                            expr: Expr::Block(BlockExpr {
-                                                statements: vec![
-                                                    Statement::Let(LetStatement {
-                                                        name: Ident::Str {
-                                                            val: "n".to_string(),
-                                                            span: Span{line: 0, col: 0},
-                                                        },
-                                                        expr: Expr::Literal(Literal::Int(1)),
-                                                    }),
-                                                ],
-                                                expr: Box::new(Expr::Ident(Ident::Str {
-                                                    val: "n".to_string(),
-                                                    span: Span{line: 0, col: 0},
-                                                })),
-                                                expr_type: Type::Unknown,
-                                            }),
-                                        }),
-                                    ],
+                                    statements: vec![Statement::Let(LetStatement {
+                                        name: Ident::Str {
+                                            val: "n".to_string(),
+                                            span: Span { line: 0, col: 0 },
+                                        },
+                                        expr: Expr::Literal(Literal::Int(1)),
+                                    })],
                                     expr: Box::new(Expr::Ident(Ident::Str {
                                         val: "n".to_string(),
-                                        span: Span{line: 0, col: 0},
+                                        span: Span { line: 0, col: 0 },
                                     })),
                                     expr_type: Type::Unknown,
                                 }),
-                            }),
-                        ],
-                        expr: Box::new(Expr::Ident(Ident::Str {
-                            val: "n".to_string(),
-                            span: Span{line: 0, col: 0},
-                        })),
-                        expr_type: Type::Unknown,
-                    }),
+                            })],
+                            expr: Box::new(Expr::Ident(Ident::Str {
+                                val: "n".to_string(),
+                                span: Span { line: 0, col: 0 },
+                            })),
+                            expr_type: Type::Unknown,
+                        }),
+                    })],
+                    expr: Box::new(Expr::Ident(Ident::Str {
+                        val: "n".to_string(),
+                        span: Span { line: 0, col: 0 },
+                    })),
+                    expr_type: Type::Unknown,
                 }),
-            ],
+            })],
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "n".to_string(),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             })),
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        assert_eq!(
+            result,
+            Some(Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(3),
                     expr: Expr::Block(BlockExpr {
-                        statements: vec![
-                            Statement::Let(LetStatement {
-                                name: Ident::Symbol(2),
-                                expr: Expr::Block(BlockExpr {
-                                    statements: vec![
-                                        Statement::Let(LetStatement {
-                                            name: Ident::Symbol(1),
-                                            expr: Expr::Block(BlockExpr {
-                                                statements: vec![
-                                                    Statement::Let(LetStatement {
-                                                        name: Ident::Symbol(0),
-                                                        expr: Expr::Literal(Literal::Int(1)),
-                                                    }),
-                                                ],
-                                                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
-                                                expr_type: Type::Unknown,
-                                            }),
-                                        }),
-                                    ],
-                                    expr: Box::new(Expr::Ident(Ident::Symbol(1))),
-                                    expr_type: Type::Unknown,
-                                }),
+                        statements: vec![Statement::Let(LetStatement {
+                            name: Ident::Symbol(2),
+                            expr: Expr::Block(BlockExpr {
+                                statements: vec![Statement::Let(LetStatement {
+                                    name: Ident::Symbol(1),
+                                    expr: Expr::Block(BlockExpr {
+                                        statements: vec![Statement::Let(LetStatement {
+                                            name: Ident::Symbol(0),
+                                            expr: Expr::Literal(Literal::Int(1)),
+                                        }),],
+                                        expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                                        expr_type: Type::Unknown,
+                                    }),
+                                }),],
+                                expr: Box::new(Expr::Ident(Ident::Symbol(1))),
+                                expr_type: Type::Unknown,
                             }),
-                        ],
+                        }),],
                         expr: Box::new(Expr::Ident(Ident::Symbol(2))),
                         expr_type: Type::Unknown,
                     }),
-                }),
-            ],
-            expr: Box::new(Expr::Ident(Ident::Symbol(3))),
-            expr_type: Type::Unknown,
-        })));
-        assert_eq!(sem_analyzer.scopes, vec![
-            Scope {
+                }),],
+                expr: Box::new(Expr::Ident(Ident::Symbol(3))),
+                expr_type: Type::Unknown,
+            }))
+        );
+        assert_eq!(
+            sem_analyzer.scopes,
+            vec![Scope {
                 symbols: HashMap::new(),
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -520,38 +496,34 @@ mod tests {
         //     m   // undefined
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(
-            Program{items: vec![]},
-            &mut diagnostics,
-        );
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
-                    name: Ident::Str {
-                        val: "n".to_string(),
-                        span: Span{line: 2, col: 0},
-                    },
-                    expr: Expr::Literal(Literal::Int(1)),
-                }),
-            ],
+            statements: vec![Statement::Let(LetStatement {
+                name: Ident::Str {
+                    val: "n".to_string(),
+                    span: Span { line: 2, col: 0 },
+                },
+                expr: Expr::Literal(Literal::Int(1)),
+            })],
             expr: Box::new(Expr::Ident(Ident::Str {
                 val: "m".to_string(),
-                span: Span{line: 3, col: 0},
+                span: Span { line: 3, col: 0 },
             })),
             expr_type: Type::Unknown,
         }));
 
-        assert_eq!(result, Some(Expr::Block(BlockExpr {
-            statements: vec![
-                Statement::Let(LetStatement {
+        assert_eq!(
+            result,
+            Some(Expr::Block(BlockExpr {
+                statements: vec![Statement::Let(LetStatement {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(1)),
-                })
-            ],
-            expr: Box::new(Expr::Error),
-            expr_type: Type::Unknown,
-        })));
+                })],
+                expr: Box::new(Expr::Error),
+                expr_type: Type::Unknown,
+            }))
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -563,15 +535,11 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("a".to_string(), 1),
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -579,7 +547,7 @@ mod tests {
         let result = sem_analyzer.resolve_expr(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(Ident::Str {
                 val: "a".to_string(),
-                span: Span{line: 1, col: 0}
+                span: Span { line: 1, col: 0 },
             })),
             arms: vec![
                 CasesArm {
@@ -589,40 +557,43 @@ mod tests {
                     })],
                     expr: Expr::Ident(Ident::Str {
                         val: "b".to_string(),
-                        span: Span{line: 2, col: 0},
+                        span: Span { line: 2, col: 0 },
                     }),
-                    arm_span: Span {line: 0, col: 0},
+                    arm_span: Span { line: 0, col: 0 },
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
-                    arm_span: Span {line: 0, col: 0},
-                }
+                    arm_span: Span { line: 0, col: 0 },
+                },
             ],
             expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }));
 
-        assert_eq!(result, Some(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Ident(Ident::Symbol(1))),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
-                        op: CompOp::Ge,
-                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
-                    })],
-                    expr: Expr::Error,
-                    arm_span: Span {line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![SimplePattern::Default],
-                    expr: Expr::Literal(Literal::Int(0)),
-                    arm_span: Span {line: 0, col: 0},
-                }
-            ],
-            expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
-        })));
+        assert_eq!(
+            result,
+            Some(Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Ident(Ident::Symbol(1))),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                            op: CompOp::Ge,
+                            expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                        })],
+                        expr: Expr::Error,
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Int(0)),
+                        arm_span: Span { line: 0, col: 0 },
+                    }
+                ],
+                expr_type: Type::Unknown,
+                span: Span { line: 0, col: 0 },
+            }))
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -634,15 +605,11 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("b".to_string(), 10),
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("b".to_string(), 10)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -650,7 +617,7 @@ mod tests {
         let result = sem_analyzer.resolve_expr(Expr::Cases(CasesExpr {
             scrutinee: Box::new(Expr::Ident(Ident::Str {
                 val: "a".to_string(),
-                span: Span{line: 1, col: 0}
+                span: Span { line: 1, col: 0 },
             })),
             arms: vec![
                 CasesArm {
@@ -660,40 +627,43 @@ mod tests {
                     })],
                     expr: Expr::Ident(Ident::Str {
                         val: "b".to_string(),
-                        span: Span{line: 2, col: 0},
+                        span: Span { line: 2, col: 0 },
                     }),
-                    arm_span: Span {line: 0, col: 0},
+                    arm_span: Span { line: 0, col: 0 },
                 },
                 CasesArm {
                     pattern: vec![SimplePattern::Default],
                     expr: Expr::Literal(Literal::Int(0)),
-                    arm_span: Span {line: 0, col: 0},
-                }
+                    arm_span: Span { line: 0, col: 0 },
+                },
             ],
             expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }));
 
-        assert_eq!(result, Some(Expr::Cases(CasesExpr {
-            scrutinee: Box::new(Expr::Error),
-            arms: vec![
-                CasesArm {
-                    pattern: vec![SimplePattern::Comparison(ComparisonPattern {
-                        op: CompOp::Ge,
-                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
-                    })],
-                    expr: Expr::Ident(Ident::Symbol(10)),
-                    arm_span: Span {line: 0, col: 0},
-                },
-                CasesArm {
-                    pattern: vec![SimplePattern::Default],
-                    expr: Expr::Literal(Literal::Int(0)),
-                    arm_span: Span {line: 0, col: 0},
-                }
-            ],
-            expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
-        })));
+        assert_eq!(
+            result,
+            Some(Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Error),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![SimplePattern::Comparison(ComparisonPattern {
+                            op: CompOp::Ge,
+                            expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                        })],
+                        expr: Expr::Ident(Ident::Symbol(10)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Int(0)),
+                        arm_span: Span { line: 0, col: 0 },
+                    }
+                ],
+                expr_type: Type::Unknown,
+                span: Span { line: 0, col: 0 },
+            }))
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -705,14 +675,11 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                    ]),
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -720,42 +687,45 @@ mod tests {
         let result = sem_analyzer.resolve_expr(Expr::Sample(SampleExpr {
             arms: vec![
                 SampleArm {
-                    prob: Prob::Expr(Expr::Ident(Ident::Str{
+                    prob: Prob::Expr(Expr::Ident(Ident::Str {
                         val: "a".to_string(),
-                        span: Span{line: 0, col: 0}
+                        span: Span { line: 0, col: 0 },
                     })),
-                    expr: Expr::Ident(Ident::Str{
+                    expr: Expr::Ident(Ident::Str {
                         val: "b".to_string(),
-                        span: Span{line: 1, col: 0},
+                        span: Span { line: 1, col: 0 },
                     }),
-                    arm_span: Span {line: 0, col: 0},
+                    arm_span: Span { line: 0, col: 0 },
                 },
                 SampleArm {
                     prob: Prob::Default,
                     expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span {line: 0, col: 0},
-                }
+                    arm_span: Span { line: 0, col: 0 },
+                },
             ],
             expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }));
 
-        assert_eq!(result, Some(Expr::Sample(SampleExpr {
-            arms: vec![
-                SampleArm {
-                    prob: Prob::Expr(Expr::Error),
-                    expr: Expr::Error,
-                    arm_span: Span {line: 0, col: 0},
-                },
-                SampleArm {
-                    prob: Prob::Default,
-                    expr: Expr::Literal(Literal::Bool(false)),
-                    arm_span: Span {line: 0, col: 0},
-                }
-            ],
-            expr_type: Type::Unknown,
-            span: Span {line: 0, col: 0},
-        })));
+        assert_eq!(
+            result,
+            Some(Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Error),
+                        expr: Expr::Error,
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    }
+                ],
+                expr_type: Type::Unknown,
+                span: Span { line: 0, col: 0 },
+            }))
+        );
         assert_eq!(diagnostics.num_errors(), 2);
     }
 }

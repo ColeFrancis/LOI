@@ -32,17 +32,11 @@ pub enum CompileError {
 impl PartialEq for CompileError {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (CompileError::Io(a), CompileError::Io(b)) => {
-                a.kind() == b.kind()
-            }
+            (CompileError::Io(a), CompileError::Io(b)) => a.kind() == b.kind(),
 
-            (CompileError::InvalidFileExtension, CompileError::InvalidFileExtension) => {
-                true
-            }
+            (CompileError::InvalidFileExtension, CompileError::InvalidFileExtension) => true,
 
-            (CompileError::Diagnostics(a), CompileError::Diagnostics(b)) => {
-                a == b
-            }
+            (CompileError::Diagnostics(a), CompileError::Diagnostics(b)) => a == b,
             // compare your other variants normally
             _ => false,
         }
@@ -54,7 +48,9 @@ impl std::fmt::Display for CompileError {
         match self {
             CompileError::Io(error) => write!(f, "I/O error compiling file: {error}"),
 
-            CompileError::InvalidFileExtension => write!(f, "Invalid file extension. Requires .loi file"),
+            CompileError::InvalidFileExtension => {
+                write!(f, "Invalid file extension. Requires .loi file")
+            }
 
             CompileError::Diagnostics(diagnostics) => write!(f, "{diagnostics}"),
         }

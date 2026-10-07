@@ -24,17 +24,16 @@ use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 
 use crate::{
-    compiler::{Compiler, error_handling::compile_error::CompileError}, 
+    compiler::{Compiler, error_handling::compile_error::CompileError},
     simulator::{
-        Simulator, 
-        io_file::IoFile,
+        Simulator,
         error_handling::{
-            runtime_diagnostics::RuntimeError,
             io_file_error::{InputFileReadError, OutputFileWriteError},
+            runtime_diagnostics::RuntimeError,
         },
-    }
+        io_file::IoFile,
+    },
 };
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // CLI definitions
@@ -75,7 +74,6 @@ enum Command {
     //     #[arg(short, long)]
     //     top: Option<String>,
     // },
-
     /// Run a complete simulation from an input file and write output
     SimulateFull {
         /// Input .loi or .loic file
@@ -135,8 +133,8 @@ impl std::fmt::Display for CliError {
         match self {
             Self::Compile(err) => write!(f, "{err}"),
             Self::Runtime(err) => write!(f, "{err}"),
-            Self::Input(err)   => write!(f, "{err}"),
-            Self::Output(err)  => write!(f, "{err}"),
+            Self::Input(err) => write!(f, "{err}"),
+            Self::Output(err) => write!(f, "{err}"),
         }
     }
 }
@@ -144,16 +142,20 @@ impl std::fmt::Display for CliError {
 ////////////////////////////////////////////////////////////////////////////////
 // Command Dispatch
 ////////////////////////////////////////////////////////////////////////////////
-pub fn run () -> ExitCode {
+pub fn run() -> ExitCode {
     let cli = Cli::parse();
 
     let result = match cli.command {
         // Command::Compile {input, top, output} => compile(input, top, output),
 
         // Command::Simulate {}
-
-        Command::SimulateFull {loi_file, top, inputs, outputs, steps} => 
-            simulate_full(&loi_file, &top, &inputs, &outputs, steps),
+        Command::SimulateFull {
+            loi_file,
+            top,
+            inputs,
+            outputs,
+            steps,
+        } => simulate_full(&loi_file, &top, &inputs, &outputs, steps),
     };
 
     match result {
@@ -168,7 +170,13 @@ pub fn run () -> ExitCode {
 ////////////////////////////////////////////////////////////////////////////////
 // Command implementations
 ////////////////////////////////////////////////////////////////////////////////
-fn simulate_full(file_path: &str, top_net: &str, input_file_path: &str, output_file_path: &str, steps: usize) -> Result<(), CliError> {
+fn simulate_full(
+    file_path: &str,
+    top_net: &str,
+    input_file_path: &str,
+    output_file_path: &str,
+    steps: usize,
+) -> Result<(), CliError> {
     let (netlist, interface, relations, inits) = Compiler::compile(file_path, top_net)?;
 
     let mut sim = Simulator::new(netlist, interface, relations, inits);
@@ -178,7 +186,7 @@ fn simulate_full(file_path: &str, top_net: &str, input_file_path: &str, output_f
     sim.load_inputs(inputs)?;
 
     let ran_steps = sim.run(steps, false)?;
-    
+
     let outputs = sim.dump_outputs();
 
     println!("Outputs: {:?}", outputs);

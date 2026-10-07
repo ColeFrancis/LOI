@@ -12,6 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+pub mod cli;
 pub mod compiler;
 pub mod simulator;
-pub mod cli;

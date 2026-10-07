@@ -20,13 +20,13 @@
 //!
 //! Author: Cole Francis
 
+use std::collections::HashMap;
 use std::fs;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
-use std::collections::HashMap;
 
 use super::IoVal;
-use super::error_handling::io_file_error::{InputFileReadError, OutputFileWriteError, IoError};
+use super::error_handling::io_file_error::{InputFileReadError, IoError, OutputFileWriteError};
 
 #[derive(Debug, PartialEq)]
 enum FileType {
@@ -47,7 +47,7 @@ impl IoFile {
 
         let code = match fs::read_to_string(&path) {
             Ok(code) => code,
-            Err(err) => return Err(InputFileReadError::Io(IoError(err)))
+            Err(err) => return Err(InputFileReadError::Io(IoError(err))),
         };
 
         match file_type {
@@ -56,7 +56,10 @@ impl IoFile {
         }
     }
 
-    pub fn write(file_path: &str, outputs: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<(), OutputFileWriteError> {
+    pub fn write(
+        file_path: &str,
+        outputs: Vec<(String, Vec<(usize, IoVal)>)>,
+    ) -> Result<(), OutputFileWriteError> {
         let path = PathBuf::from(file_path);
 
         let file_type = match path.extension().and_then(|ext| ext.to_str()) {
@@ -68,8 +71,7 @@ impl IoFile {
             return Err(OutputFileWriteError::InvalidOutputFileType);
         }
 
-        let file = fs::File::create(&path)
-            .map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
+        let file = fs::File::create(&path).map_err(|err| OutputFileWriteError::Io(IoError(err)))?;
 
         let mut writer = BufWriter::new(file);
 
@@ -115,13 +117,9 @@ impl IoFile {
                 });
             }
 
-            let step = fields[0].parse::<usize>()
-                .map_err(|source| {
-                    InputFileReadError::InvalidStep {
-                        source,
-                        line_num,
-                    }
-                })?;
+            let step = fields[0]
+                .parse::<usize>()
+                .map_err(|source| InputFileReadError::InvalidStep { source, line_num })?;
 
             let entity = fields[1].to_string();
 
@@ -137,7 +135,7 @@ impl IoFile {
                                 line_num,
                             });
                         }
-                    } 
+                    }
                 } else {
                     match num_str.parse::<i64>() {
                         Ok(x) => IoVal::Int(x),
@@ -159,8 +157,7 @@ impl IoFile {
 
             let idx = if let Some(&idx) = map_to_idx.get(&entity) {
                 idx
-            }
-            else {
+            } else {
                 let idx = inputs.len();
                 map_to_idx.insert(entity.clone(), idx);
                 inputs.push((entity.to_string(), vec![]));
@@ -174,7 +171,10 @@ impl IoFile {
         Ok(inputs)
     }
 
-    fn write_txt_file<W: Write>(writer: &mut W, outputs: Vec<(String, Vec<(usize, IoVal)>)>) -> Result<(), OutputFileWriteError> {
+    fn write_txt_file<W: Write>(
+        writer: &mut W,
+        outputs: Vec<(String, Vec<(usize, IoVal)>)>,
+    ) -> Result<(), OutputFileWriteError> {
         let mut timewise_outputs: Vec<(usize, String, IoVal)> = Vec::new();
 
         for (entity, traces) in outputs {
@@ -198,7 +198,7 @@ impl IoFile {
 
     fn starts_with_number(s: &str) -> bool {
         let mut chars = s.chars();
-        
+
         match chars.next() {
             Some('-' | '+') => chars.next().is_some_and(|c| c.is_ascii_digit()),
             Some(c) => c.is_ascii_digit(),
@@ -220,7 +220,7 @@ mod tests {
             0 B 1.0
             5 B false
             10 A true
-            11 C this"
+            11 C this",
         );
 
         assert_eq!(result, Err(InputFileReadError::InvalidHeader));
@@ -234,14 +234,17 @@ mod tests {
             0 B 1.0
             5 B 
             10 A true
-            11 C this"
+            11 C this",
         );
 
-        assert_eq!(result, Err(InputFileReadError::IncorrectNumberOfFields {
-            expected: 3,
-            found: 2,
-            line_num: 4,
-        }));
+        assert_eq!(
+            result,
+            Err(InputFileReadError::IncorrectNumberOfFields {
+                expected: 3,
+                found: 2,
+                line_num: 4,
+            })
+        );
     }
 
     #[test]
@@ -252,10 +255,13 @@ mod tests {
             0.0 B 1.0
             5 B false
             10 A true
-            11 C this"
+            11 C this",
         );
 
-        assert!(matches!(result, Err(InputFileReadError::InvalidStep {..})));
+        assert!(matches!(
+            result,
+            Err(InputFileReadError::InvalidStep { .. })
+        ));
     }
 
     #[test]
@@ -266,13 +272,16 @@ mod tests {
             0 B 1.0.2
             5 B false
             10 A true
-            11 C this"
+            11 C this",
         );
 
-        assert_eq!(result, Err(InputFileReadError::InvalidNumber {
-            num: "1.0.2".to_string(),
-            line_num: 3,
-        }));
+        assert_eq!(
+            result,
+            Err(InputFileReadError::InvalidNumber {
+                num: "1.0.2".to_string(),
+                line_num: 3,
+            })
+        );
     }
 
     #[test]
@@ -283,43 +292,50 @@ mod tests {
             0 B 1.0
             5 B false
             10 A true
-            11 C this"
+            11 C this",
         );
 
-        assert_eq!(result, Ok(vec![
-            ("A".to_string(), vec![
-                (0, IoVal::Int(0)),
-                (10, IoVal::Bool(true)),
-            ]),
-            ("B".to_string(), vec![
-                (0, IoVal::Real(1.0)),
-                (5, IoVal::Bool(false)),
-            ]),
-            ("C".to_string(), vec![
-                (11, IoVal::Custom("this".to_string())),
-            ]),
-        ]));
+        assert_eq!(
+            result,
+            Ok(vec![
+                (
+                    "A".to_string(),
+                    vec![(0, IoVal::Int(0)), (10, IoVal::Bool(true)),]
+                ),
+                (
+                    "B".to_string(),
+                    vec![(0, IoVal::Real(1.0)), (5, IoVal::Bool(false)),]
+                ),
+                (
+                    "C".to_string(),
+                    vec![(11, IoVal::Custom("this".to_string())),]
+                ),
+            ])
+        );
     }
 
     #[test]
     fn write_then_read() {
         let outputs = vec![
-            ("bool".to_string(), vec![
-                    (0, IoVal::Bool(true)),
-                    (1, IoVal::Bool(false)),
-            ]),
-            ("int".to_string(), vec![
-                    (0, IoVal::Int(42)),
-                    (1, IoVal::Int(-123)),
-            ]),
-            ("real".to_string(), vec![
-                    (0, IoVal::Real(3.14159)),
-                    (1, IoVal::Real(-0.25)),
-            ]),
-            ("custom".to_string(), vec![
+            (
+                "bool".to_string(),
+                vec![(0, IoVal::Bool(true)), (1, IoVal::Bool(false))],
+            ),
+            (
+                "int".to_string(),
+                vec![(0, IoVal::Int(42)), (1, IoVal::Int(-123))],
+            ),
+            (
+                "real".to_string(),
+                vec![(0, IoVal::Real(3.14159)), (1, IoVal::Real(-0.25))],
+            ),
+            (
+                "custom".to_string(),
+                vec![
                     (0, IoVal::Custom("foo".to_string())),
                     (1, IoVal::Custom("bar".to_string())),
-            ]),
+                ],
+            ),
         ];
 
         let path = std::env::temp_dir().join("loi_test.txt");

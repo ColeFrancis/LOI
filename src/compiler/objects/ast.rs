@@ -46,22 +46,19 @@ pub enum Item {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Ident {
-    Str {
-        val: String,
-        span: Span,
-    },
+    Str { val: String, span: Span },
     Symbol(SymbolId),
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Expr {
-    Literal(Literal), 
+    Literal(Literal),
     Ident(Ident),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
     Block(BlockExpr),
-    Cases(CasesExpr),      
+    Cases(CasesExpr),
     Sample(SampleExpr),
     Error,
 }
@@ -98,25 +95,25 @@ pub struct BinaryExpr {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum BinaryOp {
-    Lt,         // <
-    Gt,         // >
-    Le,         // <=
-    Ge,         // >=
-    Add,        // +
-    Sub,        // -
-    Mul,        // *
-    Div,        // /
-    Pow,        // ^
-    Or,         // |
-    And,        // &
+    Lt,  // <
+    Gt,  // >
+    Le,  // <=
+    Ge,  // >=
+    Add, // +
+    Sub, // -
+    Mul, // *
+    Div, // /
+    Pow, // ^
+    Or,  // |
+    And, // &
 }
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum CompOp {
-    Lt,         // <
-    Gt,         // >
-    Le,         // <=
-    Ge,         // >=
+    Lt, // <
+    Gt, // >
+    Le, // <=
+    Ge, // >=
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -138,7 +135,7 @@ pub struct CasesExpr {
 pub struct CasesArm {
     pub pattern: Vec<SimplePattern>,
     pub expr: Expr,
-    pub arm_span: Span
+    pub arm_span: Span,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -264,7 +261,7 @@ pub struct EntInit {
 pub struct RelInst {
     pub asignee: Ident,
     pub rel: Ident,
-    pub args: Vec<Ident>, 
+    pub args: Vec<Ident>,
     pub span: Span,
 }
 
@@ -278,5 +275,5 @@ pub struct NetInst {
 pub struct Connection {
     pub port: Ident,
     pub ent: Ident,
-    pub span: Span
+    pub span: Span,
 }

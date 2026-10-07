@@ -24,21 +24,27 @@ use std::collections::HashMap;
 
 use super::Synthesis;
 use crate::compiler::{
-    sem_analyzer::SemAnalyzer,
     error_handling::diagnostics::Diagnostics,
     error_handling::span::Span,
     objects::{
-        ast::{Net, NetItem, Ident, Expr, Literal},
-        netlist::{Netlist, Interface, Entity, Relation, EntId},
+        ast::{Expr, Ident, Literal, Net, NetItem},
+        netlist::{EntId, Entity, Interface, Netlist, Relation},
         symbol::{Symbol, SymbolId, SymbolKind},
         types::Type,
     },
+    sem_analyzer::SemAnalyzer,
 };
 
 use crate::simulator::objects::event::Event;
 
 impl Synthesis {
-    pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Interface, Vec<Event>) {
+    pub fn synthesize(
+        nets: Vec<Net>,
+        top_net_idx: usize,
+        obj_map: HashMap<SymbolId, usize>,
+        symbols: &mut [Symbol],
+        diagnostics: &mut Diagnostics,
+    ) -> (Netlist, Interface, Vec<Event>) {
         let mut inputs = HashMap::<String, (EntId, Type)>::new();
         let mut outputs = HashMap::<EntId, (String, Type)>::new();
         let mut custom_type_maps = HashMap::<String, Vec<(String, u64)>>::new();
@@ -64,7 +70,10 @@ impl Synthesis {
                         Type::Mod(n) => Type::Mod(n),
                         Type::Custom(Ident::Symbol(id)) => {
                             let name = symbols[id].name.clone();
-                            Type::Custom(Ident::Str {val: name, span: Span{line: 0, col: 0}})
+                            Type::Custom(Ident::Str {
+                                val: name,
+                                span: Span { line: 0, col: 0 },
+                            })
                         }
                         _ => unreachable!("type should match one of above"),
                     };
@@ -92,7 +101,10 @@ impl Synthesis {
                         Type::Mod(n) => Type::Mod(n),
                         Type::Custom(Ident::Symbol(id)) => {
                             let name = symbols[id].name.clone();
-                            Type::Custom(Ident::Str {val: name, span: Span{line: 0, col: 0}})
+                            Type::Custom(Ident::Str {
+                                val: name,
+                                span: Span { line: 0, col: 0 },
+                            })
                         }
                         _ => unreachable!("type should match one of above"),
                     };
@@ -124,7 +136,16 @@ impl Synthesis {
             }
         }
 
-        Self::synthesize_net(&nets, top_net_idx, &obj_map, ent_map, &mut ents, &mut relations, symbols, diagnostics);
+        Self::synthesize_net(
+            &nets,
+            top_net_idx,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            symbols,
+            diagnostics,
+        );
 
         // loop through ents, finding ones that aren't None, and creating inits events instead
         for (idx, ent) in ents.iter_mut().enumerate() {
@@ -139,18 +160,27 @@ impl Synthesis {
             }
         }
 
-        (Netlist {
-            relations,
-            ents,
-        }, Interface {
-            inputs,
-            outputs,
-            custom_type_maps,
-        },
-        inits)
+        (
+            Netlist { relations, ents },
+            Interface {
+                inputs,
+                outputs,
+                custom_type_maps,
+            },
+            inits,
+        )
     }
 
-    fn synthesize_net(nets: &[Net], target_net_idx: usize, obj_map: &HashMap::<SymbolId, usize>, mut ent_map: HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>, relations: &mut Vec<Relation>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) {
+    fn synthesize_net(
+        nets: &[Net],
+        target_net_idx: usize,
+        obj_map: &HashMap<SymbolId, usize>,
+        mut ent_map: HashMap<SymbolId, usize>,
+        ents: &mut Vec<Entity>,
+        relations: &mut Vec<Relation>,
+        symbols: &mut [Symbol],
+        diagnostics: &mut Diagnostics,
+    ) {
         // make obj_map an immutable reference that honly maps for nets and rels
         // make new mutable ent_map that is passed in (not a reference) and a new one is created for each net instantiation
         //  to allow for the interal nets of a net be different ents in the netlist for each seperate instantiation of that net
@@ -196,7 +226,7 @@ impl Synthesis {
 
                         let arg_idx = Self::insert_or_get_ent(*arg_id, &mut ent_map, ents);
 
-                        // if the same ent is used as multiple inputs to a relation, this if check prevents 
+                        // if the same ent is used as multiple inputs to a relation, this if check prevents
                         //  the relation from occuring multiple times in the sinks of the ent
                         if !ents[arg_idx].sinks.contains(&relations.len()) {
                             ents[arg_idx].sinks.push(relations.len());
@@ -237,7 +267,16 @@ impl Synthesis {
                         sub_net_map.insert(port_id, ent_idx);
                     }
 
-                    Self::synthesize_net(nets, net_idx, obj_map, sub_net_map, ents, relations, symbols, diagnostics);
+                    Self::synthesize_net(
+                        nets,
+                        net_idx,
+                        obj_map,
+                        sub_net_map,
+                        ents,
+                        relations,
+                        symbols,
+                        diagnostics,
+                    );
                 }
 
                 _ => {}
@@ -255,14 +294,15 @@ impl Synthesis {
                     let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
 
                     // fold expression, deep clone necessary
-                    let result_expr = SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
+                    let result_expr =
+                        SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
                     let folded_val = match result_expr {
                         Expr::Literal(literal) => match (literal, &init.param.param_type) {
                             (Literal::Bool(b), &Type::Bool) => b as u64,
                             (Literal::Bool(b), &Type::Impulse) => match b {
-                                true => 0 as u64, 
+                                true => 0 as u64,
                                 false => u64::MAX, // typically 0 is chosen when an impulse needs to be set to a known false value but here we need to represent a true value at time 0
-                            }
+                            },
 
                             (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
                             (Literal::Int(i), &Type::Int) => i as u64,
@@ -273,11 +313,11 @@ impl Synthesis {
                             _ => unreachable!("type checking already occured"),
                         },
 
-                        Expr::Ident(Ident::Symbol(id)) => match  symbols[id].kind {
+                        Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
                             SymbolKind::EntMember { mapping, .. } => mapping as u64,
 
                             _ => unreachable!("ident should be ent member"),
-                        }
+                        },
 
                         _ => unreachable!("type checking already occured"),
                     };
@@ -290,7 +330,11 @@ impl Synthesis {
         }
     }
 
-    fn insert_or_get_ent(id: SymbolId, ent_map: &mut HashMap::<SymbolId, usize>, ents: &mut Vec<Entity>) -> usize {
+    fn insert_or_get_ent(
+        id: SymbolId,
+        ent_map: &mut HashMap<SymbolId, usize>,
+        ents: &mut Vec<Entity>,
+    ) -> usize {
         match ent_map.get(&id) {
             Some(&idx) => idx,
             None => {
@@ -312,9 +356,9 @@ impl Synthesis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::objects::symbol::NetPort;
-    use crate::compiler::objects::ast::*;
     use crate::compiler::error_handling::span::Span;
+    use crate::compiler::objects::ast::*;
+    use crate::compiler::objects::symbol::NetPort;
 
     #[test]
     fn rel_inst() {
@@ -339,51 +383,63 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "ADD_NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 2,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 3,
-                            input: true,
-                        }),
-                        ("C".to_string(), NetPort {
-                            symbol: 4,
-                            input: true,
-                        }),
-                        ("S".to_string(), NetPort {
-                            symbol: 5,
-                            input: false,
-                        }),
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 3,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "C".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 5,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "C".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -395,21 +451,21 @@ mod tests {
                         name: Ident::Symbol(2),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(3),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(4),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -420,50 +476,57 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(0),
-                    args: vec![
-                        Ident::Symbol(2),
-                        Ident::Symbol(3),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
         let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
-        Synthesis::synthesize_net(&vec![net], 0, &obj_map, ent_map, &mut ents, &mut relations, &mut symbol_table, &mut diagnostics);
+        Synthesis::synthesize_net(
+            &vec![net],
+            0,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            &mut symbol_table,
+            &mut diagnostics,
+        );
 
-        assert_eq!(ents, vec![
-            Entity {
-                val: None,
-                sinks: vec![0],
-            },
-            Entity {
-                val: None,
-                sinks: vec![0],
-            },
-            Entity {
-                val: None,
-                sinks: vec![],
-            },
-            Entity {
-                val: None,
-                sinks: vec![],
-            },
-        ]);
-        assert_eq!(relations, vec![
-            Relation {
+        assert_eq!(
+            ents,
+            vec![
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ]
+        );
+        assert_eq!(
+            relations,
+            vec![Relation {
                 idx: 0,
                 delay: 1,
                 input_ents: vec![0, 1],
                 output_ent: 3,
-            },
-        ]);
+            },]
+        );
     }
-    
+
     #[test]
     fn net_inst_1() {
         // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
@@ -498,77 +561,95 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "ADD_NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 2,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 3,
-                            input: true,
-                        }),
-                        ("C".to_string(), NetPort {
-                            symbol: 4,
-                            input: true,
-                        }),
-                        ("S".to_string(), NetPort {
-                            symbol: 5,
-                            input: false,
-                        }),
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 3,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "C".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 5,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "C".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "ADD_TO_SELF".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("IN".to_string(), NetPort {
-                            symbol: 7,
-                            input: true,
-                        }),
-                        ("OUT".to_string(), NetPort {
-                            symbol: 8,
-                            input: false,
-                        }),
+                        (
+                            "IN".to_string(),
+                            NetPort {
+                                symbol: 7,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "OUT".to_string(),
+                            NetPort {
+                                symbol: 8,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "IN".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUT".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -580,21 +661,21 @@ mod tests {
                         name: Ident::Symbol(2),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(3),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(4),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -605,11 +686,8 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(0),
-                    args: vec![
-                        Ident::Symbol(2),
-                        Ident::Symbol(3),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
@@ -621,7 +699,7 @@ mod tests {
                         name: Ident::Symbol(7),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -635,54 +713,66 @@ mod tests {
                         Connection {
                             port: Ident::Symbol(2),
                             ent: Ident::Symbol(7),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(3),
                             ent: Ident::Symbol(7),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
                             ent: Ident::Symbol(8),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
             ],
         };
-        
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-            (6, 1),
-        ]);
+
+        let obj_map = HashMap::from([(0, 0), (1, 0), (6, 1)]);
         let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
-        Synthesis::synthesize_net(&vec![net1, net2], 1, &obj_map, ent_map, &mut ents, &mut relations, &mut symbol_table, &mut diagnostics);
+        Synthesis::synthesize_net(
+            &vec![net1, net2],
+            1,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            &mut symbol_table,
+            &mut diagnostics,
+        );
 
-        assert_eq!(ents, vec![
-            Entity { // IN, A, B
-                val: None,
-                sinks: vec![0],
-            },
-            Entity { // OUT, S
-                val: None,
-                sinks: vec![],
-            },
-            Entity { // C
-                val: None,
-                sinks: vec![],
-            },
-        ]);
-        assert_eq!(relations, vec![
-            Relation {
+        assert_eq!(
+            ents,
+            vec![
+                Entity {
+                    // IN, A, B
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    // OUT, S
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    // C
+                    val: None,
+                    sinks: vec![],
+                },
+            ]
+        );
+        assert_eq!(
+            relations,
+            vec![Relation {
                 idx: 0,
                 delay: 1,
                 input_ents: vec![0, 0],
                 output_ent: 1,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -739,7 +829,7 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "MUL".to_string(),
@@ -747,7 +837,7 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "MUL_2".to_string(),
@@ -755,106 +845,127 @@ mod tests {
                     input_types: vec![Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "INNER".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 4,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("S".to_string(), NetPort {
-                            symbol: 6,
-                            input: false,
-                        }),
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 5,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 6,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S_inter".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUTER".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("IN1".to_string(), NetPort {
-                            symbol: 9,
-                            input: true,
-                        }),
-                        ("IN2".to_string(), NetPort {
-                            symbol: 10,
-                            input: true,
-                        }),
-                        ("IN3".to_string(), NetPort {
-                            symbol: 11,
-                            input: true,
-                        }),
-                        ("OUT".to_string(), NetPort {
-                            symbol: 12,
-                            input: false,
-                        }),
+                        (
+                            "IN1".to_string(),
+                            NetPort {
+                                symbol: 9,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "IN2".to_string(),
+                            NetPort {
+                                symbol: 10,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "IN3".to_string(),
+                            NetPort {
+                                symbol: 11,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "OUT".to_string(),
+                            NetPort {
+                                symbol: 12,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "IN1".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "IN2".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "IN3".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUT".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUT1".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUT2".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "OUT3".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -866,14 +977,14 @@ mod tests {
                         name: Ident::Symbol(4),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(5),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -891,19 +1002,14 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(1),
-                    args: vec![
-                        Ident::Symbol(4),
-                        Ident::Symbol(5),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(4), Ident::Symbol(5)],
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(6),
                     rel: Ident::Symbol(2),
-                    args: vec![
-                        Ident::Symbol(7),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(7)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
@@ -915,21 +1021,21 @@ mod tests {
                         name: Ident::Symbol(9),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(10),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(11),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -950,17 +1056,17 @@ mod tests {
                         Connection {
                             port: Ident::Symbol(4),
                             ent: Ident::Symbol(9),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
                             ent: Ident::Symbol(9),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(6),
                             ent: Ident::Symbol(13),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
@@ -970,17 +1076,17 @@ mod tests {
                         Connection {
                             port: Ident::Symbol(4),
                             ent: Ident::Symbol(10),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
                             ent: Ident::Symbol(10),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(6),
                             ent: Ident::Symbol(14),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
@@ -990,130 +1096,145 @@ mod tests {
                         Connection {
                             port: Ident::Symbol(4),
                             ent: Ident::Symbol(11),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
                             ent: Ident::Symbol(11),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(6),
                             ent: Ident::Symbol(15),
-                            span: Span{line: 0, col: 0},
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(12),
                     rel: Ident::Symbol(0),
-                    args: vec![
-                        Ident::Symbol(13),
-                        Ident::Symbol(14),
-                        Ident::Symbol(15),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(13), Ident::Symbol(14), Ident::Symbol(15)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
-        
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 1),
-            (2, 2),
-            (3, 0),
-            (8, 1),
-        ]);
+
+        let obj_map = HashMap::from([(0, 0), (1, 1), (2, 2), (3, 0), (8, 1)]);
         let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
-        Synthesis::synthesize_net(&vec![net1, net2], 1, &obj_map, ent_map, &mut ents, &mut relations, &mut symbol_table, &mut diagnostics);
+        Synthesis::synthesize_net(
+            &vec![net1, net2],
+            1,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            &mut symbol_table,
+            &mut diagnostics,
+        );
 
-        assert_eq!(ents, vec![
-            Entity { // IN1, A(1)
-                val: Some(4),
-                sinks: vec![0],
-            },
-            Entity { // IN2, A(2)
-                val: Some(2),
-                sinks: vec![2],
-            },
-            Entity { // IN3, A(3)
-                val: Some(2),
-                sinks: vec![4],
-            },
-            Entity { // OUT
-                val: None,
-                sinks: vec![],
-            },
-            Entity { // OUT1, S(1)
-                val: None,
-                sinks: vec![6],
-            },
-            Entity { // S_inter(1)
-                val: None,
-                sinks: vec![1],
-            },
-            Entity { // OUT2, S(2)
-                val: None,
-                sinks: vec![6],
-            },
-            Entity { // S_inter(2)
-                val: None,
-                sinks: vec![3],
-            },
-            Entity { // OUT3, S(3)
-                val: None,
-                sinks: vec![6],
-            },
-            Entity { // S_inter(3)
-                val: None,
-                sinks: vec![5],
-            },
-        ]);
-        assert_eq!(relations, vec![
-            Relation {
-                idx: 1,
-                delay: 1,
-                input_ents: vec![0, 0],
-                output_ent: 5,
-            },
-            Relation {
-                idx: 2,
-                delay: 1,
-                input_ents: vec![5],
-                output_ent: 4,
-            },
-            Relation {
-                idx: 1,
-                delay: 1,
-                input_ents: vec![1, 1],
-                output_ent: 7
-            },
-            Relation {
-                idx: 2,
-                delay: 1,
-                input_ents: vec![7],
-                output_ent: 6,
-            },
-            Relation {
-                idx: 1,
-                delay: 1,
-                input_ents: vec![2, 2],
-                output_ent: 9,
-            },
-            Relation {
-                idx: 2,
-                delay: 1,
-                input_ents: vec![9],
-                output_ent: 8,
-            },
-            Relation {
-                idx: 0,
-                delay: 1,
-                input_ents: vec![4, 6, 8],
-                output_ent: 3,
-            },
-        ]);
+        assert_eq!(
+            ents,
+            vec![
+                Entity {
+                    // IN1, A(1)
+                    val: Some(4),
+                    sinks: vec![0],
+                },
+                Entity {
+                    // IN2, A(2)
+                    val: Some(2),
+                    sinks: vec![2],
+                },
+                Entity {
+                    // IN3, A(3)
+                    val: Some(2),
+                    sinks: vec![4],
+                },
+                Entity {
+                    // OUT
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    // OUT1, S(1)
+                    val: None,
+                    sinks: vec![6],
+                },
+                Entity {
+                    // S_inter(1)
+                    val: None,
+                    sinks: vec![1],
+                },
+                Entity {
+                    // OUT2, S(2)
+                    val: None,
+                    sinks: vec![6],
+                },
+                Entity {
+                    // S_inter(2)
+                    val: None,
+                    sinks: vec![3],
+                },
+                Entity {
+                    // OUT3, S(3)
+                    val: None,
+                    sinks: vec![6],
+                },
+                Entity {
+                    // S_inter(3)
+                    val: None,
+                    sinks: vec![5],
+                },
+            ]
+        );
+        assert_eq!(
+            relations,
+            vec![
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![0, 0],
+                    output_ent: 5,
+                },
+                Relation {
+                    idx: 2,
+                    delay: 1,
+                    input_ents: vec![5],
+                    output_ent: 4,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![1, 1],
+                    output_ent: 7
+                },
+                Relation {
+                    idx: 2,
+                    delay: 1,
+                    input_ents: vec![7],
+                    output_ent: 6,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![2, 2],
+                    output_ent: 9,
+                },
+                Relation {
+                    idx: 2,
+                    delay: 1,
+                    input_ents: vec![9],
+                    output_ent: 8,
+                },
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![4, 6, 8],
+                    output_ent: 3,
+                },
+            ]
+        );
     }
 
     #[test]
@@ -1140,42 +1261,51 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "ADD_NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 2,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 3,
-                            input: true,
-                        }),
-                        ("S".to_string(), NetPort {
-                            symbol: 4,
-                            input: false,
-                        }),
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 3,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1187,14 +1317,14 @@ mod tests {
                         name: Ident::Symbol(2),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(3),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -1212,7 +1342,7 @@ mod tests {
                         left: Box::new(Expr::Literal(Literal::Int(2))),
                         right: Box::new(Expr::Literal(Literal::Int(2))),
                         op: BinaryOp::Add,
-                        op_span: Span{line: 0, col: 0},
+                        op_span: Span { line: 0, col: 0 },
                         expr_type: Type::Int,
                     }),
                 }),
@@ -1225,44 +1355,51 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
-                    args: vec![
-                        Ident::Symbol(2),
-                        Ident::Symbol(3),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
         let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
-        Synthesis::synthesize_net(&vec![net], 0, &obj_map, ent_map, &mut ents, &mut relations, &mut symbol_table, &mut diagnostics);
+        Synthesis::synthesize_net(
+            &vec![net],
+            0,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            &mut symbol_table,
+            &mut diagnostics,
+        );
 
-        assert_eq!(ents, vec![
-            Entity {
-                val: Some(5),
-                sinks: vec![0],
-            },
-            Entity {
-                val: Some(4),
-                sinks: vec![0],
-            },
-            Entity {
-                val: None,
-                sinks: vec![],
-            },
-        ]);
-        assert_eq!(relations, vec![
-            Relation {
+        assert_eq!(
+            ents,
+            vec![
+                Entity {
+                    val: Some(5),
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: Some(4),
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ]
+        );
+        assert_eq!(
+            relations,
+            vec![Relation {
                 idx: 0,
                 delay: 1,
                 input_ents: vec![0, 1],
                 output_ent: 2,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -1272,7 +1409,7 @@ mod tests {
         // net ADD_NET {
         //     input A: Int;
         //     input B: Int;
-        
+
         //     output S: Int;
 
         //     init A: Int = 1;
@@ -1288,42 +1425,51 @@ mod tests {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "ADD_NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 2,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 3,
-                            input: true,
-                        }),
-                        ("S".to_string(), NetPort {
-                            symbol: 4,
-                            input: false,
-                        }),
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 3,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: false,
+                            },
+                        ),
                     ]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "B".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "S".to_string(),
                 kind: SymbolKind::Ent(Type::Int),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1335,14 +1481,14 @@ mod tests {
                         name: Ident::Symbol(2),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(3),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -1360,62 +1506,60 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
-                    args: vec![
-                        Ident::Symbol(2),
-                        Ident::Symbol(3),
-                    ],
-                    span: Span{line: 0, col: 0},
+                    args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
-        let (netlist, interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (netlist, interface, inits) =
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
-        assert_eq!(netlist, Netlist {
-            relations: vec![
-                Relation {
+        assert_eq!(
+            netlist,
+            Netlist {
+                relations: vec![Relation {
                     idx: 0,
                     delay: 1,
                     input_ents: vec![0, 1],
                     output_ent: 2,
-                },
-            ],
-            ents: vec![
-                Entity {
-                    val: None,
-                    sinks: vec![0],
-                },
-                Entity {
-                    val: None,
-                    sinks: vec![0],
-                },
-                Entity {
-                    val: None,
-                    sinks: vec![],
-                },
-            ]
-        });
-        assert_eq!(interface, Interface {
-            inputs: HashMap::from([
-                ("A".to_string(), (0, Type::Int)),
-                ("B".to_string(), (1, Type::Int)),
-            ]),
-            outputs: HashMap::from([
-                (2, ("S".to_string(), Type::Int)),
-            ]),
-            custom_type_maps: HashMap::new(),
-        });
-        assert_eq!(inits, vec![
-            Event {
+                },],
+                ents: vec![
+                    Entity {
+                        val: None,
+                        sinks: vec![0],
+                    },
+                    Entity {
+                        val: None,
+                        sinks: vec![0],
+                    },
+                    Entity {
+                        val: None,
+                        sinks: vec![],
+                    },
+                ]
+            }
+        );
+        assert_eq!(
+            interface,
+            Interface {
+                inputs: HashMap::from([
+                    ("A".to_string(), (0, Type::Int)),
+                    ("B".to_string(), (1, Type::Int)),
+                ]),
+                outputs: HashMap::from([(2, ("S".to_string(), Type::Int)),]),
+                custom_type_maps: HashMap::new(),
+            }
+        );
+        assert_eq!(
+            inits,
+            vec![Event {
                 timestep: 0,
                 ent_id: 0,
                 new_val: 1,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -1431,19 +1575,20 @@ mod tests {
             Symbol {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("A".to_string(), NetPort {
+                    ports: HashMap::from([(
+                        "A".to_string(),
+                        NetPort {
                             symbol: 2,
                             input: false,
-                        }),
-                    ]),
+                        },
+                    )]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Real),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1465,20 +1610,19 @@ mod tests {
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
-        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) =
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
-        assert_eq!(inits, vec![
-            Event {
+        assert_eq!(
+            inits,
+            vec![Event {
                 timestep: 0,
                 ent_id: 0,
                 new_val: 1.0_f64.to_bits() as u64,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -1494,19 +1638,20 @@ mod tests {
             Symbol {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("A".to_string(), NetPort {
+                    ports: HashMap::from([(
+                        "A".to_string(),
+                        NetPort {
                             symbol: 2,
                             input: false,
-                        }),
-                    ]),
+                        },
+                    )]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Impulse),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1528,20 +1673,19 @@ mod tests {
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
-        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) =
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
-        assert_eq!(inits, vec![
-            Event {
+        assert_eq!(
+            inits,
+            vec![Event {
                 timestep: 0,
                 ent_id: 0,
                 new_val: 0 as u64,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -1557,19 +1701,20 @@ mod tests {
             Symbol {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("A".to_string(), NetPort {
+                    ports: HashMap::from([(
+                        "A".to_string(),
+                        NetPort {
                             symbol: 2,
                             input: false,
-                        }),
-                    ]),
+                        },
+                    )]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Mod(3)),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1591,20 +1736,19 @@ mod tests {
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
-        let (_netlist, _interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, _interface, inits) =
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
-        assert_eq!(inits, vec![
-            Event {
+        assert_eq!(
+            inits,
+            vec![Event {
                 timestep: 0,
                 ent_id: 0,
                 new_val: 1 as u64,
-            },
-        ]);
+            },]
+        );
     }
 
     #[test]
@@ -1621,7 +1765,7 @@ mod tests {
             Symbol {
                 name: "COIN".to_string(),
                 kind: SymbolKind::EntType,
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "H".to_string(),
@@ -1629,7 +1773,7 @@ mod tests {
                     parent: 0,
                     mapping: 0,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "T".to_string(),
@@ -1637,24 +1781,25 @@ mod tests {
                     parent: 0,
                     mapping: 1,
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("A".to_string(), NetPort {
+                    ports: HashMap::from([(
+                        "A".to_string(),
+                        NetPort {
                             symbol: 4,
                             input: false,
-                        }),
-                    ]),
+                        },
+                    )]),
                 },
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
             Symbol {
                 name: "A".to_string(),
                 kind: SymbolKind::Ent(Type::Real),
-                span: Span{line: 0, col: 0},
+                span: Span { line: 0, col: 0 },
             },
         ];
 
@@ -1676,25 +1821,25 @@ mod tests {
                 }),
             ],
         };
-        let obj_map = HashMap::from([
-            (0, 0),
-            (1, 0),
-        ]);
+        let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
-        let (_netlist, interface, inits) = Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+        let (_netlist, interface, inits) =
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
 
-        assert_eq!(inits, vec![
-            Event {
+        assert_eq!(
+            inits,
+            vec![Event {
                 timestep: 0,
                 ent_id: 0,
                 new_val: 1 as u64,
-            },
-        ]);
-        assert_eq!(interface.custom_type_maps, HashMap::from([
-            ("COIN".to_string(), vec![
-                ("H".to_string(), 0),
-                ("T".to_string(), 1),
-            ]),
-        ]));
+            },]
+        );
+        assert_eq!(
+            interface.custom_type_maps,
+            HashMap::from([(
+                "COIN".to_string(),
+                vec![("H".to_string(), 0), ("T".to_string(), 1),]
+            ),])
+        );
     }
 }

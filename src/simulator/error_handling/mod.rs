@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-pub mod runtime_diagnostics;
 pub mod io_file_error;
+pub mod runtime_diagnostics;

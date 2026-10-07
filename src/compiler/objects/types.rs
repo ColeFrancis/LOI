@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
@@ -63,7 +63,7 @@ impl std::fmt::Display for Type {
                 write!(f, "Custom(")?;
 
                 match ident {
-                    Ident::Str {val, ..} => write!(f, "\"{}\"", val)?,
+                    Ident::Str { val, .. } => write!(f, "\"{}\"", val)?,
                     Ident::Symbol(id) => write!(f, "{}", id)?,
                 }
 

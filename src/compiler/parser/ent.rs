@@ -14,20 +14,17 @@
 
 //! # core
 //!
-//! Handles entity parsing 
+//! Handles entity parsing
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
 use super::Parser;
 use super::sync::SyncRule;
-use crate::compiler::{
-    lexer::token::TokenKind,
-    objects::ast::*,
-};
+use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
 
 impl<'a> Parser<'a> {
     // Ent_t token already consumed
@@ -49,41 +46,49 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Item)?;
 
-        Some(EntType {
-            name,
-            members,
-        })
+        Some(EntType { name, members })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::error_handling::diagnostics::Diagnostics;
     use crate::compiler::error_handling::span::Span;
+    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::objects::ast;
-    
+
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
-            .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
+            .map(|x| Token {
+                kind: x,
+                span: Span { line: 0, col: 0 },
+            })
             .collect()
     }
 
     fn build_ident_str(name: &str) -> ast::Ident {
         ast::Ident::Str {
             val: name.to_string(),
-            span: Span{line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }
     }
 
     #[test]
     fn set_ent() {
         // ent_t coin = {H, T};
-        let kinds: Vec<TokenKind> = vec![Ident("coin".to_string()), Equals, 
-            LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()),
-            RBrace, Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("coin".to_string()),
+            Equals,
+            LBrace,
+            Ident("H".to_string()),
+            Comma,
+            Ident("T".to_string()),
+            RBrace,
+            Semicolon,
+            Eof,
+        ];
 
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -92,18 +97,28 @@ mod tests {
 
         let result = parser.parse_ent_t();
 
-        assert_eq!(result, Some(EntType {
-            name: build_ident_str("coin"),
-            members: vec![build_ident_str("H"), build_ident_str("T")],
-        }));
+        assert_eq!(
+            result,
+            Some(EntType {
+                name: build_ident_str("coin"),
+                members: vec![build_ident_str("H"), build_ident_str("T")],
+            })
+        );
     }
 
     #[test]
     fn bad_set_ent() {
         // ent_t coin = {H, T;
-        let kinds: Vec<TokenKind> = vec![Ident("coin".to_string()), Equals, 
-            LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()),
-            Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("coin".to_string()),
+            Equals,
+            LBrace,
+            Ident("H".to_string()),
+            Comma,
+            Ident("T".to_string()),
+            Semicolon,
+            Eof,
+        ];
 
         let tokens: Vec<Token> = build_token_vec(kinds);
 
@@ -119,8 +134,12 @@ mod tests {
     #[test]
     fn bad_real_ent() {
         // ent_t r = real;    real, not Real
-        let kinds: Vec<TokenKind> = vec![Ident("r".to_string()), 
-            Equals, Ident("real".to_string()), Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("r".to_string()),
+            Equals,
+            Ident("real".to_string()),
+            Eof,
+        ];
 
         let tokens: Vec<Token> = build_token_vec(kinds);
 

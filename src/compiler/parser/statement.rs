@@ -14,20 +14,17 @@
 
 //! # statement
 //!
-//! Handles statement parsing 
+//! Handles statement parsing
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
 use super::Parser;
 use super::sync::SyncRule;
-use crate::compiler::{
-    lexer::token::TokenKind,
-    objects::ast::*,
-};
+use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
 
 impl<'a> Parser<'a> {
     // Let token already consumed
@@ -43,40 +40,51 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
 
-        Some(LetStatement {
-            name,
-            expr,
-        })
+        Some(LetStatement { name, expr })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::lexer::{Lexer, token::{Token, TokenKind::*}};
     use crate::compiler::error_handling::diagnostics::Diagnostics;
     use crate::compiler::error_handling::span::Span;
-    use crate::compiler::objects::types::Type;
+    use crate::compiler::lexer::{
+        Lexer,
+        token::{Token, TokenKind::*},
+    };
     use crate::compiler::objects::ast;
+    use crate::compiler::objects::types::Type;
 
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
-            .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
+            .map(|x| Token {
+                kind: x,
+                span: Span { line: 0, col: 0 },
+            })
             .collect()
     }
 
     fn build_ident_str(name: &str) -> ast::Ident {
         ast::Ident::Str {
             val: name.to_string(),
-            span: Span{line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }
     }
 
     #[test]
     fn let_statement() {
         // let n = 1 + 2;
-        let kinds: Vec<TokenKind> = vec![Ident("n".to_string()), Equals, IntLiteral(1), Plus, IntLiteral(2), Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("n".to_string()),
+            Equals,
+            IntLiteral(1),
+            Plus,
+            IntLiteral(2),
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -84,23 +92,33 @@ mod tests {
 
         let result = parser.parse_let_stmt();
 
-        assert_eq!(result, Some(LetStatement {
-            name: build_ident_str("n"),
-            expr: Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Add,
-                right: Box::new(Expr::Literal(Literal::Int(2))),
-                op_span: Span {line: 0, col: 0},
-                expr_type: Type::Unknown,
+        assert_eq!(
+            result,
+            Some(LetStatement {
+                name: build_ident_str("n"),
+                expr: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Literal(Literal::Int(2))),
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Unknown,
+                })
             })
-        }));
+        );
         assert!(!diagnostics.has_errors());
     }
 
-    #[test] 
+    #[test]
     fn bad_let_statement() {
         // let n = 1 + 2
-        let kinds: Vec<TokenKind> = vec![Ident("n".to_string()), Equals, IntLiteral(1), Plus, IntLiteral(2), Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("n".to_string()),
+            Equals,
+            IntLiteral(1),
+            Plus,
+            IntLiteral(2),
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -110,7 +128,7 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1); // unexpected token
-        
+
         // let 9n = 1;
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("9a = 1;", &mut diagnostics).tokenize();

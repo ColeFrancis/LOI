@@ -27,28 +27,31 @@ use std::collections::HashMap;
 
 use super::Compiler;
 use crate::compiler::{
+    code_gen::CodeGen,
+    error_handling::{
+        compile_error::CompileError,
+        diagnostics::{Diagnostic, Diagnostics},
+    },
     lexer::Lexer,
+    objects::{
+        ast::{Ident, Item, Program},
+        compiled_rel::CompiledRel,
+        netlist::{Interface, Netlist},
+        symbol::{Symbol, SymbolId},
+    },
     parser::Parser,
     sem_analyzer::SemAnalyzer,
-    code_gen::CodeGen,
     synthesis::Synthesis,
-    error_handling::{
-        diagnostics::{Diagnostics, Diagnostic},
-        compile_error::CompileError,
-    },
-    objects::{
-        symbol::{Symbol, SymbolId},
-        ast::{Program, Item, Ident},
-        compiled_rel::CompiledRel,
-        netlist::{Netlist, Interface},
-    },
 };
 
 use crate::simulator::objects::event::Event;
 
 impl Compiler {
     // return netlist and vector of compiled relations or panic
-    pub fn compile(file_path: &str, top_net: &str) -> Result<(Netlist, Interface, Vec<CompiledRel>, Vec<Event>), CompileError> {
+    pub fn compile(
+        file_path: &str,
+        top_net: &str,
+    ) -> Result<(Netlist, Interface, Vec<CompiledRel>, Vec<Event>), CompileError> {
         let path = PathBuf::from(file_path);
 
         if path.extension().and_then(|ext| ext.to_str()) != Some("loi") {
@@ -68,7 +71,8 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        let (netlist, interface, compiled_relations, inits) = Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
+        let (netlist, interface, compiled_relations, inits) =
+            Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
 
         if diagnostics.has_errors() {
             return Err(CompileError::Diagnostics(diagnostics));
@@ -84,7 +88,12 @@ impl Compiler {
         SemAnalyzer::new(program, diagnostics).analyze()
     }
 
-    fn back_end(ast: Program, top_net: &str, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Interface, Vec<CompiledRel>, Vec<Event>) {
+    fn back_end(
+        ast: Program,
+        top_net: &str,
+        symbols: &mut [Symbol],
+        diagnostics: &mut Diagnostics,
+    ) -> (Netlist, Interface, Vec<CompiledRel>, Vec<Event>) {
         let mut compiled_relations = Vec::new();
         let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
@@ -99,7 +108,8 @@ impl Compiler {
                         unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
 
-                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics) else {
+                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics)
+                    else {
                         continue;
                     };
 
@@ -113,14 +123,14 @@ impl Compiler {
                     let Ident::Symbol(id) = net.name else {
                         unreachable!("net name must be ident::symbol by this point");
                     };
-                    
+
                     if symbols[id].name == top_net {
                         top_net_idx_option = Some(idx);
                     }
 
                     nets.push(net);
                     obj_map.insert(id, idx);
-                },
+                }
 
                 _ => {}
             }
@@ -131,14 +141,19 @@ impl Compiler {
                 name: top_net.to_string(),
             });
 
-            return (Netlist::new(), Interface::new(), compiled_relations, Vec::new());
+            return (
+                Netlist::new(),
+                Interface::new(),
+                compiled_relations,
+                Vec::new(),
+            );
         };
 
-        let (netlist, interface, inits) = Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
+        let (netlist, interface, inits) =
+            Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
 
         (netlist, interface, compiled_relations, inits)
     }
 }
-
 
 // see tests/compiler for integration tests

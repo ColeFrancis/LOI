@@ -29,7 +29,7 @@ impl<'a> CodeGen<'a> {
 
         for instruction in ir_bytecode {
             match instruction {
-                Instruction::IADD {dest, src1, src2} => {
+                Instruction::IADD { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -42,7 +42,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::ISUB {dest, src1, src2} => {
+                Instruction::ISUB { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -55,7 +55,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IMUL {dest, src1, src2} => {
+                Instruction::IMUL { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -68,7 +68,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IDIV {dest, src1, src2} => {
+                Instruction::IDIV { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -81,7 +81,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IPOW {dest, src1, src2} => {
+                Instruction::IPOW { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -94,7 +94,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IABS {dest, src       } => {
+                Instruction::IABS { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -105,7 +105,7 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
-                Instruction::IMOD  {dest, src1, src2} => {
+                Instruction::IMOD { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -118,8 +118,8 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                
-                Instruction::FADD {dest, src1, src2} => {
+
+                Instruction::FADD { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -132,7 +132,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FSUB {dest, src1, src2} => {
+                Instruction::FSUB { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -145,7 +145,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FMUL {dest, src1, src2} => {
+                Instruction::FMUL { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -158,7 +158,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FDIV {dest, src1, src2} => {
+                Instruction::FDIV { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -171,7 +171,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FPOW {dest, src1, src2} => {
+                Instruction::FPOW { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -184,7 +184,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FABS {dest, src       } => {
+                Instruction::FABS { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -195,8 +195,8 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
-                
-                Instruction::AND  {dest, src1, src2} => {
+
+                Instruction::AND { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -209,7 +209,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::OR   {dest, src1, src2} => {
+                Instruction::OR { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -222,7 +222,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::NOT  {dest, src       } => {
+                Instruction::NOT { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -233,7 +233,7 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
-                Instruction::XOR  {dest, src1, src2} => {
+                Instruction::XOR { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -247,7 +247,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
-                Instruction::I2F  {dest, src       } => {
+                Instruction::I2F { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -259,7 +259,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src_bytes);
                 }
 
-                Instruction::JMP  {offset          } => {
+                Instruction::JMP { offset } => {
                     let opcode = 0b10000000;
 
                     let offset_bytes = (offset as i16).to_le_bytes();
@@ -268,7 +268,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(offset_bytes);
                 }
 
-                Instruction::IJEQ {offset, src1, src2} => {
+                Instruction::IJEQ { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -283,7 +283,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IJNE {offset, src1, src2} => {
+                Instruction::IJNE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -298,7 +298,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IJLT {offset, src1, src2} => {
+                Instruction::IJLT { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -313,7 +313,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IJGT {offset, src1, src2} => {
+                Instruction::IJGT { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -328,7 +328,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IJLE {offset, src1, src2} => {
+                Instruction::IJLE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -343,7 +343,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IJGE {offset, src1, src2} => {
+                Instruction::IJGE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -359,7 +359,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
-                Instruction::FJEQ {offset, src1, src2} => {
+                Instruction::FJEQ { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -374,7 +374,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FJNE {offset, src1, src2} => {
+                Instruction::FJNE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -389,7 +389,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FJLT {offset, src1, src2} => {
+                Instruction::FJLT { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -404,7 +404,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FJGT {offset, src1, src2} => {
+                Instruction::FJGT { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -419,7 +419,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FJLE {offset, src1, src2} => {
+                Instruction::FJLE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -434,7 +434,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FJGE {offset, src1, src2} => {
+                Instruction::FJGE { offset, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -450,7 +450,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
-                Instruction::IEQ  {dest, src1, src2} => {
+                Instruction::IEQ { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -463,7 +463,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::INE  {dest, src1, src2} => {
+                Instruction::INE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -476,7 +476,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::ILT  {dest, src1, src2} => {
+                Instruction::ILT { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -489,7 +489,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IGT  {dest, src1, src2} => {
+                Instruction::IGT { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -502,7 +502,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::ILE  {dest, src1, src2} => {
+                Instruction::ILE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -515,7 +515,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IGE  {dest, src1, src2} => {
+                Instruction::IGE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -529,7 +529,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
-                Instruction::FEQ  {dest, src1, src2} => {
+                Instruction::FEQ { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -542,7 +542,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FNE  {dest, src1, src2} => {
+                Instruction::FNE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -555,7 +555,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FLT  {dest, src1, src2} => {
+                Instruction::FLT { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -568,7 +568,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FGT  {dest, src1, src2} => {
+                Instruction::FGT { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -581,7 +581,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FLE  {dest, src1, src2} => {
+                Instruction::FLE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -594,7 +594,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::FGE  {dest, src1, src2} => {
+                Instruction::FGE { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
 
@@ -608,7 +608,7 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
-                Instruction::MOV  {dest, src       } => {
+                Instruction::MOV { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -619,7 +619,7 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
-                Instruction::RET  {src             } => {
+                Instruction::RET { src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
@@ -629,14 +629,16 @@ impl<'a> CodeGen<'a> {
                     bytes.push(opcode);
                     bytes.extend(src_bytes);
                 }
-                Instruction::ERR  {code, src       } => {
+                Instruction::ERR { code, src } => {
                     let (ss, src_bytes) = match src {
                         Some(Source::RegInter(val)) => (0b10 as u8, vec![val as u8]),
-                        Some(Source::RegVar  (val)) => (0b10 as u8, vec![val as u8]),
-                        Some(Source::Bool    (val)) => (0b11 as u8, (val as u64).to_le_bytes().to_vec()),
-                        Some(Source::Int     (val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
-                        Some(Source::Float   (val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
-                        None                        => (0b00 as u8, vec![]),
+                        Some(Source::RegVar(val)) => (0b10 as u8, vec![val as u8]),
+                        Some(Source::Bool(val)) => {
+                            (0b11 as u8, (val as u64).to_le_bytes().to_vec())
+                        }
+                        Some(Source::Int(val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
+                        Some(Source::Float(val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
+                        None => (0b00 as u8, vec![]),
                     };
 
                     let opcode = (0b101001 << 2) | ss;
@@ -645,7 +647,7 @@ impl<'a> CodeGen<'a> {
                     bytes.push(code as u8);
                     bytes.extend(src_bytes);
                 }
-                Instruction::RND  {dest            } => {
+                Instruction::RND { dest } => {
                     let opcode = 0b11100000;
 
                     bytes.push(opcode);
@@ -660,10 +662,10 @@ impl<'a> CodeGen<'a> {
     fn src_to_bytes(src: Source) -> (bool, Vec<u8>) {
         match src {
             Source::RegInter(val) => (false, vec![val as u8]),
-            Source::RegVar  (val) => (false, vec![val as u8]),
-            Source::Bool    (val) => (true,  (val as u64).to_le_bytes().to_vec()),
-            Source::Int     (val) => (true,  val.to_le_bytes().to_vec()),
-            Source::Float   (val) => (true,  val.to_le_bytes().to_vec()),
+            Source::RegVar(val) => (false, vec![val as u8]),
+            Source::Bool(val) => (true, (val as u64).to_le_bytes().to_vec()),
+            Source::Int(val) => (true, val.to_le_bytes().to_vec()),
+            Source::Float(val) => (true, val.to_le_bytes().to_vec()),
         }
     }
 }
@@ -703,9 +705,7 @@ mod tests {
                 dest: 0,
                 src: Source::RegInter(1),
             },
-            Instruction::JMP {
-                offset: 48,
-            },
+            Instruction::JMP { offset: 48 },
             Instruction::IMOD {
                 dest: 0,
                 src1: Source::RegInter(1),
@@ -731,20 +731,16 @@ mod tests {
             Instruction::RET {
                 src: Source::Int(1),
             },
-            Instruction::RND {
-                dest: 0
-            },
+            Instruction::RND { dest: 0 },
             Instruction::ERR {
                 code: 4,
                 src: Some(Source::Int(0)),
             },
-            Instruction::ERR {
-                code: 3,
-                src: None,
-            },
+            Instruction::ERR { code: 3, src: None },
         ]);
 
-        let test = assemble("
+        let test = assemble(
+            "
 # test
 IADD r1 r0 i23
 FMUL r2 r1 f-2.25
@@ -762,7 +758,9 @@ RET i1
 RND r0
 ERR b4 i0
 ERR b3
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
         assert_eq!(result, test);
     }
@@ -856,9 +854,7 @@ ERR b3
                 dest: 0,
                 src: Source::RegInter(0),
             },
-            Instruction::JMP {
-                offset: 0,
-            },
+            Instruction::JMP { offset: 0 },
             Instruction::IJEQ {
                 offset: 0,
                 src1: Source::RegInter(0),
@@ -986,16 +982,12 @@ ERR b3
             Instruction::RET {
                 src: Source::RegInter(0),
             },
-            Instruction::ERR {
-                code: 0,
-                src: None,
-            },
-            Instruction::RND {
-                dest: 0,
-            },
+            Instruction::ERR { code: 0, src: None },
+            Instruction::RND { dest: 0 },
         ]);
 
-        let test = assemble("
+        let test = assemble(
+            "
 # test
 IADD r0 r0 r0
 ISUB r0 r0 r0
@@ -1052,7 +1044,9 @@ MOV r0 r0
 RET r0
 ERR b0
 RND r0
-        ").unwrap();
+        ",
+        )
+        .unwrap();
 
         assert_eq!(result, test);
     }

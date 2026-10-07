@@ -65,19 +65,38 @@ impl std::fmt::Display for InputFileReadError {
             }
 
             InputFileReadError::InvalidHeader => {
-                write!(f, "Runtime Error: Invalid input file header. First line should be: \"step entity value\" (Whitespace variable)")
+                write!(
+                    f,
+                    "Runtime Error: Invalid input file header. First line should be: \"step entity value\" (Whitespace variable)"
+                )
             }
 
-            InputFileReadError::IncorrectNumberOfFields {expected, found, line_num} => {
-                write!(f, "Runtime Error: Incorrect number of fields in input file. Expected: {}, found: {}\nat line {}", expected, found, line_num)
+            InputFileReadError::IncorrectNumberOfFields {
+                expected,
+                found,
+                line_num,
+            } => {
+                write!(
+                    f,
+                    "Runtime Error: Incorrect number of fields in input file. Expected: {}, found: {}\nat line {}",
+                    expected, found, line_num
+                )
             }
 
-            InputFileReadError::InvalidStep {source, line_num} => {
-                write!(f, "Runtime Error: Invalid step value in input file at line {}.\nat line {}", source, line_num)
+            InputFileReadError::InvalidStep { source, line_num } => {
+                write!(
+                    f,
+                    "Runtime Error: Invalid step value in input file at line {}.\nat line {}",
+                    source, line_num
+                )
             }
 
-            InputFileReadError::InvalidNumber {num, line_num} => {
-                write!(f, "Runtime Error: Invalid number {} in putput file.\nat line {}", num, line_num)
+            InputFileReadError::InvalidNumber { num, line_num } => {
+                write!(
+                    f,
+                    "Runtime Error: Invalid number {} in putput file.\nat line {}",
+                    num, line_num
+                )
             }
         }
     }

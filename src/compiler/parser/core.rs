@@ -18,21 +18,17 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
 use super::Parser;
 use super::sync::SyncRule;
 use crate::compiler::{
+    error_handling::diagnostics::{Diagnostic, Diagnostics, Expected},
     lexer::token::{Token, TokenKind},
-    error_handling::diagnostics::{Diagnostics, Diagnostic, Expected},
-    objects::{
-        ast::*,
-        types::Type,
-    },
+    objects::{ast::*, types::Type},
 };
-
 
 impl<'a> Parser<'a> {
     pub fn new(tokens: Vec<Token>, diagnostics: &'a mut Diagnostics) -> Self {
@@ -68,15 +64,15 @@ impl<'a> Parser<'a> {
                 TokenKind::NetToken => match self.parse_net() {
                     Some(net) => Item::Net(net),
                     None => Item::Error,
-                }
+                },
 
                 other => {
                     self.diagnostics.error(Diagnostic::UnexpectedToken {
                         expected: vec![
-                            Expected::Token(TokenKind::Let), 
-                            Expected::Token(TokenKind::Ent_t), 
-                            Expected::Token(TokenKind::Rel_t), 
-                            Expected::Token(TokenKind::NetToken)
+                            Expected::Token(TokenKind::Let),
+                            Expected::Token(TokenKind::Ent_t),
+                            Expected::Token(TokenKind::Rel_t),
+                            Expected::Token(TokenKind::NetToken),
                         ],
                         found: other,
                         span: token.span,
@@ -85,7 +81,7 @@ impl<'a> Parser<'a> {
                     self.sync(&SyncRule::Item);
 
                     Item::Error
-                },
+                }
             };
 
             items.push(item);
@@ -94,11 +90,11 @@ impl<'a> Parser<'a> {
         Program { items }
     }
 
-    pub(super) fn peek (&self) -> &Token {
+    pub(super) fn peek(&self) -> &Token {
         &self.tokens[self.current]
     }
 
-    pub(super) fn peek_n (&self, offset: usize) -> &Token {
+    pub(super) fn peek_n(&self, offset: usize) -> &Token {
         &self.tokens[self.current + offset]
     }
 
@@ -108,7 +104,7 @@ impl<'a> Parser<'a> {
         token
     }
 
-    pub(super) fn expect(&mut self, expected: TokenKind, rule: &SyncRule)-> Option<()> {
+    pub(super) fn expect(&mut self, expected: TokenKind, rule: &SyncRule) -> Option<()> {
         let token = self.peek();
 
         if token.kind == expected {
@@ -140,12 +136,9 @@ impl<'a> Parser<'a> {
                 let span = token.span.clone();
 
                 self.next();
-                
-                Some(Ident::Str {
-                    val, 
-                    span,
-                })
-            },
+
+                Some(Ident::Str { val, span })
+            }
             TokenKind::Eof => {
                 self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![Expected::Ident],
@@ -165,16 +158,16 @@ impl<'a> Parser<'a> {
             }
         }
     }
-    
+
     pub(super) fn parse_type(&mut self, rule: &SyncRule) -> Option<Type> {
         let token = self.next();
-        
+
         match token.kind {
-            TokenKind::Bool        => Some(Type::Bool),
-            TokenKind::Impulse     => Some(Type::Impulse),
-            TokenKind::Int         => Some(Type::Int),
-            TokenKind::Real        => Some(Type::Real),
-            TokenKind::Mod         => {
+            TokenKind::Bool => Some(Type::Bool),
+            TokenKind::Impulse => Some(Type::Impulse),
+            TokenKind::Int => Some(Type::Int),
+            TokenKind::Real => Some(Type::Real),
+            TokenKind::Mod => {
                 self.expect(TokenKind::LParen, rule)?;
 
                 let token = self.next();
@@ -187,7 +180,7 @@ impl<'a> Parser<'a> {
                             span: token.span,
                         });
                         self.sync(rule);
-                        
+
                         return None;
                     }
                 };
@@ -195,14 +188,17 @@ impl<'a> Parser<'a> {
 
                 Some(Type::Mod(n))
             }
-            TokenKind::Ident(name) => Some(Type::Custom(Ident::Str{ val: name, span: token.span })),
-            
+            TokenKind::Ident(name) => Some(Type::Custom(Ident::Str {
+                val: name,
+                span: token.span,
+            })),
+
             other => {
                 self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![
-                        Expected::Token(TokenKind::Bool), 
-                        Expected::Token(TokenKind::Impulse), 
-                        Expected::Token(TokenKind::Int), 
+                        Expected::Token(TokenKind::Bool),
+                        Expected::Token(TokenKind::Impulse),
+                        Expected::Token(TokenKind::Int),
                         Expected::Token(TokenKind::Real),
                         Expected::Ident,
                     ],
@@ -210,7 +206,7 @@ impl<'a> Parser<'a> {
                     span: token.span,
                 });
                 self.sync(rule);
-                    
+
                 None
             }
         }
@@ -223,74 +219,103 @@ impl<'a> Parser<'a> {
 
         let param_type = self.parse_type(rule)?;
 
-        Some(Param {
-            name,
-            param_type,
-        })
+        Some(Param { name, param_type })
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::lexer::{Lexer, token::TokenKind::*};
     use crate::compiler::error_handling::span::Span;
+    use crate::compiler::lexer::{Lexer, token::TokenKind::*};
     use crate::compiler::objects::ast;
-    
+
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
-            .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
+            .map(|x| Token {
+                kind: x,
+                span: Span { line: 0, col: 0 },
+            })
             .collect()
     }
 
     fn build_ident_str(name: &str) -> ast::Ident {
         ast::Ident::Str {
             val: name.to_string(),
-            span: Span{line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }
     }
 
     #[test]
     fn test_parse() {
         // ent_t COIN = {H, T};
-        
+
         // let a = 1;
 
         // rel_t ONE () -> Real = 1;
 
         // net EMPTY {}
-        let kinds: Vec<TokenKind> = vec![Ent_t, Ident("COIN".to_string()), Equals, LBrace, Ident("H".to_string()), Comma, Ident("T".to_string()), RBrace, Semicolon,
-            Let, Ident("a".to_string()), Equals, IntLiteral(1), Semicolon,
-            Rel_t, Ident("ONE".to_string()), LParen, RParen, Arrow, Real, Equals, IntLiteral(1), Semicolon,
-            NetToken, Ident("EMPTY".to_string()), LBrace, RBrace, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ent_t,
+            Ident("COIN".to_string()),
+            Equals,
+            LBrace,
+            Ident("H".to_string()),
+            Comma,
+            Ident("T".to_string()),
+            RBrace,
+            Semicolon,
+            Let,
+            Ident("a".to_string()),
+            Equals,
+            IntLiteral(1),
+            Semicolon,
+            Rel_t,
+            Ident("ONE".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Real,
+            Equals,
+            IntLiteral(1),
+            Semicolon,
+            NetToken,
+            Ident("EMPTY".to_string()),
+            LBrace,
+            RBrace,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
         let result = Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(result, Program { 
-            items: vec![
-                Item::Ent(EntType {
-                    name: build_ident_str("COIN"),
-                    members: vec![build_ident_str("H"), build_ident_str("T")],
-                }),
-                Item::Let(LetStatement {
-                    name: build_ident_str("a"),
-                    expr: Expr::Literal(Literal::Int(1)),
-                }),
-                Item::Rel(RelType {
-                    name: build_ident_str("ONE"),
-                    params: vec![],
-                    return_type: Type::Real,
-                    body: Expr::Literal(Literal::Int(1)),
-                }),
-                Item::Net(Net {
-                    name: build_ident_str("EMPTY"),
-                    items: vec![],
-                }),
-            ],
-        });
+        assert_eq!(
+            result,
+            Program {
+                items: vec![
+                    Item::Ent(EntType {
+                        name: build_ident_str("COIN"),
+                        members: vec![build_ident_str("H"), build_ident_str("T")],
+                    }),
+                    Item::Let(LetStatement {
+                        name: build_ident_str("a"),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Item::Rel(RelType {
+                        name: build_ident_str("ONE"),
+                        params: vec![],
+                        return_type: Type::Real,
+                        body: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Item::Net(Net {
+                        name: build_ident_str("EMPTY"),
+                        items: vec![],
+                    }),
+                ],
+            }
+        );
         assert!(!diagnostics.has_errors());
     }
 
@@ -298,59 +323,65 @@ mod tests {
     fn integrate_lexer_parser() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"ent_t COIN = {H, T};
+            "ent_t COIN = {H, T};
         
 let a = 1;
 
 rel_t ONE () -> Real = 1;
 
-net EMPTY {}", &mut diagnostics).tokenize();
+net EMPTY {}",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         let result = Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(result, Program { 
-            items: vec![
-                Item::Ent(EntType {
-                    name: ast::Ident::Str {
-                        val: "COIN".to_string(),
-                        span: Span {line: 1, col: 7},
-                    },
-                    members: vec![
-                        ast::Ident::Str {
-                            val: "H".to_string(),
-                            span: Span {line: 1, col: 15},
-                        }, 
-                        ast::Ident::Str {
-                            val: "T".to_string(),
-                            span: Span {line: 1, col: 18},
+        assert_eq!(
+            result,
+            Program {
+                items: vec![
+                    Item::Ent(EntType {
+                        name: ast::Ident::Str {
+                            val: "COIN".to_string(),
+                            span: Span { line: 1, col: 7 },
                         },
-                    ],
-                }),
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "a".to_string(),
-                        span: Span {line: 3, col: 5},
-                    },
-                    expr: Expr::Literal(Literal::Int(1)),
-                }),
-                Item::Rel(RelType {
-                    name: ast::Ident::Str {
-                        val: "ONE".to_string(),
-                        span: Span {line: 5, col: 7},
-                    },
-                    params: vec![],
-                    return_type: Type::Real,
-                    body: Expr::Literal(Literal::Int(1)),
-                }),
-                Item::Net(Net {
-                    name: ast::Ident::Str {
-                        val: "EMPTY".to_string(),
-                        span: Span {line: 7, col: 5},
-                    },
-                    items: vec![],
-                }),
-            ],
-        });
+                        members: vec![
+                            ast::Ident::Str {
+                                val: "H".to_string(),
+                                span: Span { line: 1, col: 15 },
+                            },
+                            ast::Ident::Str {
+                                val: "T".to_string(),
+                                span: Span { line: 1, col: 18 },
+                            },
+                        ],
+                    }),
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "a".to_string(),
+                            span: Span { line: 3, col: 5 },
+                        },
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Item::Rel(RelType {
+                        name: ast::Ident::Str {
+                            val: "ONE".to_string(),
+                            span: Span { line: 5, col: 7 },
+                        },
+                        params: vec![],
+                        return_type: Type::Real,
+                        body: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Item::Net(Net {
+                        name: ast::Ident::Str {
+                            val: "EMPTY".to_string(),
+                            span: Span { line: 7, col: 5 },
+                        },
+                        items: vec![],
+                    }),
+                ],
+            }
+        );
         assert!(!diagnostics.has_errors());
     }
 
@@ -358,7 +389,7 @@ net EMPTY {}", &mut diagnostics).tokenize();
     fn multiple_errors_1() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"let n = 1;
+            "let n = 1;
 n = 2;
 let n = 3;
 let 9n = 4;
@@ -366,52 +397,58 @@ let n = 5;
 let n = 6
 let n = 7;
 let n = @;
-        ", &mut diagnostics).tokenize();
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         let result = Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(result, Program {
-            items: vec![
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "n".to_string(),
-                        span: Span {line: 1, col: 5},
-                    },
-                    expr: Expr::Literal(Literal::Int(1)),
-                }),
-                Item::Error,
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "n".to_string(),
-                        span: Span {line: 3, col: 5},
-                    },
-                    expr: Expr::Literal(Literal::Int(3)),
-                }),
-                Item::Error,
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "n".to_string(),
-                        span: Span {line: 5, col: 5},
-                    },
-                    expr: Expr::Literal(Literal::Int(5)),
-                }),
-                Item::Error,
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "n".to_string(),
-                        span: Span {line: 7, col: 5},
-                    },
-                    expr: Expr::Literal(Literal::Int(7)),
-                }),
-                Item::Let(LetStatement {
-                    name: ast::Ident::Str {
-                        val: "n".to_string(),
-                        span: Span {line: 8, col: 5},
-                    },
-                    expr: Expr::Error,
-                }),
-            ]
-        });
+        assert_eq!(
+            result,
+            Program {
+                items: vec![
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 1, col: 5 },
+                        },
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Item::Error,
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 3, col: 5 },
+                        },
+                        expr: Expr::Literal(Literal::Int(3)),
+                    }),
+                    Item::Error,
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 5, col: 5 },
+                        },
+                        expr: Expr::Literal(Literal::Int(5)),
+                    }),
+                    Item::Error,
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 7, col: 5 },
+                        },
+                        expr: Expr::Literal(Literal::Int(7)),
+                    }),
+                    Item::Let(LetStatement {
+                        name: ast::Ident::Str {
+                            val: "n".to_string(),
+                            span: Span { line: 8, col: 5 },
+                        },
+                        expr: Expr::Error,
+                    }),
+                ]
+            }
+        );
         assert_eq!(diagnostics.num_errors(), 6);
     }
 
@@ -419,7 +456,7 @@ let n = @;
     fn multiple_errors_2() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-"rel_t A : () -> Real = a;
+            "rel_t A : () -> Real = a;
 
 net {
 
@@ -427,23 +464,29 @@ net {
 net A {
     input A: Bool
 }
-        ", &mut diagnostics).tokenize();
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
 
         let result = Parser::new(tokens, &mut diagnostics).parse();
 
-        assert_eq!(result, Program {
-            items: vec![
-                Item::Error,
-                Item::Error,
-                Item::Net(Net {
-                    name: ast::Ident::Str {
-                        val: "A".to_string(),
-                        span: Span {line: 6, col: 5},
-                    },
-                    items: vec![NetItem::Error],
-                }),
-            ]
-        });
+        assert_eq!(
+            result,
+            Program {
+                items: vec![
+                    Item::Error,
+                    Item::Error,
+                    Item::Net(Net {
+                        name: ast::Ident::Str {
+                            val: "A".to_string(),
+                            span: Span { line: 6, col: 5 },
+                        },
+                        items: vec![NetItem::Error],
+                    }),
+                ]
+            }
+        );
         assert_eq!(diagnostics.num_errors(), 3);
     }
 }

@@ -14,20 +14,17 @@
 
 //! # core
 //!
-//! Handles relation parsing 
+//! Handles relation parsing
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
 use super::Parser;
 use super::sync::SyncRule;
-use crate::compiler::{
-    lexer::token::TokenKind,
-    objects::ast::*,
-};
+use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
 
 impl<'a> Parser<'a> {
     // Rel_t token already consumed
@@ -75,36 +72,52 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::error_handling::diagnostics::Diagnostics;
     use crate::compiler::error_handling::span::Span;
+    use crate::compiler::lexer::token::{Token, TokenKind::*};
     use crate::compiler::objects::ast;
     use crate::compiler::objects::types::Type;
-    
+
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens
             .into_iter()
-            .map(|x| Token {kind: x, span: Span{line: 0, col: 0}})
+            .map(|x| Token {
+                kind: x,
+                span: Span { line: 0, col: 0 },
+            })
             .collect()
     }
 
     fn build_ident_str(name: &str) -> ast::Ident {
         ast::Ident::Str {
             val: name.to_string(),
-            span: Span{line: 0, col: 0},
+            span: Span { line: 0, col: 0 },
         }
     }
 
     #[test]
     fn rel_and() {
         // rel_t AND (a:Bool, b:Bool) -> Bool = a*b;
-        let kinds: Vec<TokenKind> = vec![Ident("AND".to_string()), LParen, 
-            Ident("a".to_string()), Colon, Bool, Comma,
-            Ident("b".to_string()), Colon, Bool,
-            RParen, Arrow, Bool, Equals, 
-            Ident("a".to_string()), Asterisk, Ident("b".to_string()),
-            Semicolon, Eof
-            ];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("AND".to_string()),
+            LParen,
+            Ident("a".to_string()),
+            Colon,
+            Bool,
+            Comma,
+            Ident("b".to_string()),
+            Colon,
+            Bool,
+            RParen,
+            Arrow,
+            Bool,
+            Equals,
+            Ident("a".to_string()),
+            Asterisk,
+            Ident("b".to_string()),
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -112,24 +125,30 @@ mod tests {
 
         let result = parser.parse_rel_t();
 
-        assert_eq!(result, Some(RelType {
-            name: build_ident_str("AND"),
-            params: vec![Param {
-                name: build_ident_str("a"),
-                param_type: Type::Bool,
-            }, Param {
-                name: build_ident_str("b"),
-                param_type: Type::Bool,
-            }],
-            return_type: Type::Bool,
-            body: Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(build_ident_str("a"))),
-                op: BinaryOp::Mul,
-                right: Box::new(Expr::Ident(build_ident_str("b"))),
-                op_span: Span {line: 0, col: 0},
-                expr_type: Type::Unknown,
-            }),
-        }));
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: build_ident_str("AND"),
+                params: vec![
+                    Param {
+                        name: build_ident_str("a"),
+                        param_type: Type::Bool,
+                    },
+                    Param {
+                        name: build_ident_str("b"),
+                        param_type: Type::Bool,
+                    }
+                ],
+                return_type: Type::Bool,
+                body: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(build_ident_str("a"))),
+                    op: BinaryOp::Mul,
+                    right: Box::new(Expr::Ident(build_ident_str("b"))),
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Unknown,
+                }),
+            })
+        );
     }
 
     #[test]
@@ -142,11 +161,34 @@ mod tests {
         //         _ : false,
         //     }
         // };
-        let kinds: Vec<TokenKind> = vec![Ident("FLIP".to_string()), LParen, RParen, Arrow, Bool, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Sample, LBrace, Ident("p".to_string()), Colon, BoolLiteral(true), Comma,
-            Underscore, Colon, BoolLiteral(false), Comma, RBrace,
-            RBrace, Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("FLIP".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Bool,
+            Equals,
+            LBrace,
+            Let,
+            Ident("p".to_string()),
+            Equals,
+            RealLiteral(0.5),
+            Semicolon,
+            Sample,
+            LBrace,
+            Ident("p".to_string()),
+            Colon,
+            BoolLiteral(true),
+            Comma,
+            Underscore,
+            Colon,
+            BoolLiteral(false),
+            Comma,
+            RBrace,
+            RBrace,
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -154,43 +196,56 @@ mod tests {
 
         let result = parser.parse_rel_t();
 
-        assert_eq!(result, Some(RelType {
-            name: build_ident_str("FLIP"),
-            params: vec![],
-            return_type: Type::Bool,
-            body: Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
-                    name: build_ident_str("p"),
-                    expr: Expr::Literal(Literal::Real(0.5)),
-                })],
-                expr: Box::new(Expr::Sample(SampleExpr {
-                    arms: vec![
-                        SampleArm {
-                            prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
-                            expr: Expr::Literal(Literal::Bool(true)),
-                            arm_span: Span {line: 0, col: 0},
-                        },
-                        SampleArm {
-                            prob: Prob::Default,
-                            expr: Expr::Literal(Literal::Bool(false)),
-                            arm_span: Span {line: 0, col: 0},
-                        },
-                    ],
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: build_ident_str("FLIP"),
+                params: vec![],
+                return_type: Type::Bool,
+                body: Expr::Block(BlockExpr {
+                    statements: vec![Statement::Let(LetStatement {
+                        name: build_ident_str("p"),
+                        expr: Expr::Literal(Literal::Real(0.5)),
+                    })],
+                    expr: Box::new(Expr::Sample(SampleExpr {
+                        arms: vec![
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Ident(build_ident_str("p"))),
+                                expr: Expr::Literal(Literal::Bool(true)),
+                                arm_span: Span { line: 0, col: 0 },
+                            },
+                            SampleArm {
+                                prob: Prob::Default,
+                                expr: Expr::Literal(Literal::Bool(false)),
+                                arm_span: Span { line: 0, col: 0 },
+                            },
+                        ],
+                        expr_type: Type::Unknown,
+                        span: Span { line: 0, col: 0 },
+                    })),
                     expr_type: Type::Unknown,
-                    span: Span {line: 0, col: 0},
-                })),
-                expr_type: Type::Unknown,
-            }),
-        }));
+                }),
+            })
+        );
     }
 
     #[test]
     fn rel_mod() {
         // rel_t MOD () -> Mod(3) = 1;
-        let kinds: Vec<TokenKind> = vec![Ident("MOD".to_string()), 
-            LParen, RParen, Arrow, 
-            Mod, LParen, IntLiteral(3), RParen, Equals, 
-            IntLiteral(1), Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("MOD".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Mod,
+            LParen,
+            IntLiteral(3),
+            RParen,
+            Equals,
+            IntLiteral(1),
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -198,12 +253,15 @@ mod tests {
 
         let result = parser.parse_rel_t();
 
-        assert_eq!(result, Some(RelType {
-            name: build_ident_str("MOD"),
-            params: vec![],
-            return_type: Type::Mod(3),
-            body: Expr::Literal(Literal::Int(1)),
-        }));
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: build_ident_str("MOD"),
+                params: vec![],
+                return_type: Type::Mod(3),
+                body: Expr::Literal(Literal::Int(1)),
+            })
+        );
     }
 
     #[test]
@@ -211,14 +269,33 @@ mod tests {
         // rel_t NUM () -> Real = {
         //     let p = 0.5     // missing semicolon
         //     let q = 0.4;
-        
+
         //     p+q
         // };
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5),
-            Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
-            Ident("p".to_string()), Plus, Ident("q".to_string()),
-            RBrace, Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("NUM".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Real,
+            Equals,
+            LBrace,
+            Let,
+            Ident("p".to_string()),
+            Equals,
+            RealLiteral(0.5),
+            Let,
+            Ident("q".to_string()),
+            Equals,
+            RealLiteral(0.4),
+            Semicolon,
+            Ident("p".to_string()),
+            Plus,
+            Ident("q".to_string()),
+            RBrace,
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -228,28 +305,31 @@ mod tests {
 
         diagnostics.debug_print();
 
-        assert_eq!(result, Some(RelType {
-            name: build_ident_str("NUM"),
-            params: vec![],
-            return_type: Type::Real,
-            body: Expr::Block(BlockExpr {
-                statements: vec![
-                    Statement::Error,
-                    Statement::Let(LetStatement {
-                        name: build_ident_str("q"),
-                        expr: Expr::Literal(Literal::Real(0.4)),
-                    })
-                ],
-                expr: Box::new(Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Ident(build_ident_str("p"))),
-                    op: BinaryOp::Add,
-                    right: Box::new(Expr::Ident(build_ident_str("q"))),
-                    op_span: Span {line: 0, col: 0},
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: build_ident_str("NUM"),
+                params: vec![],
+                return_type: Type::Real,
+                body: Expr::Block(BlockExpr {
+                    statements: vec![
+                        Statement::Error,
+                        Statement::Let(LetStatement {
+                            name: build_ident_str("q"),
+                            expr: Expr::Literal(Literal::Real(0.4)),
+                        })
+                    ],
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(build_ident_str("p"))),
+                        op: BinaryOp::Add,
+                        right: Box::new(Expr::Ident(build_ident_str("q"))),
+                        op_span: Span { line: 0, col: 0 },
+                        expr_type: Type::Unknown,
+                    })),
                     expr_type: Type::Unknown,
-                })),
-                expr_type: Type::Unknown,
-            }),
-        }));
+                }),
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -257,12 +337,30 @@ mod tests {
     fn bad_rel_2() {
         // rel_t NUM () -> Real = {
         //     let p = 0.5;
-        //     let q = 0.4; 
+        //     let q = 0.4;
         // }; // missing expr
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
-            RBrace, Semicolon, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("NUM".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Real,
+            Equals,
+            LBrace,
+            Let,
+            Ident("p".to_string()),
+            Equals,
+            RealLiteral(0.5),
+            Semicolon,
+            Let,
+            Ident("q".to_string()),
+            Equals,
+            RealLiteral(0.4),
+            Semicolon,
+            RBrace,
+            Semicolon,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -272,25 +370,28 @@ mod tests {
 
         diagnostics.debug_print();
 
-        assert_eq!(result, Some(RelType {
-            name: build_ident_str("NUM"),
-            params: vec![],
-            return_type: Type::Real,
-            body: Expr::Block(BlockExpr {
-                statements: vec![
-                    Statement::Let(LetStatement {
-                        name: build_ident_str("p"),
-                        expr: Expr::Literal(Literal::Real(0.5)),
-                    }),
-                    Statement::Let(LetStatement {
-                        name: build_ident_str("q"),
-                        expr: Expr::Literal(Literal::Real(0.4)),
-                    }),
-                ],
-                expr: Box::new(Expr::Error),
-                expr_type: Type::Unknown,
-            }),
-        }));
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: build_ident_str("NUM"),
+                params: vec![],
+                return_type: Type::Real,
+                body: Expr::Block(BlockExpr {
+                    statements: vec![
+                        Statement::Let(LetStatement {
+                            name: build_ident_str("p"),
+                            expr: Expr::Literal(Literal::Real(0.5)),
+                        }),
+                        Statement::Let(LetStatement {
+                            name: build_ident_str("q"),
+                            expr: Expr::Literal(Literal::Real(0.4)),
+                        }),
+                    ],
+                    expr: Box::new(Expr::Error),
+                    expr_type: Type::Unknown,
+                }),
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -299,14 +400,33 @@ mod tests {
         // rel_t NUM () -> Real = {
         //     let p = 0.5;
         //     let q = 0.4;
-        
+
         //     p+q
         // }// missing semicolon
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
-            Ident("p".to_string()), Plus, Ident("q".to_string()),// Minus,
-            RBrace, Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("NUM".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Real,
+            Equals,
+            LBrace,
+            Let,
+            Ident("p".to_string()),
+            Equals,
+            RealLiteral(0.5),
+            Semicolon,
+            Let,
+            Ident("q".to_string()),
+            Equals,
+            RealLiteral(0.4),
+            Semicolon,
+            Ident("p".to_string()),
+            Plus,
+            Ident("q".to_string()), // Minus,
+            RBrace,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();
@@ -323,14 +443,32 @@ mod tests {
         // rel_t NUM () -> Real = {
         //     let p = 0.5;
         //     let q = 0.4;
-        
+
         //     p+q
         // // missing closing brace
-        let kinds: Vec<TokenKind> = vec![Ident("NUM".to_string()), LParen, RParen, Arrow, Real, Equals, LBrace,
-            Let, Ident("p".to_string()), Equals, RealLiteral(0.5), Semicolon,
-            Let, Ident("q".to_string()), Equals, RealLiteral(0.4), Semicolon,
-            Ident("p".to_string()), Plus, Ident("q".to_string()),// Minus,
-            Eof];
+        let kinds: Vec<TokenKind> = vec![
+            Ident("NUM".to_string()),
+            LParen,
+            RParen,
+            Arrow,
+            Real,
+            Equals,
+            LBrace,
+            Let,
+            Ident("p".to_string()),
+            Equals,
+            RealLiteral(0.5),
+            Semicolon,
+            Let,
+            Ident("q".to_string()),
+            Equals,
+            RealLiteral(0.4),
+            Semicolon,
+            Ident("p".to_string()),
+            Plus,
+            Ident("q".to_string()), // Minus,
+            Eof,
+        ];
         let tokens: Vec<Token> = build_token_vec(kinds);
 
         let mut diagnostics = Diagnostics::new();

@@ -27,13 +27,13 @@ use crate::compiler::{
     error_handling::diagnostics::Diagnostic,
     error_handling::span::Span,
     objects::{
-        symbol::{SymbolId, SymbolKind},
         ast::*,
+        symbol::{SymbolId, SymbolKind},
         types::Type,
     },
 };
 
-impl <'a> SemAnalyzer<'a> {
+impl<'a> SemAnalyzer<'a> {
     // Add type info to symbols
     // Verify all types match
     // Check number of relation arguments
@@ -51,9 +51,9 @@ impl <'a> SemAnalyzer<'a> {
 
     fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt)     => Some(Item::Let(self.check_let(stmt))),
+            Item::Let(stmt) => Some(Item::Let(self.check_let(stmt))),
             Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
-            Item::Net(net)      => self.check_net(net).map(Item::Net),
+            Item::Net(net) => self.check_net(net).map(Item::Net),
             _ => None,
         }
     }
@@ -74,7 +74,7 @@ impl <'a> SemAnalyzer<'a> {
     }
 
     fn check_rel(&mut self, mut rel_t: RelType) -> Option<RelType> {
-        // Annotate types of each parameter's symbol 
+        // Annotate types of each parameter's symbol
         // Annotate types of parameter and return in the relations name symbol
         // Check expression type matches return type
 
@@ -85,9 +85,8 @@ impl <'a> SemAnalyzer<'a> {
                 }
             }
 
-
             if let Ident::Symbol(rel_name_id) = rel_t.name {
-                if let SymbolKind::Rel_t {input_types, ..} = &mut self.symbols[rel_name_id].kind {
+                if let SymbolKind::Rel_t { input_types, .. } = &mut self.symbols[rel_name_id].kind {
                     input_types.push(param.param_type.clone());
                 }
             }
@@ -98,18 +97,16 @@ impl <'a> SemAnalyzer<'a> {
         let expr_type = self.get_expr_type(&rel_t.body);
 
         let span = match &rel_t.name {
-            Ident::Str { span, ..} => span.clone(),  // Not reached but needed for compiling
+            Ident::Str { span, .. } => span.clone(), // Not reached but needed for compiling
             Ident::Symbol(id) => self.symbols[*id].span.clone(),
         };
 
-        rel_t.return_type = self.verify_return_type(
-            &rel_t.return_type, 
-            &expr_type,
-            &span
-        ).unwrap_or(Type::Error);
+        rel_t.return_type = self
+            .verify_return_type(&rel_t.return_type, &expr_type, &span)
+            .unwrap_or(Type::Error);
 
         if let Ident::Symbol(rel_name_id) = rel_t.name {
-            if let SymbolKind::Rel_t {return_type, ..} = &mut self.symbols[rel_name_id].kind {
+            if let SymbolKind::Rel_t { return_type, .. } = &mut self.symbols[rel_name_id].kind {
                 *return_type = rel_t.return_type.clone();
             }
         }
@@ -141,7 +138,8 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), span)?;
+                let new_type =
+                    self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -157,7 +155,8 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(symbol_type, output_ent.param.param_type.clone(), span)?;
+                let new_type =
+                    self.compare_ent_types(symbol_type, output_ent.param.param_type.clone(), span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -173,7 +172,8 @@ impl <'a> SemAnalyzer<'a> {
 
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
-                let new_type = self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), span)?;
+                let new_type =
+                    self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), span)?;
 
                 let expr_type = self.get_expr_type(&ent_init.val);
 
@@ -192,16 +192,22 @@ impl <'a> SemAnalyzer<'a> {
                 };
 
                 let (input_types, return_type) = match &self.symbols[rel_id].kind {
-                    SymbolKind::Rel_t {input_types, return_type} => (input_types.clone(), return_type.clone()),
+                    SymbolKind::Rel_t {
+                        input_types,
+                        return_type,
+                    } => (input_types.clone(), return_type.clone()),
 
                     other => {
                         self.diagnostics.error(Diagnostic::UnexpectedIdent {
-                            expected: vec![SymbolKind::Rel_t{input_types: Vec::new(), return_type: Type::Unknown}],
+                            expected: vec![SymbolKind::Rel_t {
+                                input_types: Vec::new(),
+                                return_type: Type::Unknown,
+                            }],
                             found: other.clone(),
                             span: self.symbols[rel_id].span.clone(),
                         });
 
-                        return None
+                        return None;
                     }
                 };
 
@@ -221,7 +227,8 @@ impl <'a> SemAnalyzer<'a> {
                     };
                     let (actual_type, span) = self.get_ent_type(*arg_id)?;
 
-                    let Some(new_type) = self.compare_ent_types(actual_type, expected_type, span) else {
+                    let Some(new_type) = self.compare_ent_types(actual_type, expected_type, span)
+                    else {
                         return None;
                     };
 
@@ -236,10 +243,10 @@ impl <'a> SemAnalyzer<'a> {
                 };
                 let (asignee_type, span) = self.get_ent_type(asignee_id)?;
 
-                let Some(new_type) = self.compare_ent_types(asignee_type, return_type, span)  else {
+                let Some(new_type) = self.compare_ent_types(asignee_type, return_type, span) else {
                     return None;
                 };
-                
+
                 // if ent is first declared here, its type will be Unknown and it needs to be set based on the rel_t
                 if let SymbolKind::Ent(ty) = &mut self.symbols[asignee_id].kind {
                     *ty = new_type;
@@ -255,7 +262,7 @@ impl <'a> SemAnalyzer<'a> {
                 };
 
                 let ports = match &self.symbols[net_id].kind {
-                    SymbolKind::Net {ports} => ports.clone(),
+                    SymbolKind::Net { ports } => ports.clone(),
                     _ => return None, // Do not need to check this condition as find_net_port in resolve_net already does.
                 };
 
@@ -271,19 +278,24 @@ impl <'a> SemAnalyzer<'a> {
                     };
                     match ports.get(connection_port_name) {
                         Some(inst_port) => {
-                            let (inst_port_type, inst_port_span) = self.get_ent_type(inst_port.symbol)?;
+                            let (inst_port_type, inst_port_span) =
+                                self.get_ent_type(inst_port.symbol)?;
 
-                            let (connection_ent_type, _connection_ent_span) = self.get_ent_type(connection_ent_id)?;
+                            let (connection_ent_type, _connection_ent_span) =
+                                self.get_ent_type(connection_ent_id)?;
 
                             // if an ent is first declared as a connection, we need to set its type here
                             if connection_ent_type == Type::Unknown {
-                                if let SymbolKind::Ent(ty) = &mut self.symbols[connection_ent_id].kind {
+                                if let SymbolKind::Ent(ty) =
+                                    &mut self.symbols[connection_ent_id].kind
+                                {
                                     *ty = inst_port_type;
                                 }
-                            }
-                            else if inst_port_type != connection_ent_type {
+                            } else if inst_port_type != connection_ent_type {
                                 // If either are type error, return early to not report extra errors for the same problem
-                                if inst_port_type == Type::Error || connection_ent_type == Type::Error {
+                                if inst_port_type == Type::Error
+                                    || connection_ent_type == Type::Error
+                                {
                                     return None;
                                 }
 
@@ -302,7 +314,7 @@ impl <'a> SemAnalyzer<'a> {
                                 span: connection_port_span.clone(),
                             });
 
-                            return None
+                            return None;
                         }
                     }
                 }
@@ -314,7 +326,12 @@ impl <'a> SemAnalyzer<'a> {
         }
     }
 
-    fn verify_return_type(&mut self, return_type: &Type, expr_type: &Type, rel_span: &Span) -> Option<Type> {
+    fn verify_return_type(
+        &mut self,
+        return_type: &Type,
+        expr_type: &Type,
+        rel_span: &Span,
+    ) -> Option<Type> {
         match (return_type, expr_type) {
             (Type::Impulse, Type::Impulse) => Some(Type::Impulse),
             (Type::Impulse, Type::Bool) => Some(Type::Impulse),
@@ -325,8 +342,7 @@ impl <'a> SemAnalyzer<'a> {
             (Type::Mod(val_l), Type::Mod(val_r)) => {
                 if val_l == val_r {
                     Some(Type::Mod(*val_l))
-                }
-                else {
+                } else {
                     self.diagnostics.error(Diagnostic::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
@@ -338,23 +354,22 @@ impl <'a> SemAnalyzer<'a> {
             }
             (Type::Mod(val), Type::Int) => Some(Type::Mod(*val)),
 
-            (Type::Int,  Type::Mod(_)) => Some(Type::Int),
-            (Type::Int,  Type::Int   ) => Some(Type::Int),
+            (Type::Int, Type::Mod(_)) => Some(Type::Int),
+            (Type::Int, Type::Int) => Some(Type::Int),
             (Type::Real, Type::Mod(_)) => Some(Type::Real),
-            (Type::Real, Type::Int   ) => Some(Type::Real),
-            (Type::Real, Type::Real  ) => Some(Type::Real),
+            (Type::Real, Type::Int) => Some(Type::Real),
+            (Type::Real, Type::Real) => Some(Type::Real),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
                     (Ident::Symbol(id_l), Ident::Symbol(id_r)) => (*id_l, *id_r),
-                    
+
                     _ => return None, // Unreachable after name resolution
                 };
 
                 if parent_l == parent_r {
                     Some(Type::Custom(Ident::Symbol(parent_l)))
-                }
-                else {
+                } else {
                     self.diagnostics.error(Diagnostic::IncompatibleReturnType {
                         return_type: return_type.clone(),
                         expr_type: expr_type.clone(),
@@ -379,22 +394,23 @@ impl <'a> SemAnalyzer<'a> {
 
     fn get_ent_type(&self, id: SymbolId) -> Option<(Type, Span)> {
         match &self.symbols[id].kind {
-            SymbolKind::Ent(ty) => {
-                Some((ty.clone(), self.symbols[id].span.clone()))
-            }
+            SymbolKind::Ent(ty) => Some((ty.clone(), self.symbols[id].span.clone())),
             _ => None,
         }
     }
 
-    fn compare_ent_types(&mut self, symbol_type: Type, object_type: Type, span: Span) -> Option<Type> {
+    fn compare_ent_types(
+        &mut self,
+        symbol_type: Type,
+        object_type: Type,
+        span: Span,
+    ) -> Option<Type> {
         if symbol_type == object_type {
-            return Some(object_type)
+            return Some(object_type);
         }
 
         match symbol_type {
-            Type::Unknown => {
-                Some(object_type)
-            }
+            Type::Unknown => Some(object_type),
 
             _ => {
                 // If either are type error, return early to not report extra errors for the same problem
@@ -419,30 +435,24 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::error_handling::diagnostics::Diagnostics;
-    use crate::compiler::objects::symbol::{Symbol, NetPort};
+    use crate::compiler::objects::symbol::{NetPort, Symbol};
+    use crate::compiler::sem_analyzer::scope::Scope;
 
     #[test]
     fn check_let_1() {
         // let n = 1;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
-            symbols: vec![
-                Symbol {
-                    name: "n".to_string(),
-                    kind: SymbolKind::Variable(Type::Unknown),
-                    span: Span{line: 0, col: 0},
-                },
-            ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("n".to_string(), 0),
-                    ])
-                },
-            ],
+            ast: Program { items: Vec::new() },
+            symbols: vec![Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span { line: 0, col: 0 },
+            }],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("n".to_string(), 0)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -452,13 +462,14 @@ mod tests {
             expr: Expr::Literal(Literal::Int(1)),
         });
 
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 0},
-            },
-        ]);
+                span: Span { line: 0, col: 0 },
+            },]
+        );
     }
 
     #[test]
@@ -466,7 +477,7 @@ mod tests {
         // rel_t ADD : (a: Real) -> Real = a + 1;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "ADD".to_string(),
@@ -474,22 +485,17 @@ mod tests {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
-                    span: Span{line: 0, col: 5},
+                    span: Span { line: 0, col: 5 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("ADD".to_string(), 0),
-                        ("a".to_string(), 1),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("ADD".to_string(), 0), ("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -505,41 +511,47 @@ mod tests {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 10},
+                op_span: Span { line: 0, col: 10 },
                 expr_type: Type::Unknown,
             }),
         });
 
-        assert_eq!(result, Some(RelType {
-            name: Ident::Symbol(0),
-            params: vec![Param {
-                name: Ident::Symbol(1),
-                param_type: Type::Real,
-            }],
-            return_type: Type::Real,
-            body: Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Literal(Literal::Int(1))),
-                op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 10},
-                expr_type: Type::Real,
-            }),
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Real],
-                    return_type: Type::Real,
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: Ident::Symbol(0),
+                params: vec![Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Real,
+                }],
+                return_type: Type::Real,
+                body: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                    op: BinaryOp::Add,
+                    op_span: Span { line: 0, col: 10 },
+                    expr_type: Type::Real,
+                }),
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Real],
+                        return_type: Type::Real,
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Variable(Type::Real),
-                span: Span{line: 0, col: 5},
-            },
-        ]);
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Real),
+                    span: Span { line: 0, col: 5 },
+                },
+            ]
+        );
     }
 
     #[test]
@@ -547,20 +559,20 @@ mod tests {
         // rel_t EX : () -> PARENT = CHILD;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "PARENT".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "CHILD".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "EX".to_string(),
@@ -568,18 +580,16 @@ mod tests {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("PARENT".to_string(), 0),
-                        ("CHILD".to_string(), 1),
-                        ("EX".to_string(), 1),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("PARENT".to_string(), 0),
+                    ("CHILD".to_string(), 1),
+                    ("EX".to_string(), 1),
+                ]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -591,35 +601,41 @@ mod tests {
             body: Expr::Ident(Ident::Symbol(1)),
         });
 
-        assert_eq!(result, Some(RelType {
-            name: Ident::Symbol(2),
-            params: vec![],
-            return_type: Type::Custom(Ident::Symbol(0)),
-            body: Expr::Ident(Ident::Symbol(1)),
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "PARENT".to_string(),
-                kind: SymbolKind::EntType,
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "CHILD".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 0,
-                    mapping: 0,
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: Ident::Symbol(2),
+                params: vec![],
+                return_type: Type::Custom(Ident::Symbol(0)),
+                body: Expr::Ident(Ident::Symbol(1)),
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "PARENT".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span { line: 0, col: 0 },
                 },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "EX".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: Vec::new(),
-                    return_type: Type::Custom(Ident::Symbol(0)),
+                Symbol {
+                    name: "CHILD".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 0,
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
-                span: Span{line: 0, col: 0},
-            },
-        ]);
+                Symbol {
+                    name: "EX".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: Vec::new(),
+                        return_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
     }
 
     #[test]
@@ -627,7 +643,7 @@ mod tests {
         // rel_t ADD : (a: Int) -> Int = a + 1.0; //  incompatible return type
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "ADD".to_string(),
@@ -635,22 +651,17 @@ mod tests {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
-                    span: Span{line: 0, col: 5},
+                    span: Span { line: 0, col: 5 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("ADD".to_string(), 0),
-                        ("a".to_string(), 1),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("ADD".to_string(), 0), ("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -666,42 +677,48 @@ mod tests {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Real(1.0))),
                 op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 10},
+                op_span: Span { line: 0, col: 10 },
                 expr_type: Type::Unknown,
             }),
         });
 
-        assert_eq!(result, Some(RelType {
-            name: Ident::Symbol(0),
-            params: vec![Param {
-                name: Ident::Symbol(1),
-                param_type: Type::Int,
-            }],
-            return_type: Type::Error,
-            body: Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Literal(Literal::Real(1.0))),
-                op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 10},
-                expr_type: Type::Real,
-            }),
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Int],
-                    return_type: Type::Error,
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: Ident::Symbol(0),
+                params: vec![Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Int,
+                }],
+                return_type: Type::Error,
+                body: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Literal(Literal::Real(1.0))),
+                    op: BinaryOp::Add,
+                    op_span: Span { line: 0, col: 10 },
+                    expr_type: Type::Real,
+                }),
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Int],
+                        return_type: Type::Error,
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Variable(Type::Int),
-                span: Span{line: 0, col: 5},
-            },
-        ]);
-        
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Int),
+                    span: Span { line: 0, col: 5 },
+                },
+            ]
+        );
+
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -710,7 +727,7 @@ mod tests {
         // rel_t ADD : (a: Bool) -> Real = a + 1; // incompatible types
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "ADD".to_string(),
@@ -718,22 +735,17 @@ mod tests {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Variable(Type::Unknown),
-                    span: Span{line: 0, col: 5},
+                    span: Span { line: 0, col: 5 },
                 },
             ],
-            scopes: vec![
-                Scope {
-                    symbols: HashMap::from([
-                        ("ADD".to_string(), 0),
-                        ("a".to_string(), 1),
-                    ])
-                },
-            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("ADD".to_string(), 0), ("a".to_string(), 1)]),
+            }],
 
             diagnostics: &mut diagnostics,
         };
@@ -749,35 +761,41 @@ mod tests {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Int(1))),
                 op: BinaryOp::Add,
-                op_span: Span {line: 0, col: 10},
+                op_span: Span { line: 0, col: 10 },
                 expr_type: Type::Unknown,
             }),
         });
 
-        assert_eq!(result, Some(RelType {
-            name: Ident::Symbol(0),
-            params: vec![Param {
-                name: Ident::Symbol(1),
-                param_type: Type::Bool,
-            }],
-            return_type: Type::Error,
-            body: Expr::Error,
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Bool],
-                    return_type: Type::Error,
+        assert_eq!(
+            result,
+            Some(RelType {
+                name: Ident::Symbol(0),
+                params: vec![Param {
+                    name: Ident::Symbol(1),
+                    param_type: Type::Bool,
+                }],
+                return_type: Type::Error,
+                body: Expr::Error,
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool],
+                        return_type: Type::Error,
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Variable(Type::Bool),
-                span: Span{line: 0, col: 5},
-            },
-        ]);
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span { line: 0, col: 5 },
+                },
+            ]
+        );
     }
 
     #[test]
@@ -788,22 +806,25 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 1,
-                            input: true,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -819,7 +840,7 @@ mod tests {
                         name: Ident::Symbol(1),
                         param_type: Type::Bool,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -831,42 +852,51 @@ mod tests {
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(0),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(1),
-                        param_type: Type::Bool,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Init(EntInit {
-                    param: Param {
-                        name: Ident::Symbol(1),
-                        param_type: Type::Bool,
-                    },
-                    val: Expr::Literal(Literal::Bool(true)),
-                }),
-            ],
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "TEST".to_string(),
-                kind: SymbolKind::Net {ports: HashMap::from([
-                    ("a".to_string(), NetPort {
-                        symbol: 1,
-                        input: true,
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(0),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Bool,
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                ])},
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Bool),
-                span: Span {line: 0, col: 0},
-            },
-        ]);
+                    NetItem::Init(EntInit {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Bool,
+                        },
+                        val: Expr::Literal(Literal::Bool(true)),
+                    }),
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 0);
     }
 
@@ -878,22 +908,25 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 1,
-                            input: true,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -909,7 +942,7 @@ mod tests {
                         name: Ident::Symbol(1),
                         param_type: Type::Bool,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -921,36 +954,45 @@ mod tests {
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(0),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(1),
-                        param_type: Type::Bool,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Error,
-            ],
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "TEST".to_string(),
-                kind: SymbolKind::Net {ports: HashMap::from([
-                    ("a".to_string(), NetPort {
-                        symbol: 1,
-                        input: true,
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(0),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Bool,
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                ])},
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Bool),
-                span: Span {line: 0, col: 0},
-            },
-        ]);
+                    NetItem::Error,
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -962,22 +1004,25 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 1,
-                            input: true,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -993,7 +1038,7 @@ mod tests {
                         name: Ident::Symbol(1),
                         param_type: Type::Bool,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
@@ -1005,36 +1050,45 @@ mod tests {
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(0),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(1),
-                        param_type: Type::Bool,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Error,
-            ],
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "TEST".to_string(),
-                kind: SymbolKind::Net {ports: HashMap::from([
-                    ("a".to_string(), NetPort {
-                        symbol: 1,
-                        input: true,
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(0),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Bool,
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                ])},
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Bool),
-                span: Span {line: 0, col: 0},
-            },
-        ]);
+                    NetItem::Error,
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -1049,28 +1103,28 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
@@ -1078,40 +1132,51 @@ mod tests {
                         input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Real,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 7,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -1127,133 +1192,144 @@ mod tests {
                         name: Ident::Symbol(5),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(6),
                         param_type: Type::Custom(Ident::Symbol(0)),
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
-                    args: vec![
-                        Ident::Symbol(5),
-                        Ident::Symbol(6),
-                    ],
-                    span: Span {line: 0, col: 0},
+                    args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(6),
-                        param_type: Type::Custom(Ident::Symbol(0)),
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(7),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::RelInst(RelInst {
-                    asignee: Ident::Symbol(7),
-                    rel: Ident::Symbol(3),
-                    args: vec![
-                        Ident::Symbol(5),
-                        Ident::Symbol(6),
-                    ],
-                    span: Span {line: 0, col: 0},
-                }),
-            ],
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "COIN".to_string(),
-                kind: SymbolKind::EntType,
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "H".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 0,
-                    mapping: 0,
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "T".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 0,
-                    mapping: 1,
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Rel_t {
-                    input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                    return_type: Type::Real,
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "TEST".to_string(),
-                kind: SymbolKind::Net {ports: HashMap::from([
-                    ("a".to_string(), NetPort {
-                        symbol: 5,
-                        input: true,
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                    ("b".to_string(), NetPort {
-                        symbol: 6,
-                        input: true,
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Custom(Ident::Symbol(0)),
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                    ("c".to_string(), NetPort {
-                        symbol: 7,
-                        input: false,
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
                     }),
-                ])},
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "b".to_string(),
-                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "c".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span {line: 0, col: 0},
-            },
-        ]);
+                    NetItem::RelInst(RelInst {
+                        asignee: Ident::Symbol(7),
+                        rel: Ident::Symbol(3),
+                        args: vec![Ident::Symbol(5), Ident::Symbol(6),],
+                        span: Span { line: 0, col: 0 },
+                    }),
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 0,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 1,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Real,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                }
+                            ),
+                        ])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 0);
     }
 
@@ -1268,28 +1344,28 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
@@ -1297,40 +1373,51 @@ mod tests {
                         input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Real,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 7,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -1346,63 +1433,63 @@ mod tests {
                         name: Ident::Symbol(5),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(6),
                         param_type: Type::Custom(Ident::Symbol(0)),
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
-                    args: vec![
-                        Ident::Symbol(5),
-                        Ident::Symbol(6),
-                    ],
-                    span: Span {line: 0, col: 0},
+                    args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         });
-        
+
         diagnostics.debug_print();
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(6),
-                        param_type: Type::Custom(Ident::Symbol(0)),
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(7),
-                        param_type: Type::Int,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Error,
-            ],
-        }));
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Custom(Ident::Symbol(0)),
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Int,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Error,
+                ],
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -1417,28 +1504,28 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
@@ -1446,40 +1533,51 @@ mod tests {
                         input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Real,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 7,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -1495,60 +1593,61 @@ mod tests {
                         name: Ident::Symbol(5),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(6),
                         param_type: Type::Custom(Ident::Symbol(0)),
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
-                    args: vec![
-                        Ident::Symbol(5),
-                    ],
-                    span: Span {line: 0, col: 0},
+                    args: vec![Ident::Symbol(5)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(6),
-                        param_type: Type::Custom(Ident::Symbol(0)),
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(7),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Error,
-            ],
-        }));
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Custom(Ident::Symbol(0)),
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Error,
+                ],
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -1563,28 +1662,28 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
@@ -1592,40 +1691,51 @@ mod tests {
                         input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Real,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 7,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -1641,14 +1751,14 @@ mod tests {
                         name: Ident::Symbol(5),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(6),
                         param_type: Type::Bool,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Output(OutputEnt {
                     param: Param {
@@ -1659,41 +1769,41 @@ mod tests {
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
-                    args: vec![
-                        Ident::Symbol(5),
-                        Ident::Symbol(6),
-                    ],
-                    span: Span {line: 0, col: 0},
+                    args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    span: Span { line: 0, col: 0 },
                 }),
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(5),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(6),
-                        param_type: Type::Bool,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Output(OutputEnt {
-                    param: Param {
-                        name: Ident::Symbol(7),
-                        param_type: Type::Real,
-                    },
-                }),
-                NetItem::Error,
-            ],
-        }));
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Bool,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Output(OutputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Real,
+                        },
+                    }),
+                    NetItem::Error,
+                ],
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 
@@ -1712,96 +1822,116 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), NetPort {
-                                symbol: 4,
-                                input: true,
-                            }),
-                            ("B".to_string(), NetPort {
-                                symbol: 5,
-                                input: true,
-                            }),
-                            ("C".to_string(), NetPort {
-                                symbol: 6,
-                                input: false,
-                            }),
+                            (
+                                "A".to_string(),
+                                NetPort {
+                                    symbol: 4,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "B".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "C".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: false,
+                                },
+                            ),
                         ]),
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "A".to_string(),
                     kind: SymbolKind::Ent(Type::Real),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "B".to_string(),
                     kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "C".to_string(),
                     kind: SymbolKind::Ent(Type::Real),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 8,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 10,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 8,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 10,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -1817,182 +1947,208 @@ mod tests {
                         name: Ident::Symbol(8),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(9),
                         param_type: Type::Custom(Ident::Symbol(0)),
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(10),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
-                            ent: Ident::Symbol(8), 
-                            span: Span {line: 0, col: 0},
+                            ent: Ident::Symbol(8),
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
-                            ent: Ident::Symbol(9), 
-                            span: Span {line: 0, col: 0},
+                            ent: Ident::Symbol(9),
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(6),
-                            ent: Ident::Symbol(10), 
-                            span: Span {line: 0, col: 0},
+                            ent: Ident::Symbol(10),
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(8),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(9),
-                        param_type: Type::Custom(Ident::Symbol(0)),
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(10),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::NetInst(NetInst {
-                    net: Ident::Symbol(3),
-                    connections: vec![
-                        Connection {
-                            port: Ident::Symbol(4),
-                            ent: Ident::Symbol(8), 
-                            span: Span {line: 0, col: 0},
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(8),
+                            param_type: Type::Real,
                         },
-                        Connection {
-                            port: Ident::Symbol(5),
-                            ent: Ident::Symbol(9), 
-                            span: Span {line: 0, col: 0},
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(9),
+                            param_type: Type::Custom(Ident::Symbol(0)),
                         },
-                        Connection {
-                            port: Ident::Symbol(6),
-                            ent: Ident::Symbol(10), 
-                            span: Span {line: 0, col: 0},
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(10),
+                            param_type: Type::Real,
                         },
-                    ],
-                }),
-            ],
-        }));
-        assert_eq!(sem_analyzer.symbols, vec![
-            Symbol {
-                name: "COIN".to_string(),
-                kind: SymbolKind::EntType,
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "H".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 0,
-                    mapping: 0,
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "T".to_string(),
-                kind: SymbolKind::EntMember{
-                    parent: 0,
-                    mapping: 1,
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "ADD".to_string(),
-                kind: SymbolKind::Net {
-                    ports: HashMap::from([
-                        ("A".to_string(), NetPort {
-                            symbol: 4,
-                            input: true,
-                        }),
-                        ("B".to_string(), NetPort {
-                            symbol: 5,
-                            input: true,
-                        }),
-                        ("C".to_string(), NetPort {
-                            symbol: 6,
-                            input: false,
-                        }),
-                    ]),
-                },
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "A".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "B".to_string(),
-                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "C".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span{line: 0, col: 0},
-            },
-            Symbol {
-                name: "TEST".to_string(),
-                kind: SymbolKind::Net {ports: HashMap::from([
-                    ("a".to_string(), NetPort {
-                        symbol: 8,
-                        input: true,
+                        span: Span { line: 0, col: 0 },
                     }),
-                    ("b".to_string(), NetPort {
-                        symbol: 6,
-                        input: true,
+                    NetItem::NetInst(NetInst {
+                        net: Ident::Symbol(3),
+                        connections: vec![
+                            Connection {
+                                port: Ident::Symbol(4),
+                                ent: Ident::Symbol(8),
+                                span: Span { line: 0, col: 0 },
+                            },
+                            Connection {
+                                port: Ident::Symbol(5),
+                                ent: Ident::Symbol(9),
+                                span: Span { line: 0, col: 0 },
+                            },
+                            Connection {
+                                port: Ident::Symbol(6),
+                                ent: Ident::Symbol(10),
+                                span: Span { line: 0, col: 0 },
+                            },
+                        ],
                     }),
-                    ("c".to_string(), NetPort {
-                        symbol: 10,
-                        input: false,
-                    }),
-                ])},
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "a".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "b".to_string(),
-                kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
-                span: Span {line: 0, col: 0},
-            },
-            Symbol {
-                name: "c".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
-                span: Span {line: 0, col: 0},
-            },
-        ]);
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 0,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 1,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "A".to_string(),
+                                NetPort {
+                                    symbol: 4,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "B".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "C".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: false,
+                                }
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "A".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "B".to_string(),
+                    kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "C".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 8,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                }
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 10,
+                                    input: false,
+                                }
+                            ),
+                        ])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Ent(Type::Real),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
         assert_eq!(diagnostics.num_errors(), 0);
     }
 
@@ -2011,96 +2167,116 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program {items: Vec::new()},
+            ast: Program { items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
                     kind: SymbolKind::EntType,
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "H".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 0,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "T".to_string(),
-                    kind: SymbolKind::EntMember{
+                    kind: SymbolKind::EntMember {
                         parent: 0,
                         mapping: 1,
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Net {
                         ports: HashMap::from([
-                            ("A".to_string(), NetPort {
-                                symbol: 4,
-                                input: true,
-                            }),
-                            ("B".to_string(), NetPort {
-                                symbol: 5,
-                                input: true,
-                            }),
-                            ("C".to_string(), NetPort {
-                                symbol: 6,
-                                input: false,
-                            }),
+                            (
+                                "A".to_string(),
+                                NetPort {
+                                    symbol: 4,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "B".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "C".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: false,
+                                },
+                            ),
                         ]),
                     },
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "A".to_string(),
                     kind: SymbolKind::Ent(Type::Real),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "B".to_string(),
                     kind: SymbolKind::Ent(Type::Custom(Ident::Symbol(0))),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "C".to_string(),
                     kind: SymbolKind::Ent(Type::Real),
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "TEST".to_string(),
-                    kind: SymbolKind::Net {ports: HashMap::from([
-                        ("a".to_string(), NetPort {
-                            symbol: 8,
-                            input: true,
-                        }),
-                        ("b".to_string(), NetPort {
-                            symbol: 6,
-                            input: true,
-                        }),
-                        ("c".to_string(), NetPort {
-                            symbol: 10,
-                            input: false,
-                        }),
-                    ])},
-                    span: Span {line: 0, col: 0},
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 8,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 10,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "b".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span {line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 },
             ],
             scopes: vec![],
@@ -2116,72 +2292,75 @@ mod tests {
                         name: Ident::Symbol(8),
                         param_type: Type::Real,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(9),
                         param_type: Type::Custom(Ident::Symbol(0)),
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(10),
                         param_type: Type::Int,
                     },
-                    span: Span{line: 0, col: 0},
+                    span: Span { line: 0, col: 0 },
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
-                            ent: Ident::Symbol(8), 
-                            span: Span {line: 0, col: 0},
+                            ent: Ident::Symbol(8),
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(5),
-                            ent: Ident::Symbol(9), 
-                            span: Span {line: 0, col: 0},
+                            ent: Ident::Symbol(9),
+                            span: Span { line: 0, col: 0 },
                         },
                         Connection {
                             port: Ident::Symbol(6),
                             ent: Ident::Symbol(10),
-                            span: Span {line: 0, col: 0}, 
+                            span: Span { line: 0, col: 0 },
                         },
                     ],
                 }),
             ],
         });
 
-        assert_eq!(result, Some(Net {
-            name: Ident::Symbol(4),
-            items: vec![
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(8),
-                        param_type: Type::Real,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(9),
-                        param_type: Type::Custom(Ident::Symbol(0)),
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Input(InputEnt {
-                    param: Param {
-                        name: Ident::Symbol(10),
-                        param_type: Type::Int,
-                    },
-                    span: Span{line: 0, col: 0},
-                }),
-                NetItem::Error,
-            ],
-        }));
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(8),
+                            param_type: Type::Real,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(9),
+                            param_type: Type::Custom(Ident::Symbol(0)),
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(10),
+                            param_type: Type::Int,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Error,
+                ],
+            })
+        );
         assert_eq!(diagnostics.num_errors(), 1);
     }
 }

@@ -13,14 +13,14 @@
 // limitations under the License.
 
 mod core;
-mod intermediate_rep;
 mod expr_compiler;
+mod intermediate_rep;
 mod lower_ir;
 
 use std::collections::HashMap;
 
-use crate::compiler::objects::symbol::{Symbol, SymbolId};
 use crate::compiler::error_handling::diagnostics::Diagnostics;
+use crate::compiler::objects::symbol::{Symbol, SymbolId};
 
 pub struct CodeGen<'a> {
     reg_map: HashMap<SymbolId, usize>,

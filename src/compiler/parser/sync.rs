@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - 
+//! -
 //!
 //! Author: Cole Francis
 
@@ -26,14 +26,10 @@ use super::Parser;
 use crate::compiler::lexer::token::TokenKind;
 
 pub enum SyncRule {
-    Item, // top level
-    NetItem {
-        depth: usize
-    }, // inside net_t
+    Item,                     // top level
+    NetItem { depth: usize }, // inside net_t
     Statement,
-    Expr {
-        depth: usize
-    },
+    Expr { depth: usize },
 }
 
 impl<'a> Parser<'a> {
@@ -44,11 +40,11 @@ impl<'a> Parser<'a> {
         match rule {
             &SyncRule::Item => self.sync_item(),
 
-            &SyncRule::NetItem {depth} => self.sync_net_item(depth),
+            &SyncRule::NetItem { depth } => self.sync_net_item(depth),
 
             &SyncRule::Statement => self.sync_statement(),
 
-            &SyncRule::Expr {depth} => self.sync_expr(depth),
+            &SyncRule::Expr { depth } => self.sync_expr(depth),
         }
     }
 
@@ -62,12 +58,11 @@ impl<'a> Parser<'a> {
                 TokenKind::RBrace => {
                     if depth > 0 {
                         depth -= 1;
-                    }
-                    else {
+                    } else {
                         break;
                     }
                 }
-                
+
                 TokenKind::Ent_t => break,
                 TokenKind::Rel_t => break,
                 TokenKind::NetToken => break,
@@ -94,8 +89,7 @@ impl<'a> Parser<'a> {
                 TokenKind::RBrace => {
                     if depth > 0 {
                         depth -= 1;
-                    }
-                    else {
+                    } else {
                         break;
                     }
                 }
@@ -108,7 +102,7 @@ impl<'a> Parser<'a> {
                     TokenKind::Connect => break,
                     TokenKind::LBrace => break,
                     _ => (),
-                }
+                },
 
                 TokenKind::Semicolon if depth == 0 => {
                     self.next();
@@ -133,8 +127,7 @@ impl<'a> Parser<'a> {
                 TokenKind::RBrace => {
                     if depth > 0 {
                         depth -= 1;
-                    }
-                    else {
+                    } else {
                         break;
                     }
                 }
@@ -163,12 +156,11 @@ impl<'a> Parser<'a> {
                 TokenKind::RBrace => {
                     if depth > 0 {
                         depth -= 1;
-                    }
-                    else {
+                    } else {
                         break;
                     }
                 }
-        
+
                 TokenKind::Semicolon if depth == 0 => break,
                 TokenKind::Comma if depth == 0 => break,
 

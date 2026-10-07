@@ -19,8 +19,8 @@
 //! Author: Cole Francis
 
 use crate::compiler::objects::{
-    types::Type,
     netlist::{EntId, RelId},
+    types::Type,
 };
 
 #[derive(Debug, PartialEq)]
@@ -56,15 +56,11 @@ pub enum InterpreterError {
 impl InterpreterError {
     pub fn from_index(index: usize, info: Option<u64>) -> Self {
         match index {
-            0 => Self::InvalidOpcode(
-                info.expect("InvalidOpcode requires info") as u8
-            ),
+            0 => Self::InvalidOpcode(info.expect("InvalidOpcode requires info") as u8),
             1 => Self::IntegerOverflow,
             2 => Self::DivisionByZero,
             3 => Self::IntNegativeExponent,
-            4 => Self::InvalidProb(
-                f64::from_bits(info.expect("InvalidProb reqires info")),
-            ),
+            4 => Self::InvalidProb(f64::from_bits(info.expect("InvalidProb reqires info"))),
             _ => panic!("Invalid runtime error code: {index}"),
         }
     }
@@ -73,12 +69,25 @@ impl InterpreterError {
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RuntimeError::Interpreter {err, rel_name, rel_id, timestep} => {
-                write!(f, "Runtime Error: {} while executing relation \"{}\" (id {}) at timestep {}", err, rel_name, rel_id, timestep)
+            RuntimeError::Interpreter {
+                err,
+                rel_name,
+                rel_id,
+                timestep,
+            } => {
+                write!(
+                    f,
+                    "Runtime Error: {} while executing relation \"{}\" (id {}) at timestep {}",
+                    err, rel_name, rel_id, timestep
+                )
             }
 
-            RuntimeError::SimultaneousDrivers {ent_id, timestep} => {
-                write!(f, "Runtime Error: Entity {} driven by conflicting values.\ntimestep: {}", ent_id, timestep)
+            RuntimeError::SimultaneousDrivers { ent_id, timestep } => {
+                write!(
+                    f,
+                    "Runtime Error: Entity {} driven by conflicting values.\ntimestep: {}",
+                    ent_id, timestep
+                )
             }
 
             RuntimeError::NonexistantInput(string) => {
@@ -86,11 +95,23 @@ impl std::fmt::Display for RuntimeError {
             }
 
             RuntimeError::NonexistantInputValue(string) => {
-                write!(f, "Runtime Error: Input entity value {} does not exist.", string)
+                write!(
+                    f,
+                    "Runtime Error: Input entity value {} does not exist.",
+                    string
+                )
             }
 
-            RuntimeError::IncompatibleTypes {ent_id, expected, found} => {
-                write!(f, "Runtime Error: Given type {} incompatible with entity {}'s type: {}", found, ent_id, expected)
+            RuntimeError::IncompatibleTypes {
+                ent_id,
+                expected,
+                found,
+            } => {
+                write!(
+                    f,
+                    "Runtime Error: Given type {} incompatible with entity {}'s type: {}",
+                    found, ent_id, expected
+                )
             }
         }
     }
@@ -101,7 +122,11 @@ impl std::fmt::Display for InterpreterError {
         match self {
             InterpreterError::InvalidOpcode(code) => {
                 // If the relation compiler is bug_free
-                write!(f, "Bug in relation compiler resulted in invalid opcode {}", code)
+                write!(
+                    f,
+                    "Bug in relation compiler resulted in invalid opcode {}",
+                    code
+                )
             }
 
             InterpreterError::IntegerOverflow => {
@@ -117,7 +142,11 @@ impl std::fmt::Display for InterpreterError {
             }
 
             InterpreterError::InvalidProb(prob) => {
-                write!(f, "Probability value \"{}\" out of range (Should be 1)", prob)
+                write!(
+                    f,
+                    "Probability value \"{}\" out of range (Should be 1)",
+                    prob
+                )
             }
         }
     }

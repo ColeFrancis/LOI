@@ -14,14 +14,14 @@
 
 mod core;
 mod ent;
-mod rel;
-mod net;
 mod expr;
-mod sync;
+mod net;
+mod rel;
 mod statement;
+mod sync;
 
-use crate::compiler::lexer::token::Token;
 use crate::compiler::error_handling::diagnostics::Diagnostics;
+use crate::compiler::lexer::token::Token;
 
 pub struct Parser<'a> {
     tokens: Vec<Token>,

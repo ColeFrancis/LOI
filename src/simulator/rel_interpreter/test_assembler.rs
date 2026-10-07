@@ -35,15 +35,14 @@ pub fn assemble(source: &str) -> Result<Vec<u8>, usize> {
 
     for (line, text) in source.lines().enumerate() {
         let text = text.trim();
-        
+
         if text.is_empty() || text.starts_with('#') {
             continue;
         }
 
         if let Some(bytes) = assemble_line(text) {
             bytecode.extend(bytes);
-        } 
-        else {
+        } else {
             return Err(line + 1);
         }
     }
@@ -56,9 +55,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
     let mnemonic = parts.next()?;
 
-    let operands = parts
-        .map(parse_operand)
-        .collect::<Option<Vec<Operand>>>()?;
+    let operands = parts.map(parse_operand).collect::<Option<Vec<Operand>>>()?;
 
     let mut output: Vec<u8> = Vec::new();
 
@@ -66,19 +63,19 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // -----------------
         // Arithmetic
         // -----------------
-        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IPOW" | "IMOD" |
-        "FADD" | "FSUB" | "FMUL" | "FDIV" | "FPOW" => {
+        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IPOW" | "IMOD" | "FADD" | "FSUB" | "FMUL" | "FDIV"
+        | "FPOW" => {
             if operands.len() != 3 {
                 return None;
             }
 
             let operation = match mnemonic {
-                "IADD" | "FADD"  => 0b000,
-                "ISUB" | "FSUB"  => 0b001,
-                "IMUL" | "FMUL"  => 0b010,
-                "IDIV" | "FDIV"  => 0b011,
-                "IPOW" | "FPOW"  => 0b100,
-                "IMOD"            => 0b110,
+                "IADD" | "FADD" => 0b000,
+                "ISUB" | "FSUB" => 0b001,
+                "IMUL" | "FMUL" => 0b010,
+                "IDIV" | "FDIV" => 0b011,
+                "IPOW" | "FPOW" => 0b100,
+                "IMOD" => 0b110,
                 _ => unreachable!(),
             };
 
@@ -92,15 +89,9 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
             let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
-            let ss = 
-                (src1_immediate as u8) << 1 | 
-                (src2_immediate as u8);
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-            let opcode =
-                (0b00 << 6) |
-                ((float as u8) << 5) |
-                (operation << 2) |
-                ss;
+            let opcode = (0b00 << 6) | ((float as u8) << 5) | (operation << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -121,7 +112,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         }
 
         "IABS" | "FABS" => {
-            if operands.len() != 2{
+            if operands.len() != 2 {
                 return None;
             }
 
@@ -133,16 +124,11 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             };
 
             let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
-            
-            let ss = 
-                (src_immediate as u8) << 1;
 
-            let opcode =
-                (0b00 << 6) |
-                ((float as u8) << 5) |
-                (0b101 << 2) |
-                ss;
-                
+            let ss = (src_immediate as u8) << 1;
+
+            let opcode = (0b00 << 6) | ((float as u8) << 5) | (0b101 << 2) | ss;
+
             output.push(opcode);
             output.push(dest);
 
@@ -154,7 +140,6 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
-        
         // -----------------
         // Logical
         // -----------------
@@ -165,7 +150,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let operation = match mnemonic {
                 "AND" => 0b00,
-                "OR"  => 0b01,
+                "OR" => 0b01,
                 "XOR" => 0b11,
                 _ => unreachable!(),
             };
@@ -178,14 +163,9 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
             let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
-            let ss =
-                (src1_immediate as u8) << 1 |
-                (src2_immediate as u8);
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-            let opcode =
-                (0b0100 << 4) |
-                (operation << 2) |
-                ss;
+            let opcode = (0b0100 << 4) | (operation << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -217,9 +197,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = 
-                (0b010010 << 2) |
-                ss;
+            let opcode = (0b010010 << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -234,7 +212,6 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // ------------------------------------------------------------
         // ITOF
         // ------------------------------------------------------------
-
         "I2F" => {
             if operands.len() != 2 {
                 return None;
@@ -245,15 +222,11 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            
-
             let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode =
-                (0b010110) << 2 |
-                ss;
+            let opcode = (0b010110) << 2 | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -268,7 +241,6 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // ------------------------------------------------------------
         // Jumps
         // ------------------------------------------------------------
-
         "JMP" => {
             if operands.len() != 1 {
                 return None;
@@ -284,8 +256,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             output.extend(offset.to_le_bytes());
         }
 
-        "IJEQ" | "IJNE" | "IJLT" | "IJLE" | "IJGT" | "IJGE" |
-        "FJEQ" | "FJNE" | "FJLT" | "FJLE" | "FJGT" | "FJGE" => {
+        "IJEQ" | "IJNE" | "IJLT" | "IJLE" | "IJGT" | "IJGE" | "FJEQ" | "FJNE" | "FJLT" | "FJLE"
+        | "FJGT" | "FJGE" => {
             if operands.len() != 3 {
                 return None;
             }
@@ -310,15 +282,9 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
             let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
-            let ss =
-                (src1_immediate as u8) << 1 |
-                (src2_immediate as u8);
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-            let opcode =
-                (0b10 << 6) |
-                ((float as u8) << 5) |
-                (operation << 2) |
-                ss;
+            let opcode = (0b10 << 6) | ((float as u8) << 5) | (operation << 2) | ss;
 
             output.push(opcode);
             output.extend(offset.to_le_bytes());
@@ -341,9 +307,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // -----------------
         // Comparisons
         // -----------------
-
-        "IEQ" | "INE" | "ILT" | "IGT" | "ILE" | "IGE" |
-        "FEQ" | "FNE" | "FLT" | "FGT" | "FLE" | "FGE" => {
+        "IEQ" | "INE" | "ILT" | "IGT" | "ILE" | "IGE" | "FEQ" | "FNE" | "FLT" | "FGT" | "FLE"
+        | "FGE" => {
             if operands.len() != 3 {
                 return None;
             }
@@ -368,15 +333,9 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
             let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
 
-            let ss =
-                (src1_immediate as u8) << 1 |
-                (src2_immediate as u8);
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-            let opcode =
-                (0b11 << 6) |
-                ((float as u8) << 5) |
-                (operation << 2) |
-                ss;
+            let opcode = (0b11 << 6) | ((float as u8) << 5) | (operation << 2) | ss;
 
             output.push(opcode);
             output.extend(dest_val.to_le_bytes());
@@ -399,7 +358,6 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // ------------------------------------------------------------
         // Other
         // ------------------------------------------------------------
-
         "MOV" => {
             if operands.len() != 2 {
                 return None;
@@ -414,9 +372,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = 
-                (0b110000) << 2 |
-                ss;
+            let opcode = (0b110000) << 2 | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -438,9 +394,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = 
-                (0b101000) << 2 |
-                ss;
+            let opcode = (0b101000) << 2 | ss;
 
             output.push(opcode);
 
@@ -467,9 +421,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (has_info as u8) << 1 | (src_immediate as u8);
 
-            let opcode = 
-                (0b101001) << 2 |
-                ss;
+            let opcode = (0b101001) << 2 | ss;
 
             output.push(opcode);
 
@@ -544,7 +496,8 @@ mod tests {
 
     #[test]
     fn test_assembler_1() {
-        let result = assemble("
+        let result = assemble(
+            "
 # test
 IADD r1 r0 i23
 FMUL r2 r1 f-2.25
@@ -562,47 +515,49 @@ RET i1
 RND r0
 ERR b4 i0
 ERR b3
-        ");
+        ",
+        );
 
-        assert_eq!(result, Ok(vec![0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b00101001, 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0,
-                                   0b00010100, 0x00, 0x01,
-                                   0b01000000, 0x00, 0x01, 0x02,
-                                   0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b01011000, 0x00, 0x01,
-                                   0b10000000, 0x30, 0x00,
-                                   0b00011001, 0x00, 0x01, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b11001000, 0x00, 0x01, 0x02,
-                                   0b10111100, 0x30, 0x00, 0x00, 0x01,
-                                   0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x40,
-                                   0b10100000, 0x00,
-                                   0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b11100000, 0x00,
-                                   0b10100111, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                                   0b10100100, 0x03,
-                                   ]));
+        assert_eq!(
+            result,
+            Ok(vec![
+                0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b00101001,
+                0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0, 0b00010100, 0x00, 0x01,
+                0b01000000, 0x00, 0x01, 0x02, 0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0b01011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00011001, 0x00, 0x01,
+                0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b11001000, 0x00, 0x01, 0x02,
+                0b10111100, 0x30, 0x00, 0x00, 0x01, 0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x08, 0x40, 0b10100000, 0x00, 0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0b11100000, 0x00, 0b10100111, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0b10100100, 0x03,
+            ])
+        );
     }
 
     #[test]
     fn test_assembler_2() {
-        let result = assemble("
+        let result = assemble(
+            "
 # test
 AND r1 r0 f23
 FMUL r2 r1 f-2.25
 JMP i48
-        ");
+        ",
+        );
 
         assert_eq!(result, Err(3));
     }
 
     #[test]
     fn test_assembler_3() {
-        let result = assemble("
+        let result = assemble(
+            "
 # test
 IADD r1 r0 
 FMUL r2 r1 f-2.25
 JMP i48
-        ");
+        ",
+        );
 
         assert_eq!(result, Err(3));
     }
