@@ -175,10 +175,8 @@ fn simulate_full(file_path: &str, top_net: &str, input_file_path: &str, output_f
 
     sim.load_inputs(inputs)?;
 
-    println!("steps: {}", steps);
     let ran_steps = sim.run(steps, false)?;
-    println!("ran steps: {}", ran_steps);
-
+    
     let outputs = sim.dump_outputs();
 
     println!("Outputs: {:?}", outputs);
