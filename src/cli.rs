@@ -27,9 +27,11 @@ use crate::{
     compiler::{Compiler, error_handling::compile_error::CompileError}, 
     simulator::{
         Simulator, 
-        runtime_diagnostics::RuntimeError,
         io_file::IoFile,
-        io_file_error::{InputFileReadError, OutputFileWriteError},
+        error_handling::{
+            runtime_diagnostics::RuntimeError,
+            io_file_error::{InputFileReadError, OutputFileWriteError},
+        },
     }
 };
 

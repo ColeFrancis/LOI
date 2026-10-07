@@ -14,10 +14,9 @@
 
 mod core;
 pub mod rel_interpreter;
-pub mod runtime_diagnostics;
 pub mod io_file;
-pub mod io_file_error;
 
+pub mod error_handling;
 pub mod objects;
 
 use std::collections::HashMap;

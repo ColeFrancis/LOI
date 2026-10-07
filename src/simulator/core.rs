@@ -26,7 +26,7 @@ use super::{
     Simulator,
     IoVal,
     rel_interpreter::RelInterpreter,
-    runtime_diagnostics::RuntimeError,
+    error_handling::runtime_diagnostics::RuntimeError,
     objects::{
         scheduler::Scheduler,
         event::Event,
@@ -252,7 +252,7 @@ mod tests {
     use crate::compiler::error_handling::span::Span;
     use crate::compiler::objects::netlist::{Entity, Relation};
     use crate::simulator::rel_interpreter::test_assembler::assemble;
-    use crate::simulator::runtime_diagnostics::InterpreterError;
+    use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
 
     #[test]
     fn only_known_inputs() {

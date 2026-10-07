@@ -27,7 +27,7 @@ use rand::Rng;
 
 use super::RelInterpreter;
 
-use crate::simulator::runtime_diagnostics::InterpreterError;
+use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
 
 use crate::compiler::objects::compiled_rel::CompiledRel;
 
@@ -634,7 +634,7 @@ impl RelInterpreter {
 mod tests {
     use super::*;
     use crate::simulator::rel_interpreter::test_assembler::assemble;
-    use crate::simulator::runtime_diagnostics::InterpreterError;
+    use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
 
     #[test]
     fn int_arith() {
