@@ -13,7 +13,7 @@
 pub mod token;
 mod core;
 
-use crate::compiler::diagnostics::Diagnostics;
+use crate::compiler::error_handling::diagnostics::Diagnostics;
 
 pub struct Lexer<'a> {
     input: &'a [u8],

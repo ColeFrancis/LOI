@@ -22,9 +22,14 @@
 //!
 //! Author: Cole Francis
 
-use super::lexer::token::TokenKind;
-use super::sem_analyzer::types::Type;
-use super::symbol::SymbolKind;
+use super::span::Span;
+use crate::compiler::{
+    lexer::token::TokenKind,
+    objects::{
+        types::Type,
+        symbol::SymbolKind,
+    },
+};
 
 #[derive(PartialEq, Debug)]
 pub struct Diagnostics {
@@ -60,17 +65,6 @@ impl Diagnostics {
         for (i, error) in self.errors.iter().enumerate() {
             println!("{}: {:#?}", i + 1, error);
         }
-    }
-}
-
-impl std::fmt::Display for Diagnostics {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for diagnostic in &self.errors {
-            writeln!(f, "Compiler Error: {diagnostic}")?;
-            writeln!(f)?;
-        }
-
-        writeln!(f, "{} Compiler Errors found.", self.num_errors())
     }
 }
 
@@ -267,18 +261,6 @@ pub enum Expected {
     IntLiteral,
 }
 
-impl std::fmt::Display for Expected {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Expected::Token(token_kind) => write!(f, "{token_kind}"),
-            Expected::Expr => write!(f, "Expression"),
-            Expected::Pattern => write!(f, "Pattern"),
-            Expected::Ident => write!(f, "Identifier"),
-            Expected::IntLiteral => write!(f, "Int Literal"),
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub enum Operation {
     Cmp,
@@ -290,22 +272,6 @@ pub enum Operation {
     Or,
     And,
     Not,
-}
-
-impl std::fmt::Display for Operation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Operation::Cmp => write!(f, "Comparison"),
-            Operation::Add => write!(f, "Add"),
-            Operation::Sub => write!(f, "Subtract"),
-            Operation::Mul => write!(f, "Multiply"),
-            Operation::Div => write!(f, "Divide"),
-            Operation::Pow => write!(f, "Power"),
-            Operation::Or  => write!(f, "Boolean Or"),
-            Operation::And => write!(f, "Boolean And"),
-            Operation::Not => write!(f, "Boolean Not"),
-        }   
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -321,26 +287,15 @@ pub enum ExprType {
     Error,
 }
 
-impl std::fmt::Display for ExprType {
+impl std::fmt::Display for Diagnostics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ExprType::Literal => write!(f, "Literal"),
-            ExprType::Ident   => write!(f, "Ident"),
-            ExprType::Unary   => write!(f, "Unary"),
-            ExprType::Binary  => write!(f, "Binary"),
-            ExprType::Tuple   => write!(f, "Tuple"),
-            ExprType::Block   => write!(f, "Block"),
-            ExprType::Cases   => write!(f, "Cases"),
-            ExprType::Sample  => write!(f, "Sample"),
-            ExprType::Error   => write!(f, "Error"),
-        }   
-    }
-}
+        for diagnostic in &self.errors {
+            writeln!(f, "Compiler Error: {diagnostic}")?;
+            writeln!(f)?;
+        }
 
-#[derive(PartialEq, Debug, Clone, Copy)]
-pub struct Span {
-    pub line: usize,
-    pub col: usize,
+        writeln!(f, "{} Compiler Errors found.", self.num_errors())
+    }
 }
 
 impl std::fmt::Display for Diagnostic {
@@ -485,11 +440,56 @@ impl std::fmt::Display for Diagnostic {
     }
 }
 
+impl std::fmt::Display for Expected {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Expected::Token(token_kind) => write!(f, "{token_kind}"),
+            Expected::Expr => write!(f, "Expression"),
+            Expected::Pattern => write!(f, "Pattern"),
+            Expected::Ident => write!(f, "Identifier"),
+            Expected::IntLiteral => write!(f, "Int Literal"),
+        }
+    }
+}
+
+impl std::fmt::Display for Operation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Operation::Cmp => write!(f, "Comparison"),
+            Operation::Add => write!(f, "Add"),
+            Operation::Sub => write!(f, "Subtract"),
+            Operation::Mul => write!(f, "Multiply"),
+            Operation::Div => write!(f, "Divide"),
+            Operation::Pow => write!(f, "Power"),
+            Operation::Or  => write!(f, "Boolean Or"),
+            Operation::And => write!(f, "Boolean And"),
+            Operation::Not => write!(f, "Boolean Not"),
+        }   
+    }
+}
+
+impl std::fmt::Display for ExprType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExprType::Literal => write!(f, "Literal"),
+            ExprType::Ident   => write!(f, "Ident"),
+            ExprType::Unary   => write!(f, "Unary"),
+            ExprType::Binary  => write!(f, "Binary"),
+            ExprType::Tuple   => write!(f, "Tuple"),
+            ExprType::Block   => write!(f, "Block"),
+            ExprType::Cases   => write!(f, "Cases"),
+            ExprType::Sample  => write!(f, "Sample"),
+            ExprType::Error   => write!(f, "Error"),
+        }   
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::compiler::lexer::Lexer;
     use crate::compiler::parser::Parser;
+    use crate::compiler::error_handling::span::Span;
 
     #[test]
     fn no_errors() {

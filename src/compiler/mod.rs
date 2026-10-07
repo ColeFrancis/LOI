@@ -18,14 +18,8 @@ mod parser;
 pub mod sem_analyzer;
 mod code_gen;
 mod synthesis;
-pub mod diagnostics;
 
-
-pub mod ast;
-mod symbol;
-pub mod compile_error;
-pub mod compiled_rel;
-pub mod netlist;
-
+pub mod error_handling;
+pub mod objects;
 
 pub struct Compiler;

@@ -23,11 +23,14 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use super::types::Type;
 use crate::compiler::{
-    symbol::{SymbolId, SymbolKind},
-    ast::*,
-    diagnostics::{Diagnostic, Span},
+    error_handling::diagnostics::Diagnostic,
+    error_handling::span::Span,
+    objects::{
+        symbol::{SymbolId, SymbolKind},
+        ast::*,
+        types::Type,
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -417,8 +420,8 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::symbol::{Symbol, NetPort};
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::error_handling::diagnostics::Diagnostics;
+    use crate::compiler::objects::symbol::{Symbol, NetPort};
 
     #[test]
     fn check_let_1() {

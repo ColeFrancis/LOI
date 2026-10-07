@@ -25,10 +25,10 @@
 
 use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
-use crate::compiler::{
+use crate::compiler::objects::{
     ast::*,
     symbol::SymbolKind,
-    sem_analyzer::types::Type,
+    types::Type,
 };
 
 impl<'a> CodeGen<'a> {
@@ -1142,8 +1142,9 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::compiler::{
-        diagnostics::{Diagnostics, Span},
-        symbol::Symbol,
+        error_handling::diagnostics::Diagnostics,
+        error_handling::span::Span,
+        objects::symbol::Symbol,
     };
 
     #[test]

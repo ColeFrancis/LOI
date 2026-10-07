@@ -13,8 +13,8 @@
 // limitations under the License.
 
 mod core;
-pub mod event;
 mod scheduler;
+pub mod event;
 pub mod rel_interpreter;
 pub mod runtime_diagnostics;
 pub mod io_file;
@@ -27,7 +27,7 @@ use crate::simulator::{
     rel_interpreter::RelInterpreter,
 };
 
-use crate::compiler::netlist::{Netlist, Interface, EntId};
+use crate::compiler::objects::netlist::{Netlist, Interface, EntId};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum IoVal {

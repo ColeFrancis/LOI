@@ -22,7 +22,7 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::netlist::EntId;
+use crate::compiler::objects::netlist::EntId;
 
 #[derive(PartialEq, Debug, Clone)]
 pub struct Event {

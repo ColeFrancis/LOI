@@ -24,7 +24,7 @@
 
 use std::collections::HashMap;
 
-use crate::compiler::symbol::SymbolId;
+use crate::compiler::objects::symbol::SymbolId;
 
 #[derive(PartialEq, Debug)]
 pub struct Scope {

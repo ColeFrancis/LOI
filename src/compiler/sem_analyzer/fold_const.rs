@@ -26,9 +26,11 @@
 use super::SemAnalyzer;
 
 use crate::compiler::{
-    ast::*,
-    symbol::{Symbol, SymbolKind},
-    diagnostics::Diagnostics,
+    error_handling::diagnostics::Diagnostics,
+    objects::{
+        ast::*,
+        symbol::{Symbol, SymbolKind},
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -101,9 +103,10 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::symbol::{Symbol, NetPort};
-    use crate::compiler::diagnostics::{Diagnostics, Span};
-    use crate::compiler::sem_analyzer::types::Type;
+    use crate::compiler::error_handling::diagnostics::Diagnostics;
+    use crate::compiler::error_handling::span::Span;
+    use crate::compiler::objects::types::Type;
+    use crate::compiler::objects::symbol::{Symbol, NetPort};
 
     #[test]
     fn fold_let_1() {

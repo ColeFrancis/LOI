@@ -24,8 +24,8 @@
 
 use super::CodeGen;
 use crate::compiler::ast::*;
-use crate::compiler::diagnostics::Span;
-use crate::compiler::compiled_rel::CompiledRel;
+use crate::compiler::error_handling::span::Span;
+use crate::compiler::objects::compiled_rel::CompiledRel;
 
 impl CodeGen {
     pub(super) fn algebraic_transform(expr: Expr) -> (Expr, bool) {
@@ -631,7 +631,7 @@ impl CodeGen {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::sem_analyzer::types::Type;
+    use crate::compiler::objects::types::Type;
 
     #[test]
     fn equal_binary_1() {

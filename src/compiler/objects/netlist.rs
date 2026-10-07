@@ -24,7 +24,7 @@
 
 use std::collections::HashMap;
 
-use super::sem_analyzer::types::Type;
+use super::types::Type;
 
 pub type EntId = usize;
 

@@ -18,16 +18,20 @@
 //!
 //! ## Invariants
 //!
-//! - operations must be binary (for now)
-//! - Lexer returns none upon Eof
 //! - All errors in parsing potential tokens result in an Invalid token
 //! - All tokens must be parsable
+//! - The last token must be EoF
 //!
 //! Author: Cole Francis
 
 use super::Lexer;
 use super::token::{Token, TokenKind};
-use crate::compiler::diagnostics::{Diagnostics, Diagnostic, Span};
+
+use crate::compiler::{
+    error_handling::diagnostics::{Diagnostics, Diagnostic},
+    error_handling::span::Span,
+};
+
 
 impl<'a> Lexer<'a> {
     pub fn new(code: &'a str, diagnostics: &'a mut Diagnostics) -> Self {

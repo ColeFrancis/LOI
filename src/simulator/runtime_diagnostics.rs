@@ -18,8 +18,10 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::netlist::{EntId, RelId};
-use crate::compiler::sem_analyzer::types::Type;
+use crate::compiler::objects::{
+    types::Type,
+    netlist::{EntId, RelId},
+};
 
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {

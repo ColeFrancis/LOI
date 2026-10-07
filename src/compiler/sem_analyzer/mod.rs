@@ -13,7 +13,6 @@
 // limitations under the License.
 
 mod core;
-pub mod types;
 mod scope;
 mod resolve_names;
 mod resolve_expr;
@@ -23,10 +22,10 @@ mod fold_const;
 mod fold_expr;
 mod check_constraints;
 
-use crate::compiler::symbol::Symbol;
 use crate::compiler::sem_analyzer::scope::Scope;
-use crate::compiler::diagnostics::Diagnostics;
-use crate::compiler::ast::Program;
+use crate::compiler::error_handling::diagnostics::Diagnostics;
+use crate::compiler::objects::ast::Program;
+use crate::compiler::objects::symbol::Symbol;
 
 pub struct SemAnalyzer<'a> {
     ast: Program,

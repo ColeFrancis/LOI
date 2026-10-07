@@ -24,7 +24,7 @@ use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 
 use crate::{
-    compiler::{Compiler, compile_error::CompileError}, 
+    compiler::{Compiler, error_handling::compile_error::CompileError}, 
     simulator::{
         Simulator, 
         runtime_diagnostics::RuntimeError,

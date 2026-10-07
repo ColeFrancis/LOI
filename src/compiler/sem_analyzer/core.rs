@@ -27,9 +27,11 @@ use std::collections::HashMap;
 use super::SemAnalyzer;
 use super::scope::Scope;
 use crate::compiler::{
-    symbol::Symbol,
-    ast::Program,
-    diagnostics::Diagnostics,
+    error_handling::diagnostics::Diagnostics,
+    objects::{
+        symbol::Symbol,
+        ast::Program,
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -62,10 +64,10 @@ mod tests {
 
     use crate::compiler::lexer::Lexer;
     use crate::compiler::parser::Parser;
-    use crate::compiler::ast::*;
-    use crate::compiler::diagnostics::Span;
-    use crate::compiler::sem_analyzer::types::Type;
-    use crate::compiler::symbol::{SymbolKind, NetPort};
+    use crate::compiler::error_handling::span::Span;
+    use crate::compiler::objects::ast::*;
+    use crate::compiler::objects::types::Type;
+    use crate::compiler::objects::symbol::{SymbolKind, NetPort};
 
     #[test]
     fn integrate_front_end() {

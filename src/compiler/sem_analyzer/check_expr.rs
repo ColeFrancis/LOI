@@ -24,11 +24,14 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use super::types::Type;
 use crate::compiler::{
-    symbol::SymbolKind,
-    ast::*,
-    diagnostics::{Diagnostic, Operation, Span, ExprType},
+    error_handling::diagnostics::{Diagnostic, Operation, ExprType},
+    error_handling::span::Span,
+    objects::{
+        ast::*,
+        symbol::SymbolKind,
+        types::Type,
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -597,8 +600,8 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::symbol::Symbol;
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::error_handling::diagnostics::Diagnostics;
+    use crate::compiler::objects::symbol::Symbol;
 
     #[test]
     fn get_expr_type() {

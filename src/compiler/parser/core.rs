@@ -25,10 +25,12 @@
 use super::Parser;
 use super::sync::SyncRule;
 use crate::compiler::{
-    ast::*,
     lexer::token::{Token, TokenKind},
-    sem_analyzer::types::Type,
-    diagnostics::{Diagnostics, Diagnostic, Expected},
+    error_handling::diagnostics::{Diagnostics, Diagnostic, Expected},
+    objects::{
+        ast::*,
+        types::Type,
+    },
 };
 
 
@@ -232,8 +234,8 @@ impl<'a> Parser<'a> {
 mod tests {
     use super::*;
     use crate::compiler::lexer::{Lexer, token::TokenKind::*};
-    use crate::compiler::diagnostics::Span;
-    use crate::compiler::ast;
+    use crate::compiler::error_handling::span::Span;
+    use crate::compiler::objects::ast;
     
     fn build_token_vec(tokens: Vec<TokenKind>) -> Vec<Token> {
         tokens

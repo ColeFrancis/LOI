@@ -29,11 +29,11 @@ use super::rel_interpreter::RelInterpreter;
 use super::event::Event;
 use super::runtime_diagnostics::RuntimeError;
 
-use crate::compiler::{
+use crate::compiler::objects::{
     ast::Ident,
     netlist::{Netlist, Interface, EntId},
     compiled_rel::CompiledRel,
-    sem_analyzer::types::Type,
+    types::Type,
 };
 
 impl Simulator {
@@ -245,8 +245,8 @@ impl Simulator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::netlist::{Entity, Relation};
-    use crate::compiler::diagnostics::Span;
+    use crate::compiler::error_handling::span::Span;
+    use crate::compiler::objects::netlist::{Entity, Relation};
     use crate::simulator::rel_interpreter::test_assembler::assemble;
     use crate::simulator::runtime_diagnostics::InterpreterError;
 

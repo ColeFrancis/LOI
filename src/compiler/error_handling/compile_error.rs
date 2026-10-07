@@ -20,9 +20,7 @@
 //!
 //! Author: Cole Francis
 
-use crate::compiler::{
-    diagnostics::Diagnostics
-};
+use super::diagnostics::Diagnostics;
 
 #[derive(Debug)]
 pub enum CompileError {

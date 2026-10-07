@@ -19,8 +19,8 @@ mod lower_ir;
 
 use std::collections::HashMap;
 
-use crate::compiler::symbol::{Symbol, SymbolId};
-use crate::compiler::diagnostics::{Diagnostics};
+use crate::compiler::objects::symbol::{Symbol, SymbolId};
+use crate::compiler::error_handling::diagnostics::Diagnostics;
 
 pub struct CodeGen<'a> {
     reg_map: HashMap<SymbolId, usize>,

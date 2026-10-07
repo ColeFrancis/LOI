@@ -28,11 +28,14 @@
 use rand::Rng;
 
 use super::SemAnalyzer;
-use super::types::Type;
 use crate::compiler::{
-    ast::*,
-    symbol::{Symbol, SymbolKind},
-    diagnostics::{Span, Diagnostics, Diagnostic},
+    error_handling::diagnostics::{Diagnostics, Diagnostic},
+    error_handling::span::Span,
+    objects::{
+        ast::*,
+        types::Type,
+        symbol::{Symbol, SymbolKind},
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -469,8 +472,8 @@ mod tests {
 
     use super::*;
     use crate::compiler::sem_analyzer::scope::Scope;
-    use crate::compiler::symbol::Symbol;
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::error_handling::diagnostics::Diagnostics;
+    use crate::compiler::objects::symbol::Symbol;
 
     #[test]
     fn test_const () {

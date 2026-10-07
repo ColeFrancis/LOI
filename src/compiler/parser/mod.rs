@@ -21,7 +21,7 @@ mod sync;
 mod statement;
 
 use crate::compiler::lexer::token::Token;
-use crate::compiler::diagnostics::Diagnostics;
+use crate::compiler::error_handling::diagnostics::Diagnostics;
 
 pub struct Parser<'a> {
     tokens: Vec<Token>,

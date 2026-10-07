@@ -27,11 +27,14 @@ use std::collections::{HashMap, HashSet};
 
 use super::SemAnalyzer;
 use super::scope::Scope;
-use super::types::Type;
 use crate::compiler::{
-    ast::*,
-    symbol::{Symbol, SymbolKind, SymbolId, NetPort},
-    diagnostics::{Diagnostic, Span},
+    error_handling::diagnostics::Diagnostic,
+    error_handling::span::Span,
+    objects::{
+        ast::*,
+        types::Type,
+        symbol::{Symbol, SymbolKind, SymbolId, NetPort},
+    },
 };
 
 impl <'a> SemAnalyzer<'a> {
@@ -434,7 +437,7 @@ impl <'a> SemAnalyzer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::diagnostics::Diagnostics;
+    use crate::compiler::error_handling::diagnostics::Diagnostics;
     use crate::compiler::sem_analyzer::scope::Scope;
     use crate::compiler::lexer::Lexer;
     use crate::compiler::parser::Parser;

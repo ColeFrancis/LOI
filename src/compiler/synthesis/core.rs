@@ -24,11 +24,15 @@ use std::collections::HashMap;
 
 use super::Synthesis;
 use crate::compiler::{
-    sem_analyzer::{SemAnalyzer, types::Type},
-    symbol::{Symbol, SymbolId, SymbolKind},
-    ast::{Net, NetItem, Ident, Expr, Literal},
-    netlist::{Netlist, Interface, Entity, Relation, EntId},
-    diagnostics::{Diagnostics, Span},
+    sem_analyzer::SemAnalyzer,
+    error_handling::diagnostics::Diagnostics,
+    error_handling::span::Span,
+    objects::{
+        ast::{Net, NetItem, Ident, Expr, Literal},
+        netlist::{Netlist, Interface, Entity, Relation, EntId},
+        symbol::{Symbol, SymbolId, SymbolKind},
+        types::Type,
+    },
 };
 
 use crate::simulator::event::Event;
@@ -308,10 +312,9 @@ impl Synthesis {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compiler::symbol::{SymbolKind, NetPort};
-    use crate::compiler::sem_analyzer::types::Type;
-    use crate::compiler::ast::*;
-    use crate::compiler::diagnostics::Span;
+    use crate::compiler::objects::symbol::NetPort;
+    use crate::compiler::objects::ast::*;
+    use crate::compiler::error_handling::span::Span;
 
     #[test]
     fn rel_inst() {

@@ -29,7 +29,7 @@ use super::RelInterpreter;
 
 use crate::simulator::runtime_diagnostics::InterpreterError;
 
-use crate::compiler::compiled_rel::CompiledRel;
+use crate::compiler::objects::compiled_rel::CompiledRel;
 
 impl RelInterpreter {
     pub fn new(relations: Vec<CompiledRel>) -> Self {

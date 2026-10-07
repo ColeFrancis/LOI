@@ -32,12 +32,16 @@ use crate::compiler::{
     sem_analyzer::SemAnalyzer,
     code_gen::CodeGen,
     synthesis::Synthesis,
-    symbol::{Symbol, SymbolId},
-    ast::{Program, Item, Ident},
-    diagnostics::{Diagnostics, Diagnostic},
-    compile_error::CompileError,
-    compiled_rel::CompiledRel,
-    netlist::{Netlist, Interface},
+    error_handling::{
+        diagnostics::{Diagnostics, Diagnostic},
+        compile_error::CompileError,
+    },
+    objects::{
+        symbol::{Symbol, SymbolId},
+        ast::{Program, Item, Ident},
+        compiled_rel::CompiledRel,
+        netlist::{Netlist, Interface},
+    },
 };
 
 use crate::simulator::event::Event;

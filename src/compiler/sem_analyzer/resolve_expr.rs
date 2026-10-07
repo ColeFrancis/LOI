@@ -23,7 +23,7 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use crate::compiler::ast::*;
+use crate::compiler::objects::ast::*;
 
 impl <'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
@@ -191,12 +191,13 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use crate::compiler::{
-        diagnostics::{Diagnostics, Span},
-        sem_analyzer::{
-            scope::Scope,
+        sem_analyzer::scope::Scope,
+        error_handling::diagnostics::Diagnostics,
+        error_handling::span::Span,
+        objects::{
             types::Type,
+            symbol::{Symbol, SymbolKind},
         },
-        symbol::{Symbol, SymbolKind},
     };
 
     #[test]

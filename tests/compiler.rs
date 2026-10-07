@@ -22,20 +22,16 @@ use std::collections::HashMap;
 
 use loi::compiler::{
     Compiler,
-    compile_error::CompileError,
-    netlist::{Netlist, Interface, Relation, Entity},
-    compiled_rel::CompiledRel,
-    sem_analyzer::types::Type,
+    error_handling::compile_error::CompileError,
+    objects::{
+        netlist::{Netlist, Interface, Relation, Entity},
+        compiled_rel::CompiledRel,
+        types::Type,
+    },
 };
 
 use loi::simulator::rel_interpreter::test_assembler::assemble;
 use loi::simulator::event::Event;
-
-// To test:
-//  missing file
-//  file without .loi extension
-//  working file with (mostly) all of the language features
-//  file with (mostly) all of diagnostics errors
 
 #[test]
 fn missing_file() {

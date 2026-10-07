@@ -28,11 +28,13 @@ use std::collections::HashMap;
 
 use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
-use crate::compiler::ast::*;
-use crate::compiler::compiled_rel::CompiledRel;
-use crate::compiler::symbol::Symbol;
-use crate::compiler::sem_analyzer::types::Type;
-use crate::compiler::diagnostics::{Diagnostics, Diagnostic};
+use crate::compiler::objects::{
+    ast::*,
+    compiled_rel::CompiledRel,
+    types::Type,
+    symbol::Symbol,
+};
+use crate::compiler::error_handling::diagnostics::{Diagnostics, Diagnostic};
 
 impl<'a> CodeGen<'a> {
     pub fn compile(relation: RelType, symbol_table: &'a [Symbol], diagnostics: &'a mut Diagnostics) -> Option<CompiledRel> {
@@ -400,8 +402,8 @@ mod tests {
         lexer::Lexer,
         parser::Parser,
         sem_analyzer::SemAnalyzer,
-        diagnostics::Span,
-        symbol::SymbolKind,
+        error_handling::span::Span,
+        objects::symbol::SymbolKind,
     };
     use crate::simulator::rel_interpreter::{RelInterpreter, test_assembler::assemble};
 

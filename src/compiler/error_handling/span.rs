@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-pub mod test_assembler;
+//! # span
+//!
+//! Defines span object used for diagnostics
+//!
+//! Author: Cole Francis
 
-use crate::compiler::objects::compiled_rel::CompiledRel;
-
-pub struct RelInterpreter {
-    // relation id refers to index of outer vector
-    relations: Vec<CompiledRel>,
-    registers: [u64; 64],
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub struct Span {
+    pub line: usize,
+    pub col: usize,
 }

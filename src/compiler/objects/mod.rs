@@ -12,13 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-mod core;
-pub mod test_assembler;
-
-use crate::compiler::objects::compiled_rel::CompiledRel;
-
-pub struct RelInterpreter {
-    // relation id refers to index of outer vector
-    relations: Vec<CompiledRel>,
-    registers: [u64; 64],
-}
+pub mod ast;
+pub mod compiled_rel;
+pub mod netlist;
+pub mod symbol;
+pub mod types;
