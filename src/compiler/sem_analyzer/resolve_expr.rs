@@ -69,7 +69,6 @@ impl<'a> SemAnalyzer<'a> {
             }
 
             Expr::Block(mut block_expr) => {
-                // TODO: Refactor
                 self.create_scope();
 
                 for stmt in &mut block_expr.statements {

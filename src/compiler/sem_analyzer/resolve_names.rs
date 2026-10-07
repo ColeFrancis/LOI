@@ -78,7 +78,7 @@ impl<'a> SemAnalyzer<'a> {
         let ent_t_symbol_id = self.define_symbol(name, SymbolKind::EntType, span)?;
 
         for (index, ident) in ent_t.members.iter_mut().enumerate() {
-            let (name, span) = self.extract_ident_str(ident.clone())?; // TODO: make more efficient without clone
+            let (name, span) = self.extract_ident_str(ident.clone())?;
             *ident = Ident::Symbol(self.define_symbol(
                 name,
                 SymbolKind::EntMember {
@@ -107,7 +107,7 @@ impl<'a> SemAnalyzer<'a> {
         self.create_scope();
 
         for param in &mut rel_t.params {
-            let (name, span) = self.extract_ident_str(param.name.clone())?; // TODO: make more efficient without clone
+            let (name, span) = self.extract_ident_str(param.name.clone())?;
 
             param.name = Ident::Symbol(self.define_symbol(
                 name,
@@ -116,7 +116,7 @@ impl<'a> SemAnalyzer<'a> {
             )?);
 
             param.param_type = self
-                .resolve_type(param.param_type.clone()) // TODO: make more efficient without clone
+                .resolve_type(param.param_type.clone())
                 .unwrap_or(Type::Error);
         }
 
@@ -239,7 +239,7 @@ impl<'a> SemAnalyzer<'a> {
                 rel_inst.rel = Ident::Symbol(self.find_symbol(&name, span)?);
 
                 for arg in &mut rel_inst.args {
-                    let (name, span) = self.extract_ident_str(arg.clone())?; // TODO: make more efficient without clone
+                    let (name, span) = self.extract_ident_str(arg.clone())?;
 
                     *arg = Ident::Symbol(self.find_or_define_symbol(
                         &name,
@@ -259,7 +259,7 @@ impl<'a> SemAnalyzer<'a> {
 
                 for connection in &mut net_inst.connections {
                     // Port symbols have to be checked specialy
-                    let (name, span) = self.extract_ident_str(connection.port.clone())?; // TODO: make more efficient without clone
+                    let (name, span) = self.extract_ident_str(connection.port.clone())?;
                     let port_id = self.find_net_port(inst_net_id, &name, span)?;
 
                     // Verify port hasn't been used already
@@ -273,7 +273,7 @@ impl<'a> SemAnalyzer<'a> {
 
                     connection.port = Ident::Symbol(port_id);
 
-                    let (name, span) = self.extract_ident_str(connection.ent.clone())?; // TODO: make more efficient without clone
+                    let (name, span) = self.extract_ident_str(connection.ent.clone())?;
                     connection.ent = Ident::Symbol(self.find_or_define_symbol(
                         &name,
                         SymbolKind::Ent(Type::Unknown),

@@ -54,7 +54,7 @@ impl<'a> CodeGen<'a> {
     }
 
     fn compile_relation(&mut self, relation: RelType) -> Option<CompiledRel> {
-        // TODO: algebraically optimize relation body:
+        // Algebraically Optimize here
 
         // r0 and r1 are reserved for timestep and delay, respectively
         self.reg_used[0] = true;
@@ -91,7 +91,7 @@ impl<'a> CodeGen<'a> {
 
         ir_bytecode.push(Instruction::RET { src });
 
-        // TODO: remove deadcode
+        // Deadcode elimination:
         // step backwards through code, if a variable gets used as a src, mark it as alive, once it isdefiend, mark as dead
         //  if a variable is declared while not alive, remove that instruction
         //
