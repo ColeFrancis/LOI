@@ -1,0 +1,29 @@
+step entity value
+
+1 rst_n true
+1 clk false
+
+1 A_0 false
+1 A_1 false
+1 A_2 false
+1 A_3 false
+1 A_4 false
+1 A_5 false
+1 A_6 false
+1 A_7 false
+
+1 B_0 false
+1 B_1 false
+1 B_2 false
+1 B_3 false
+1 B_4 false
+1 B_5 false
+1 B_6 false
+1 B_7 false
+
+1 S0 false
+1 S1 false
+1 S2 false
+
+100 clk true
+200 clk false

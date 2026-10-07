@@ -189,8 +189,6 @@ fn simulate_full(
 
     let outputs = sim.dump_outputs();
 
-    println!("Outputs: {:?}", outputs);
-
     IoFile::write(output_file_path, outputs)?;
 
     Ok(())

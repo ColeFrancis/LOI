@@ -1,0 +1,758 @@
+// 8 bit alu with NAND gates
+
+rel_t NAND(a: Bool, b: Bool) -> Bool = ~(a&b);
+
+net Xor {
+    input A: Bool;
+    input B: Bool;
+
+    output Q: Bool;
+    output I: Bool;
+
+    NAND(A,B) := I;
+
+    NAND(A, I) := inter_2;
+    NAND(B, I) := inter_3;
+
+    NAND(inter_2, inter_3) := Q;
+}
+
+net Or_8bit {
+    input A_0: Bool;
+    input A_1: Bool;
+    input A_2: Bool;
+    input A_3: Bool;
+    input A_4: Bool;
+    input A_5: Bool;
+    input A_6: Bool;
+    input A_7: Bool;
+
+    output Q: Bool;
+
+    NAND(A_0, A_0) := A_0_n;
+    NAND(A_1, A_1) := A_1_n;
+    NAND(A_2, A_2) := A_2_n;
+    NAND(A_3, A_3) := A_3_n;
+    NAND(A_4, A_4) := A_4_n;
+    NAND(A_5, A_5) := A_5_n;
+    NAND(A_6, A_6) := A_6_n;
+    NAND(A_7, A_7) := A_7_n;
+
+    NAND(A_0_n, A_1_n) := A_0or1;
+    NAND(A_2_n, A_3_n) := A_2or3;
+    NAND(A_4_n, A_5_n) := A_4or5;
+    NAND(A_6_n, A_7_n) := A_6or7;
+
+    NAND(A_0or1, A_0or1) := A_0or1_n;
+    NAND(A_2or3, A_2or3) := A_2or3_n;
+    NAND(A_4or5, A_4or5) := A_4or5_n;
+    NAND(A_6or7, A_6or7) := A_6or7_n;
+
+    NAND(A_0or1_n, A_2or3_n) := A_0123;
+    NAND(A_4or5_n, A_6or7_n) := A_4567;
+
+    NAND(A_0123, A_0123) := A_0123_n;
+    NAND(A_4567, A_4567) := A_4567_n;
+
+    NAND(A_0123_n, A_4567_n) := Q;
+}
+
+net Mux2_1bit {
+    input I0: Bool;
+    input I1: Bool;
+
+    input S0: Bool;
+
+    output Q: Bool;
+
+    NAND(S0, S0) := S0_n;
+
+    NAND(I0, S0_n) := inter_0;
+    NAND(I1, S0) := inter_1;
+
+    NAND(inter_0, inter_1) := Q;
+}
+
+net Mux4_1bit {
+    input I0: Bool;
+    input I1: Bool;
+    input I2: Bool;
+    input I3: Bool;
+
+    input S0: Bool;
+    input S1: Bool;
+
+    output Q: Bool;
+
+    Mux2_1bit {
+        I0 := I0,
+        I1 := I1,
+        S0 := S0,
+        Q := Q_01,
+    };
+    Mux2_1bit {
+        I0 := I2,
+        I1 := I3,
+        S0 := S0,
+        Q := Q_23,
+    };
+
+    Mux2_1bit {
+        I0 := Q_01,
+        I1 := Q_23,
+        S0 := S1,
+        Q := Q,
+    };
+}
+
+net Mux2_8bit {
+    input I0_0: Bool;
+    input I0_1: Bool;
+    input I0_2: Bool;
+    input I0_3: Bool;
+    input I0_4: Bool;
+    input I0_5: Bool;
+    input I0_6: Bool;
+    input I0_7: Bool;
+    
+    input I1_0: Bool;
+    input I1_1: Bool;
+    input I1_2: Bool;
+    input I1_3: Bool;
+    input I1_4: Bool;
+    input I1_5: Bool;
+    input I1_6: Bool;
+    input I1_7: Bool;
+
+    input S0: Bool;
+
+    output Q_0: Bool;
+    output Q_1: Bool;
+    output Q_2: Bool;
+    output Q_3: Bool;
+    output Q_4: Bool;
+    output Q_5: Bool;
+    output Q_6: Bool;
+    output Q_7: Bool;
+
+    Mux2_1bit {
+        I0 := I0_0,
+        I1 := I1_0,
+        S0 := S0,
+        Q := Q_0,
+    };
+    Mux2_1bit {
+        I0 := I0_1,
+        I1 := I1_1,
+        S0 := S0,
+        Q := Q_1,
+    };
+    Mux2_1bit {
+        I0 := I0_2,
+        I1 := I1_2,
+        S0 := S0,
+        Q := Q_2,
+    };
+    Mux2_1bit {
+        I0 := I0_3,
+        I1 := I1_3,
+        S0 := S0,
+        Q := Q_3,
+    };
+    Mux2_1bit {
+        I0 := I0_4,
+        I1 := I1_4,
+        S0 := S0,
+        Q := Q_4,
+    };
+    Mux2_1bit {
+        I0 := I0_5,
+        I1 := I1_5,
+        S0 := S0,
+        Q := Q_5,
+    };
+    Mux2_1bit {
+        I0 := I0_6,
+        I1 := I1_6,
+        S0 := S0,
+        Q := Q_6,
+    };
+    Mux2_1bit {
+        I0 := I0_7,
+        I1 := I1_7,
+        S0 := S0,
+        Q := Q_7,
+    };
+}
+
+net AddSub_1bit {
+    input A: Bool;
+    input B: Bool;
+
+    input sub: Bool;
+    input cin: Bool;
+
+    output S: Bool;
+    output cout: Bool;
+
+    Xor {
+        A := B,
+        B := sub,
+        Q := B_p,
+    };
+
+    Xor {
+        A := A,
+        B := B_p,
+        I := cout_0,
+        Q := S_0,
+    };
+    Xor {
+        A := cin,
+        B := S_0,
+        I := cout_1,
+        Q := S,
+    };
+
+    NAND(cout_0, cout_1) := cout;
+}
+
+net AddSub_8bit {
+    input A_0: Bool;
+    input A_1: Bool;
+    input A_2: Bool;
+    input A_3: Bool;
+    input A_4: Bool;
+    input A_5: Bool;
+    input A_6: Bool;
+    input A_7: Bool;
+    
+    input B_0: Bool;
+    input B_1: Bool;
+    input B_2: Bool;
+    input B_3: Bool;
+    input B_4: Bool;
+    input B_5: Bool;
+    input B_6: Bool;
+    input B_7: Bool;
+
+    input cin: Bool;
+
+    input sub: Bool;
+
+    output S_0: Bool;
+    output S_1: Bool;
+    output S_2: Bool;
+    output S_3: Bool;
+    output S_4: Bool;
+    output S_5: Bool;
+    output S_6: Bool;
+    output S_7: Bool;
+
+    output cout: Bool;
+
+    Xor {
+        A := cin,
+        B := sub,
+        Q := cin_p,
+    };
+
+    AddSub_1bit {
+        A := A_0,
+        B := B_0,
+        sub := sub,
+        cin := cin_p,
+        S := S_0,
+        cout := cout_0,
+    };
+    AddSub_1bit {
+        A := A_1,
+        B := B_1,
+        sub := sub,
+        cin := cout_0,
+        S := S_1,
+        cout := cout_1,
+    };
+    AddSub_1bit {
+        A := A_2,
+        B := B_2,
+        sub := sub,
+        cin := cout_1,
+        S := S_2,
+        cout := cout_2,
+    };
+    AddSub_1bit {
+        A := A_3,
+        B := B_3,
+        sub := sub,
+        cin := cout_2,
+        S := S_3,
+        cout := cout_3,
+    };
+    AddSub_1bit {
+        A := A_4,
+        B := B_4,
+        sub := sub,
+        cin := cout_3,
+        S := S_4,
+        cout := cout_4,
+    };
+    AddSub_1bit {
+        A := A_5,
+        B := B_5,
+        sub := sub,
+        cin := cout_4,
+        S := S_5,
+        cout := cout_5,
+    };
+    AddSub_1bit {
+        A := A_6,
+        B := B_6,
+        sub := sub,
+        cin := cout_5,
+        S := S_6,
+        cout := cout_6,
+    };
+    AddSub_1bit {
+        A := A_7,
+        B := B_7,
+        sub := sub,
+        cin := cout_6,
+        S := S_7,
+        cout := cout,
+    };
+}
+
+// (S0, S1):
+//      0,0: And
+//      0,1: Or
+//      1,0: Not A
+//      1,1: Xor
+net Logic_1bit {
+    input A: Bool;
+    input B: Bool;
+
+    input S0: Bool;
+    input S1: Bool;
+
+    output Q: Bool;
+
+    Xor {
+        A := A,
+        B := B,
+        I := AandB_n,
+        Q := AxorB,
+    };
+    NAND(AandB_n, AandB_n) := AandB;
+
+    NAND(A, A) := A_n;
+    NAND(B, B) := B_n;
+
+    NAND(A_n, B_n) := AorB;
+
+    Mux4_1bit {
+        I0 := AandB,
+        I1 := AorB,
+        I2 := A_n,
+        I3 := AxorB,
+
+        S0 := S0,
+        S1 := S1,
+
+        Q := Q,
+    };
+}
+
+net Logic_8bit {
+    input A_0: Bool;
+    input A_1: Bool;
+    input A_2: Bool;
+    input A_3: Bool;
+    input A_4: Bool;
+    input A_5: Bool;
+    input A_6: Bool;
+    input A_7: Bool;
+    
+    input B_0: Bool;
+    input B_1: Bool;
+    input B_2: Bool;
+    input B_3: Bool;
+    input B_4: Bool;
+    input B_5: Bool;
+    input B_6: Bool;
+    input B_7: Bool;
+
+    input S0: Bool;
+    input S1: Bool;
+
+    output Q_0: Bool;
+    output Q_1: Bool;
+    output Q_2: Bool;
+    output Q_3: Bool;
+    output Q_4: Bool;
+    output Q_5: Bool;
+    output Q_6: Bool;
+    output Q_7: Bool;
+
+    Logic_1bit {
+        A := A_0,
+        B := B_0,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_0,
+    };
+    Logic_1bit {
+        A := A_1,
+        B := B_1,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_1,
+    };
+    Logic_1bit {
+        A := A_2,
+        B := B_2,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_2,
+    };
+    Logic_1bit {
+        A := A_3,
+        B := B_3,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_3,
+    };
+    Logic_1bit {
+        A := A_4,
+        B := B_4,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_4,
+    };
+    Logic_1bit {
+        A := A_5,
+        B := B_5,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_5,
+    };
+    Logic_1bit {
+        A := A_6,
+        B := B_6,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_6,
+    };
+    Logic_1bit {
+        A := A_7,
+        B := B_7,
+        S0 := S0,
+        S1 := S1,
+        Q := Q_7,
+    };
+}
+
+net Dlatch {
+    input D: Bool;
+    input en: Bool;
+    input rst_n: Bool;
+
+    output Q: Bool;
+    output Q_n: Bool;
+
+    init Q: Bool = false;
+    init Q_n: Bool = true;
+
+    NAND(D, D) := D_n;
+
+    NAND(D, en) := s;
+    NAND(D_n, en) := r;
+
+    NAND(rst_n, r) := r_p_n;
+    NAND(r_p_n, r_p_n) := r_p;
+
+    NAND(s, Q_n) := Q;
+    NAND(r_p, Q) := Q_n;
+}
+
+net Dflip_flop {
+    input D: Bool;
+    input clk: Bool;
+    input rst_n: Bool;
+
+    output Q: Bool;
+    output Q_n: Bool;
+
+    NAND(clk, clk) := clk_1;
+    NAND(clk_1, clk_1) := clk_2;
+
+    Dlatch {
+        D := D,
+        en := clk_1,
+        rst_n := rst_n,
+        Q := Q_p,
+    };
+
+    Dlatch {
+        D := Q_p,
+        en := clk_2,
+        rst_n := rst_n,
+        Q := Q,
+        Q_n := Q_n,
+    };
+}
+
+net Reg_8bit {
+    input D_0: Bool;
+    input D_1: Bool;
+    input D_2: Bool;
+    input D_3: Bool;
+    input D_4: Bool;
+    input D_5: Bool;
+    input D_6: Bool;
+    input D_7: Bool;
+
+    input clk: Bool;
+    input rst_n: Bool;
+
+    output Q_0: Bool;
+    output Q_1: Bool;
+    output Q_2: Bool;
+    output Q_3: Bool;
+    output Q_4: Bool;
+    output Q_5: Bool;
+    output Q_6: Bool;
+    output Q_7: Bool;
+
+    Dflip_flop {
+        D := D_0,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_0,
+    };
+    Dflip_flop {
+        D := D_1,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_1,
+    };
+    Dflip_flop {
+        D := D_2,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_2,
+    };
+    Dflip_flop {
+        D := D_3,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_3,
+    };
+    Dflip_flop {
+        D := D_4,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_4,
+    };
+    Dflip_flop {
+        D := D_5,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_5,
+    };
+    Dflip_flop {
+        D := D_6,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_6,
+    };
+    Dflip_flop {
+        D := D_7,
+        clk := clk,
+        rst_n := rst_n,
+        Q := Q_7,
+    };
+}
+
+// (S2, S1, S0) :
+//      0,0,0: Add
+//      0,0,1: Sub (A-B)
+//      0,1,0: Add with carry
+//      0,1,1: Sub with borrow
+//      1,0,0: And
+//      1,0,1: Or
+//      1,1,0: Not A
+//      1,1,1: Xor
+net Alu {
+    input A_0: Bool;
+    input A_1: Bool;
+    input A_2: Bool;
+    input A_3: Bool;
+    input A_4: Bool;
+    input A_5: Bool;
+    input A_6: Bool;
+    input A_7: Bool;
+    
+    input B_0: Bool;
+    input B_1: Bool;
+    input B_2: Bool;
+    input B_3: Bool;
+    input B_4: Bool;
+    input B_5: Bool;
+    input B_6: Bool;
+    input B_7: Bool;
+
+    input S0: Bool;
+    input S1: Bool;
+    input S2: Bool;
+
+    input clk: Bool;
+    input rst_n: Bool;
+
+    output Q_0: Bool;
+    output Q_1: Bool;
+    output Q_2: Bool;
+    output Q_3: Bool;
+    output Q_4: Bool;
+    output Q_5: Bool;
+    output Q_6: Bool;
+    output Q_7: Bool;
+
+    output F_Z: Bool;
+    output F_N: Bool;
+    output F_C: Bool;
+
+    Logic_8bit {
+        A_0 := A_0,
+        A_1 := A_1,
+        A_2 := A_2,
+        A_3 := A_3,
+        A_4 := A_4,
+        A_5 := A_5,
+        A_6 := A_6,
+        A_7 := A_7,
+        B_0 := B_0,
+        B_1 := B_1,
+        B_2 := B_2,
+        B_3 := B_3,
+        B_4 := B_4,
+        B_5 := B_5,
+        B_6 := B_6,
+        B_7 := B_7,
+
+        S0 := S0,
+        S1 := S1,
+
+        Q_0 := Q_0_logic,
+        Q_1 := Q_1_logic,
+        Q_2 := Q_2_logic,
+        Q_3 := Q_3_logic,
+        Q_4 := Q_4_logic,
+        Q_5 := Q_5_logic,
+        Q_6 := Q_6_logic,
+        Q_7 := Q_7_logic,
+    };
+
+    // Generate the carry/borrow signal using S1 and the carry flag
+    NAND(F_C, S1) := cin_n;
+    NAND(cin_n, cin_n) := cin;
+
+    AddSub_8bit {
+        A_0 := A_0,
+        A_1 := A_1,
+        A_2 := A_2,
+        A_3 := A_3,
+        A_4 := A_4,
+        A_5 := A_5,
+        A_6 := A_6,
+        A_7 := A_7,
+        
+        B_0 := B_0,
+        B_1 := B_1,
+        B_2 := B_2,
+        B_3 := B_3,
+        B_4 := B_4,
+        B_5 := B_5,
+        B_6 := B_6,
+        B_7 := B_7,
+
+        cin := cin,
+
+        sub := S0,
+
+        S_0 := Q_0_arith,
+        S_1 := Q_1_arith,
+        S_2 := Q_2_arith,
+        S_3 := Q_3_arith,
+        S_4 := Q_4_arith,
+        S_5 := Q_5_arith,
+        S_6 := Q_6_arith,
+        S_7 := Q_7_arith,
+
+        cout := C,
+    };
+
+    Or_8bit {
+        A_0 := Q_0,
+        A_1 := Q_1,
+        A_2 := Q_2,
+        A_3 := Q_3,
+        A_4 := Q_4,
+        A_5 := Q_5,
+        A_6 := Q_6,
+        A_7 := Q_7,
+
+        Q := any_1,
+    };
+    NAND(any_1, any_1) := Z;
+
+    Mux2_8bit {
+        I0_0 := Q_0_arith,
+        I0_1 := Q_1_arith,
+        I0_2 := Q_2_arith,
+        I0_3 := Q_3_arith,
+        I0_4 := Q_4_arith,
+        I0_5 := Q_5_arith,
+        I0_6 := Q_6_arith,
+        I0_7 := Q_7_arith,
+        
+        I1_0 := Q_0_logic,
+        I1_1 := Q_1_logic,
+        I1_2 := Q_2_logic,
+        I1_3 := Q_3_logic,
+        I1_4 := Q_4_logic,
+        I1_5 := Q_5_logic,
+        I1_6 := Q_6_logic,
+        I1_7 := Q_7_logic,
+
+        S0 := S2,
+
+        Q_0 := Q_0,
+        Q_1 := Q_1,
+        Q_2 := Q_2,
+        Q_3 := Q_3,
+        Q_4 := Q_4,
+        Q_5 := Q_5,
+        Q_6 := Q_6,
+        Q_7 := Q_7,
+    };
+
+    Dflip_flop {
+        D := Z,
+        clk := clk,
+        rst_n := rst_n,
+        Q := F_Z,
+    };
+    Dflip_flop {
+        D := C,
+        clk := clk,
+        rst_n := rst_n,
+        Q := F_C,
+    };
+    Dflip_flop {
+        D := Q_7,
+        clk := clk,
+        rst_n := rst_n,
+        Q := F_N,
+    };
+}
