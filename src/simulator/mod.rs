@@ -13,17 +13,17 @@
 // limitations under the License.
 
 mod core;
-mod scheduler;
-pub mod event;
 pub mod rel_interpreter;
 pub mod runtime_diagnostics;
 pub mod io_file;
 pub mod io_file_error;
 
+pub mod objects;
+
 use std::collections::HashMap;
 
 use crate::simulator::{
-    scheduler::Scheduler,
+    objects::scheduler::Scheduler,
     rel_interpreter::RelInterpreter,
 };
 

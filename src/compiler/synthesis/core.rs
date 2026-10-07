@@ -35,7 +35,7 @@ use crate::compiler::{
     },
 };
 
-use crate::simulator::event::Event;
+use crate::simulator::objects::event::Event;
 
 impl Synthesis {
     pub fn synthesize(nets: Vec<Net>, top_net_idx: usize, obj_map: HashMap::<SymbolId, usize>, symbols: &mut [Symbol], diagnostics: &mut Diagnostics) -> (Netlist, Interface, Vec<Event>) {

@@ -22,12 +22,16 @@
 
 use std::collections::HashMap;
 
-use super::Simulator;
-use super::IoVal;
-use super::scheduler::Scheduler;
-use super::rel_interpreter::RelInterpreter;
-use super::event::Event;
-use super::runtime_diagnostics::RuntimeError;
+use super::{
+    Simulator,
+    IoVal,
+    rel_interpreter::RelInterpreter,
+    runtime_diagnostics::RuntimeError,
+    objects::{
+        scheduler::Scheduler,
+        event::Event,
+    }
+};
 
 use crate::compiler::objects::{
     ast::Ident,

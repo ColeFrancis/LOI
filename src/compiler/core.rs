@@ -44,7 +44,7 @@ use crate::compiler::{
     },
 };
 
-use crate::simulator::event::Event;
+use crate::simulator::objects::event::Event;
 
 impl Compiler {
     // return netlist and vector of compiled relations or panic

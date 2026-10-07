@@ -31,7 +31,7 @@ use loi::compiler::{
 };
 
 use loi::simulator::rel_interpreter::test_assembler::assemble;
-use loi::simulator::event::Event;
+use loi::simulator::objects::event::Event;
 
 #[test]
 fn missing_file() {
