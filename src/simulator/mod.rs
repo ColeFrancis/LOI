@@ -29,7 +29,7 @@ use crate::compiler::objects::netlist::{EntId, Interface, Netlist};
 pub enum IoVal {
     Bool(bool),
     Int(i64),
-    Real(f64),
+    Float(f64),
     Custom(String),
 }
 
@@ -38,8 +38,8 @@ impl std::fmt::Display for IoVal {
         match self {
             IoVal::Bool(value) => write!(f, "{value}"),
             IoVal::Int(value) => write!(f, "{value}"),
-            IoVal::Real(value) if value.fract() == 0.0 => write!(f, "{value:.1}"),
-            IoVal::Real(value) => write!(f, "{value}"),
+            IoVal::Float(value) if value.fract() == 0.0 => write!(f, "{value:.1}"),
+            IoVal::Float(value) => write!(f, "{value}"),
             IoVal::Custom(value) => write!(f, "{value}"),
         }
     }
