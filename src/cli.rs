@@ -187,6 +187,8 @@ fn simulate_full(
 
     let ran_steps = sim.run(steps, false)?;
 
+    println!("{ran_steps}");
+
     let outputs = sim.dump_outputs();
 
     IoFile::write(output_file_path, outputs)?;

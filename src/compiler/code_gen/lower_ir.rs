@@ -24,8 +24,10 @@ use super::CodeGen;
 use super::intermediate_rep::{Instruction, Source};
 
 impl<'a> CodeGen<'a> {
-    pub(super) fn lower_ir(ir_bytecode: Vec<Instruction>) -> Vec<u8> {
+    // The returned boolean is true if no nondeterministic instructions (rnd) are found
+    pub(super) fn lower_ir(ir_bytecode: Vec<Instruction>) -> (Vec<u8>, bool) {
         let mut bytes = Vec::new();
+        let mut deterministic = true;
 
         for instruction in ir_bytecode {
             match instruction {
@@ -648,6 +650,8 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src_bytes);
                 }
                 Instruction::RND { dest } => {
+                    deterministic = false;
+
                     let opcode = 0b11100000;
 
                     bytes.push(opcode);
@@ -656,7 +660,7 @@ impl<'a> CodeGen<'a> {
             }
         }
 
-        bytes
+        (bytes, deterministic)
     }
 
     fn src_to_bytes(src: Source) -> (bool, Vec<u8>) {
@@ -676,7 +680,7 @@ mod tests {
     use crate::simulator::rel_interpreter::test_assembler::assemble;
 
     #[test]
-    fn test_all_instructions() {
+    fn test_all_deterministic_instructions() {
         let result = CodeGen::lower_ir(vec![
             Instruction::IADD {
                 dest: 1,
@@ -731,7 +735,6 @@ mod tests {
             Instruction::RET {
                 src: Source::Int(1),
             },
-            Instruction::RND { dest: 0 },
             Instruction::ERR {
                 code: 4,
                 src: Some(Source::Int(0)),
@@ -755,14 +758,13 @@ FJGE o48 r0 r1
 MOV r0 f3.0
 RET r0
 RET i1
-RND r0
 ERR b4 i0
 ERR b3
         ",
         )
         .unwrap();
 
-        assert_eq!(result, test);
+        assert_eq!(result, (test, true));
     }
 
     #[test]
@@ -1048,6 +1050,6 @@ RND r0
         )
         .unwrap();
 
-        assert_eq!(result, test);
+        assert_eq!(result, (test, false));
     }
 }

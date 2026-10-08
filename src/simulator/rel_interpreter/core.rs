@@ -43,6 +43,10 @@ impl RelInterpreter {
         self.relations[relation_id].name.clone()
     }
 
+    pub fn rel_is_deterministic(&self, relation_id: usize) -> bool {
+        self.relations[relation_id].deterministic
+    }
+
     pub fn evaluate(
         &mut self,
         relation_id: usize,
@@ -965,6 +969,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     FADD r0 r2 r3

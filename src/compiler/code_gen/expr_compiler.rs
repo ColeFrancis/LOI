@@ -28,7 +28,7 @@ use super::intermediate_rep::{Instruction, Source};
 use crate::compiler::objects::{ast::*, symbol::SymbolKind, types::Type};
 
 impl<'a> CodeGen<'a> {
-    // Returns the bytecode in intermediate representation, the source where the result is stored, and the type
+    // Returns the bytecode in intermediate representation, the source where the result is stored, the type, and if the expression has no sample statements
     pub(super) fn compile_expr(&mut self, expr: Expr) -> Option<(Vec<Instruction>, Source, Type)> {
         let mut bytecode: Vec<Instruction> = Vec::new();
 

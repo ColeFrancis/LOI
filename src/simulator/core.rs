@@ -253,13 +253,31 @@ impl Simulator {
                         }
                     };
 
-                if old_val != Some(new_val) {
-                    self.scheduler.push(Event {
-                        timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
-                        ent_id: output_ent_id,
-                        new_val: new_val,
-                    });
+                // if old_val != Some(new_val) {
+                //     self.scheduler.push(Event {
+                //         timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
+                //         ent_id: output_ent_id,
+                //         new_val: new_val,
+                //     });
+                // }
+                if old_val == Some(new_val) {
+                    // Must check if any of sink relations are stoastic. If all are deterministic, we dont need to propogate the event
+                    let needs_propogation = self.netlist.ents[output_ent_id]
+                        .sinks
+                        .iter()
+                        .any(|rel_id| {
+                            !self.interpreter.rel_is_deterministic(self.netlist.relations[*rel_id].idx)
+                        });
+                    
+                    if !needs_propogation {
+                        continue;
+                    }
                 }
+                self.scheduler.push(Event {
+                    timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
+                    ent_id: output_ent_id,
+                    new_val: new_val,
+                });
             }
 
             if self.scheduler.curr_time > max_steps || stopping {
@@ -324,6 +342,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "ADD".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     IADD r4 r2 r3
@@ -618,6 +637,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "DIV".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     IDIV r4 r2 r3
@@ -761,6 +781,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "NAND".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     AND r4 r2 r3
@@ -851,6 +872,7 @@ mod tests {
             CompiledRel {
                 name: "AND".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode: assemble(
                     "
                     AND r4 r2 r3
@@ -862,6 +884,7 @@ mod tests {
             CompiledRel {
                 name: "NOT".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode: assemble(
                     "
                     NOT r4 r3
@@ -991,6 +1014,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "NAND".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     AND r4 r2 r3
@@ -1077,6 +1101,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "NAND".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     IADD r4 r2 i1
@@ -1199,6 +1224,7 @@ mod tests {
             CompiledRel {
                 name: "imp_delay".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode: assemble(
                     "
                     IADD r3 r2 r1
@@ -1210,6 +1236,7 @@ mod tests {
             CompiledRel {
                 name: "read_imp".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode: assemble(
                     "
                     IEQ r3 r2 r0
@@ -1327,6 +1354,7 @@ mod tests {
         let relations = vec![CompiledRel {
             name: "SHIFT".to_string(),
             complexity: 0,
+            deterministic: true,
             bytecode: assemble(
                 "
                     IJNE o13 r2 i0

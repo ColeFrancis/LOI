@@ -18,7 +18,8 @@
 //!
 //! ## Invariants
 //!
-//! -
+//! - Last token must be Eof
+//! - All parsing errors must be recovered from before the next item/statement
 //!
 //! Author: Cole Francis
 

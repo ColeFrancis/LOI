@@ -1,0 +1,15 @@
+ent_t COIN = {H, T};
+
+rel_t FLIP(trigger: Impulse) -> COIN = {
+    sample {
+        0.5 : H,
+        _   : T,
+    }
+};
+
+net FLIP_COIN {
+    input trigger: Impulse;
+    output result: COIN;
+
+    FLIP(trigger) := result;
+}

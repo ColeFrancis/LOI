@@ -98,11 +98,12 @@ impl<'a> CodeGen<'a> {
         // Also remove all sample/cases arms past defaults?
         //  take care to modify jump offsets if instructsions are removed between the jump and its target
 
-        let bytecode = Self::lower_ir(ir_bytecode);
+        let (bytecode, deterministic) = Self::lower_ir(ir_bytecode);
 
         Some(CompiledRel {
             name: self.symbol_table[self.rel_symbol_id].name.clone(),
             complexity: 0,
+            deterministic,
             bytecode,
         })
     }
@@ -571,6 +572,7 @@ mod tests {
             Some(CompiledRel {
                 name: "ADD".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode,
             })
         );
@@ -623,6 +625,7 @@ mod tests {
             Some(CompiledRel {
                 name: "DELAY".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode,
             })
         );
@@ -696,6 +699,7 @@ mod tests {
             Some(CompiledRel {
                 name: "AND".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode,
             })
         );
@@ -790,6 +794,7 @@ mod tests {
             Some(CompiledRel {
                 name: "REVERSE".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode,
             })
         );
@@ -934,6 +939,7 @@ mod tests {
             Some(CompiledRel {
                 name: "RND".to_string(),
                 complexity: 0,
+                deterministic: false,
                 bytecode,
             })
         );

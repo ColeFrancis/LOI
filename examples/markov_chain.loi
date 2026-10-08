@@ -1,0 +1,99 @@
+// Modeling the same 4 state Markov chain in two ways: 
+//  1 entity with 4 states
+//  2 entities each with 2 states
+
+// This demonstrates that networks can sometimes be formulated in different ways depending on what is being optimized for or what is easier to formulate
+
+ent_t TwoState = {A, B};
+
+ent_t FourState = {AA, AB, BA, BB};
+
+rel_t TransitionTwoLeftSymbol (left: TwoState, right: TwoState) -> TwoState = {
+    cases (left, right) {
+        (A,A) : sample {
+            0.85 : A,
+            _    : B,
+        },
+        (A,B) : sample {
+            0.70 : A,
+            _    : B,
+        },
+        (B,A) : sample {
+            0.30 : A,
+            _    : B,
+        },
+        _     : sample {
+            0.20 : A,
+            _    : B,
+        },
+    }
+};
+
+rel_t TransitionTwoRightSymbol (left: TwoState, right: TwoState) -> TwoState = {
+    cases (left, right) {
+        (A,A) : sample {
+            0.70 : A,
+            _    : B,
+        },
+        (A,B) : sample {
+            0.35 : A,
+            _    : B,
+        },
+        (B,A) : sample {
+            0.60 : A,
+            _    : B,
+        },
+        _     : sample {
+            0.30 : A,
+            _    : B,
+        },
+    }
+};
+
+rel_t TransitionFour (state: FourState) -> FourState = {
+    cases state {
+        AA : sample {
+            0.595 : AA,
+            0.255 : AB,
+            0.105 : BA,
+            _     : BB,
+        },
+        AB : sample {
+            0.245 : AA,
+            0.455 : AB,
+            0.105 : BA,
+            _    : BB,
+        },
+        BA : sample {
+            0.180 : AA,
+            0.120 : AB,
+            0.420 : BA,
+            _     : BB,
+        },
+        _  : sample {
+            0.060 : AA,
+            0.140 : AB,
+            0.240 : BA,
+            _     : BB,
+        },
+    }
+};
+
+net MarkovChain2StateEnt {
+    output leftState: TwoState;
+    output rightState: TwoState;
+
+    init leftState: TwoState = A;
+    init rightState: TwoState = A;
+
+    TransitionTwoLeftSymbol(leftState, rightState) := leftState;
+    TransitionTwoRightSymbol(leftState, rightState) := rightState;
+}
+
+net MarkovChain4StateEnt {
+    output state: FourState;
+
+    init state: FourState = AA;
+
+    TransitionFour(state) := state;
+}

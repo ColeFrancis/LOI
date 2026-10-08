@@ -1,4 +1,5 @@
 // 8 bit alu with NAND gates
+// This design makes it clear how benificial the planned generate blocks and ent arrays in v2 will be
 
 rel_t NAND(a: Bool, b: Bool) -> Bool = ~(a&b);
 
@@ -499,78 +500,6 @@ net Dflip_flop {
         rst_n := rst_n,
         Q := Q,
         Q_n := Q_n,
-    };
-}
-
-net Reg_8bit {
-    input D_0: Bool;
-    input D_1: Bool;
-    input D_2: Bool;
-    input D_3: Bool;
-    input D_4: Bool;
-    input D_5: Bool;
-    input D_6: Bool;
-    input D_7: Bool;
-
-    input clk: Bool;
-    input rst_n: Bool;
-
-    output Q_0: Bool;
-    output Q_1: Bool;
-    output Q_2: Bool;
-    output Q_3: Bool;
-    output Q_4: Bool;
-    output Q_5: Bool;
-    output Q_6: Bool;
-    output Q_7: Bool;
-
-    Dflip_flop {
-        D := D_0,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_0,
-    };
-    Dflip_flop {
-        D := D_1,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_1,
-    };
-    Dflip_flop {
-        D := D_2,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_2,
-    };
-    Dflip_flop {
-        D := D_3,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_3,
-    };
-    Dflip_flop {
-        D := D_4,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_4,
-    };
-    Dflip_flop {
-        D := D_5,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_5,
-    };
-    Dflip_flop {
-        D := D_6,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_6,
-    };
-    Dflip_flop {
-        D := D_7,
-        clk := clk,
-        rst_n := rst_n,
-        Q := Q_7,
     };
 }
 

@@ -18,7 +18,7 @@
 //!
 //! ## Invariants
 //!
-//! - Keywords are their own variants
+//! - Keywords are their own token variants
 //! - Tokens must obey and impelment grammar
 //!
 //! Author: Cole Francis

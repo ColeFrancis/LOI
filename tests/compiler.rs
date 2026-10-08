@@ -734,6 +734,7 @@ fn calculator() {
             vec![CompiledRel {
                 name: "NAND".to_string(),
                 complexity: 0,
+                deterministic: true,
                 bytecode: assemble(
                     "
                     AND r4 r2 r3
@@ -791,5 +792,41 @@ fn calculator() {
                 },
             ],
         ))
+    );
+}
+
+#[test]
+fn coin_flip() {
+    let path = format!(
+        "{}/tests/fixtures/coin_flip.loi",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    println!("path: {}", path);
+
+    let (_, _, compiled_rel, _) = Compiler::compile(&path, "FLIP_COIN").expect("should return some");
+
+
+    assert_eq!(
+        compiled_rel,
+        vec![CompiledRel {
+            name: "FLIP".to_string(),
+            complexity: 0,
+            deterministic: false,
+            bytecode: assemble(
+                "
+                RND r3
+                MOV r4 f0.5
+                MOV r5 f1.0
+                FJEQ o3 r5 f1.0
+                ERR b4 r5
+                FJGE o13 r3 r4
+                MOV r6 i0
+                JMP o15
+                FJGE o10 r3 r5
+                MOV r6 i1
+                RET r6
+            "
+            ).unwrap(),
+        }],
     );
 }

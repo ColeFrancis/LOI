@@ -19,8 +19,13 @@
 //! ## Invariants
 //!
 //! - All errors in parsing potential tokens result in an Invalid token
-//! - All tokens must be parsable
 //! - The last token must be EoF
+//! - All keywords turned into individual tokens
+//! - All unknown strings turned into idents
+//! - If a valid number has one decimal it becomes a Real, otherwise it is an int
+//! - Tabs count as 4 spaces in span.col
+//! - Integers so large they cannot be parsed result in an invald num token
+//! - Idents must begin with a letter or underscore
 //!
 //! Author: Cole Francis
 
