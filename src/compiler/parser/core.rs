@@ -167,7 +167,7 @@ impl<'a> Parser<'a> {
             TokenKind::Bool => Some(Type::Bool),
             TokenKind::Impulse => Some(Type::Impulse),
             TokenKind::Int => Some(Type::Int),
-            TokenKind::Real => Some(Type::Real),
+            TokenKind::Float => Some(Type::Float),
             TokenKind::Mod => {
                 self.expect(TokenKind::LParen, rule)?;
 
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
                         Expected::Token(TokenKind::Bool),
                         Expected::Token(TokenKind::Impulse),
                         Expected::Token(TokenKind::Int),
-                        Expected::Token(TokenKind::Real),
+                        Expected::Token(TokenKind::Float),
                         Expected::Ident,
                     ],
                     found: other,
@@ -254,7 +254,7 @@ mod tests {
 
         // let a = 1;
 
-        // rel_t ONE () -> Real = 1;
+        // rel_t ONE () -> Float = 1;
 
         // net EMPTY {}
         let kinds: Vec<TokenKind> = vec![
@@ -277,7 +277,7 @@ mod tests {
             LParen,
             RParen,
             Arrow,
-            Real,
+            Float,
             Equals,
             IntLiteral(1),
             Semicolon,
@@ -307,7 +307,7 @@ mod tests {
                     Item::Rel(RelType {
                         name: build_ident_str("ONE"),
                         params: vec![],
-                        return_type: Type::Real,
+                        return_type: Type::Float,
                         body: Expr::Literal(Literal::Int(1)),
                     }),
                     Item::Net(Net {
@@ -328,7 +328,7 @@ mod tests {
         
 let a = 1;
 
-rel_t ONE () -> Real = 1;
+rel_t ONE () -> Float = 1;
 
 net EMPTY {}",
             &mut diagnostics,
@@ -370,7 +370,7 @@ net EMPTY {}",
                             span: Span { line: 5, col: 7 },
                         },
                         params: vec![],
-                        return_type: Type::Real,
+                        return_type: Type::Float,
                         body: Expr::Literal(Literal::Int(1)),
                     }),
                     Item::Net(Net {
@@ -457,7 +457,7 @@ let n = @;
     fn multiple_errors_2() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-            "rel_t A : () -> Real = a;
+            "rel_t A : () -> Float = a;
 
 net {
 

@@ -39,7 +39,7 @@ impl<'a> CodeGen<'a> {
 
                 Literal::Int(i) => (Source::Int(i), Type::Int),
 
-                Literal::Real(r) => (Source::Float(r), Type::Real),
+                Literal::Float(r) => (Source::Float(r), Type::Float),
             },
 
             Expr::Ident(Ident::Symbol(id)) => match self.symbol_table[id].kind.clone() {
@@ -97,7 +97,7 @@ impl<'a> CodeGen<'a> {
                         (Source::RegInter(dest), Type::Int)
                     }
 
-                    (Type::Real, UnaryOp::Neg) => {
+                    (Type::Float, UnaryOp::Neg) => {
                         let (expr_bytecode, src, _) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(expr_bytecode);
 
@@ -112,7 +112,7 @@ impl<'a> CodeGen<'a> {
                             src2: Source::Float(-1.0),
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
@@ -341,7 +341,7 @@ impl<'a> CodeGen<'a> {
                         (Source::RegInter(dest), Type::Int)
                     }
 
-                    (Type::Real, BinaryOp::Add) => {
+                    (Type::Float, BinaryOp::Add) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
                         let (right_expr_bytecode, src2, right_sub_type) =
@@ -350,8 +350,8 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
+                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -361,9 +361,9 @@ impl<'a> CodeGen<'a> {
                             src2: src2,
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
-                    (Type::Real, BinaryOp::Sub) => {
+                    (Type::Float, BinaryOp::Sub) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
                         let (right_expr_bytecode, src2, right_sub_type) =
@@ -372,8 +372,8 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
+                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -383,9 +383,9 @@ impl<'a> CodeGen<'a> {
                             src2: src2,
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
-                    (Type::Real, BinaryOp::Mul) => {
+                    (Type::Float, BinaryOp::Mul) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
                         let (right_expr_bytecode, src2, right_sub_type) =
@@ -394,8 +394,8 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, false)?;
+                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, false)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -405,9 +405,9 @@ impl<'a> CodeGen<'a> {
                             src2: src2,
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
-                    (Type::Real, BinaryOp::Div) => {
+                    (Type::Float, BinaryOp::Div) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
                         let (right_expr_bytecode, src2, right_sub_type) =
@@ -416,8 +416,8 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
+                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -427,9 +427,9 @@ impl<'a> CodeGen<'a> {
                             src2: src2,
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
-                    (Type::Real, BinaryOp::Pow) => {
+                    (Type::Float, BinaryOp::Pow) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
                         let (right_expr_bytecode, src2, right_sub_type) =
@@ -438,8 +438,8 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(left_expr_bytecode);
                         bytecode.extend(right_expr_bytecode);
 
-                        let src1 = self.coerce_real(&mut bytecode, src1, &left_sub_type, false)?;
-                        let src2 = self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, false)?;
+                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                         let dest = self.get_binary_dest(src1, src2)?;
 
@@ -449,7 +449,7 @@ impl<'a> CodeGen<'a> {
                             src2: src2,
                         });
 
-                        (Source::RegInter(dest), Type::Real)
+                        (Source::RegInter(dest), Type::Float)
                     }
 
                     (Type::Bool, BinaryOp::Lt) => {
@@ -462,12 +462,12 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(right_expr_bytecode);
 
                         match (&left_sub_type, &right_sub_type) {
-                            // if one is real, make both real
-                            (&Type::Real, _) | (_, &Type::Real) => {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
                                 let src1 =
-                                    self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
                                 let src2 =
-                                    self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -506,12 +506,12 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(right_expr_bytecode);
 
                         match (&left_sub_type, &right_sub_type) {
-                            // if one is real, make both real
-                            (&Type::Real, _) | (_, &Type::Real) => {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
                                 let src1 =
-                                    self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
                                 let src2 =
-                                    self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -550,12 +550,12 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(right_expr_bytecode);
 
                         match (&left_sub_type, &right_sub_type) {
-                            // if one is real, make both real
-                            (&Type::Real, _) | (_, &Type::Real) => {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
                                 let src1 =
-                                    self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
                                 let src2 =
-                                    self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -594,12 +594,12 @@ impl<'a> CodeGen<'a> {
                         bytecode.extend(right_expr_bytecode);
 
                         match (&left_sub_type, &right_sub_type) {
-                            // if one is real, make both real
-                            (&Type::Real, _) | (_, &Type::Real) => {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
                                 let src1 =
-                                    self.coerce_real(&mut bytecode, src1, &left_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
                                 let src2 =
-                                    self.coerce_real(&mut bytecode, src2, &right_sub_type, true)?;
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
 
                                 let dest = self.get_binary_dest(src1, src2)?;
 
@@ -725,7 +725,7 @@ impl<'a> CodeGen<'a> {
                     scrutinee_types.push(sub_type);
                 }
 
-                // preallocate destination reg
+                // pfloatlocate destination reg
                 let dest = self.get_next_reg()?;
                 let mut exit_jmp_indices: Vec<usize> = Vec::new();
                 let mut last_cond_jmp_indices: Vec<usize> = Vec::new();
@@ -836,7 +836,7 @@ impl<'a> CodeGen<'a> {
 
                             bytecode.extend(expr_bytecode);
 
-                            let src = self.coerce_real(&mut bytecode, src, &sub_type, true)?;
+                            let src = self.coerce_float(&mut bytecode, src, &sub_type, true)?;
 
                             match last_prob_reg {
                                 Some(last_reg) => {
@@ -892,7 +892,7 @@ impl<'a> CodeGen<'a> {
                     src: Some(Source::RegInter(last_prob_reg)),
                 });
 
-                // preallocate destination reg
+                // pfloatlocate destination reg
                 let dest = self.get_next_reg()?;
 
                 // compile arms one by one, skipping them if that arm is not chosen
@@ -983,7 +983,7 @@ impl<'a> CodeGen<'a> {
 
                     Literal::Int(i) => (Source::Int(i), Type::Int),
 
-                    Literal::Real(r) => (Source::Float(r), Type::Real),
+                    Literal::Float(r) => (Source::Float(r), Type::Float),
                 };
 
                 (scrutinee_sources[0], lit_src, scrutinee_types[0]) = self.coerce_equal(
@@ -995,7 +995,7 @@ impl<'a> CodeGen<'a> {
                 )?;
 
                 match scrutinee_types[0] {
-                    Type::Real => {
+                    Type::Float => {
                         bytecode.push(Instruction::FJNE {
                             offset: 3, // Jump to right past the
                             src1: scrutinee_sources[0],
@@ -1041,7 +1041,7 @@ impl<'a> CodeGen<'a> {
                 )?;
 
                 match scrutinee_types[0] {
-                    Type::Real => bytecode.push(Instruction::FJNE {
+                    Type::Float => bytecode.push(Instruction::FJNE {
                         offset: 3, // Jump to right past the
                         src1: scrutinee_sources[0],
                         src2: ident_src,
@@ -1108,7 +1108,7 @@ impl<'a> CodeGen<'a> {
                 )?;
 
                 match scrutinee_types[0] {
-                    Type::Real => match comp_pattern.op {
+                    Type::Float => match comp_pattern.op {
                         CompOp::Lt => bytecode.push(Instruction::FJGE {
                             offset: 3, // Jump to right past the jmp inst
                             src1: scrutinee_sources[0],
@@ -1445,10 +1445,10 @@ mod tests {
 
         let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Unary(UnaryExpr {
-                expr: Box::new(Expr::Literal(Literal::Real(3.0))),
+                expr: Box::new(Expr::Literal(Literal::Float(3.0))),
                 op: UnaryOp::Neg,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             })),
             right: Box::new(Expr::Unary(UnaryExpr {
                 expr: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -1458,7 +1458,7 @@ mod tests {
             })),
             op: BinaryOp::Add,
             op_span: Span { line: 0, col: 0 },
-            expr_type: Type::Real,
+            expr_type: Type::Float,
         }));
 
         assert_eq!(
@@ -1486,7 +1486,7 @@ mod tests {
                     },
                 ],
                 Source::RegInter(1),
-                Type::Real
+                Type::Float
             ))
         );
         assert_eq!(compiler.reg_used[0], true);
@@ -1662,7 +1662,7 @@ mod tests {
         compiler.reg_used[1] = true;
 
         let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            left: Box::new(Expr::Literal(Literal::Float(3.0))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
             op: BinaryOp::Lt,
             op_span: Span { line: 0, col: 0 },
@@ -1808,16 +1808,16 @@ mod tests {
                 SampleArm {
                     prob: Prob::Expr(Expr::Binary(BinaryExpr {
                         left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                        right: Box::new(Expr::Literal(Literal::Real(0.2))),
+                        right: Box::new(Expr::Literal(Literal::Float(0.2))),
                         op: BinaryOp::Add,
                         op_span: Span { line: 0, col: 0 },
-                        expr_type: Type::Real,
+                        expr_type: Type::Float,
                     })),
                     expr: Expr::Literal(Literal::Int(2)),
                     arm_span: Span { line: 0, col: 0 },
                 },
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.6))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.6))),
                     expr: Expr::Ident(Ident::Symbol(0)),
                     arm_span: Span { line: 0, col: 0 },
                 },
@@ -1919,8 +1919,8 @@ mod tests {
 
     #[test]
     fn compile_pattern_comp() {
-        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is real reg_inter, d is mod(4) reg_inter, e is impuse reg_var
-        //     (1, f, >5, 2, true) : ... // f is real, 2 is mod(4)
+        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is float reg_inter, d is mod(4) reg_inter, e is impuse reg_var
+        //     (1, f, >5, 2, true) : ... // f is float, 2 is mod(4)
         // }
         let mut scrutinee_sources = vec![
             Source::RegVar(1),
@@ -1932,7 +1932,7 @@ mod tests {
         let mut scrutinee_types = vec![
             Type::Int,
             Type::Int,
-            Type::Real,
+            Type::Float,
             Type::Mod(4),
             Type::Impulse,
         ];
@@ -1951,7 +1951,7 @@ mod tests {
             },
             Symbol {
                 name: "f".to_string(),
-                kind: SymbolKind::Variable(Type::Real),
+                kind: SymbolKind::Variable(Type::Float),
                 span: Span { line: 0, col: 0 },
             },
         ];
@@ -1988,8 +1988,8 @@ mod tests {
             ]),
         );
 
-        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is real reg_inter, d is mod(4) reg_inter, e is impuse reg_var
-        //     (1, f, >5, 2, true) : ... // f is real, 2 is mod(4)
+        // cases (a, b, c, d, e) {    // a is int reg_var, b is int reg_inter, c is float reg_inter, d is mod(4) reg_inter, e is impuse reg_var
+        //     (1, f, >5, 2, true) : ... // f is float, 2 is mod(4)
         // }
         assert_eq!(
             result,
@@ -2045,7 +2045,7 @@ mod tests {
         );
         assert_eq!(
             scrutinee_types,
-            vec![Type::Int, Type::Real, Type::Real, Type::Int, Type::Bool]
+            vec![Type::Int, Type::Float, Type::Float, Type::Int, Type::Bool]
         );
     }
 
@@ -2358,12 +2358,12 @@ mod tests {
                     expr: Expr::Sample(SampleExpr {
                         arms: vec![
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                                 expr: Expr::Ident(Ident::Symbol(1)),
                                 arm_span: Span { line: 0, col: 0 },
                             },
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.3))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.3))),
                                 expr: Expr::Ident(Ident::Symbol(2)),
                                 arm_span: Span { line: 0, col: 0 },
                             },
@@ -2383,12 +2383,12 @@ mod tests {
                     expr: Expr::Sample(SampleExpr {
                         arms: vec![
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.1))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.1))),
                                 expr: Expr::Ident(Ident::Symbol(1)),
                                 arm_span: Span { line: 0, col: 0 },
                             },
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.4))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.4))),
                                 expr: Expr::Ident(Ident::Symbol(2)),
                                 arm_span: Span { line: 0, col: 0 },
                             },
@@ -2408,12 +2408,12 @@ mod tests {
                     expr: Expr::Sample(SampleExpr {
                         arms: vec![
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.4))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.4))),
                                 expr: Expr::Ident(Ident::Symbol(1)),
                                 arm_span: Span { line: 0, col: 0 },
                             },
                             SampleArm {
-                                prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(0.0))),
                                 expr: Expr::Ident(Ident::Symbol(2)),
                                 arm_span: Span { line: 0, col: 0 },
                             },

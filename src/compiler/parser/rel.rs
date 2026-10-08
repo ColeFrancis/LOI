@@ -172,7 +172,7 @@ mod tests {
             Let,
             Ident("p".to_string()),
             Equals,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Semicolon,
             Sample,
             LBrace,
@@ -205,7 +205,7 @@ mod tests {
                 body: Expr::Block(BlockExpr {
                     statements: vec![Statement::Let(LetStatement {
                         name: build_ident_str("p"),
-                        expr: Expr::Literal(Literal::Real(0.5)),
+                        expr: Expr::Literal(Literal::Float(0.5)),
                     })],
                     expr: Box::new(Expr::Sample(SampleExpr {
                         arms: vec![
@@ -266,7 +266,7 @@ mod tests {
 
     #[test]
     fn bad_rel_1() {
-        // rel_t NUM () -> Real = {
+        // rel_t NUM () -> Float = {
         //     let p = 0.5     // missing semicolon
         //     let q = 0.4;
 
@@ -277,17 +277,17 @@ mod tests {
             LParen,
             RParen,
             Arrow,
-            Real,
+            Float,
             Equals,
             LBrace,
             Let,
             Ident("p".to_string()),
             Equals,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Let,
             Ident("q".to_string()),
             Equals,
-            RealLiteral(0.4),
+            FloatLiteral(0.4),
             Semicolon,
             Ident("p".to_string()),
             Plus,
@@ -310,13 +310,13 @@ mod tests {
             Some(RelType {
                 name: build_ident_str("NUM"),
                 params: vec![],
-                return_type: Type::Real,
+                return_type: Type::Float,
                 body: Expr::Block(BlockExpr {
                     statements: vec![
                         Statement::Error,
                         Statement::Let(LetStatement {
                             name: build_ident_str("q"),
-                            expr: Expr::Literal(Literal::Real(0.4)),
+                            expr: Expr::Literal(Literal::Float(0.4)),
                         })
                     ],
                     expr: Box::new(Expr::Binary(BinaryExpr {
@@ -335,7 +335,7 @@ mod tests {
 
     #[test]
     fn bad_rel_2() {
-        // rel_t NUM () -> Real = {
+        // rel_t NUM () -> Float = {
         //     let p = 0.5;
         //     let q = 0.4;
         // }; // missing expr
@@ -344,18 +344,18 @@ mod tests {
             LParen,
             RParen,
             Arrow,
-            Real,
+            Float,
             Equals,
             LBrace,
             Let,
             Ident("p".to_string()),
             Equals,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Semicolon,
             Let,
             Ident("q".to_string()),
             Equals,
-            RealLiteral(0.4),
+            FloatLiteral(0.4),
             Semicolon,
             RBrace,
             Semicolon,
@@ -375,16 +375,16 @@ mod tests {
             Some(RelType {
                 name: build_ident_str("NUM"),
                 params: vec![],
-                return_type: Type::Real,
+                return_type: Type::Float,
                 body: Expr::Block(BlockExpr {
                     statements: vec![
                         Statement::Let(LetStatement {
                             name: build_ident_str("p"),
-                            expr: Expr::Literal(Literal::Real(0.5)),
+                            expr: Expr::Literal(Literal::Float(0.5)),
                         }),
                         Statement::Let(LetStatement {
                             name: build_ident_str("q"),
-                            expr: Expr::Literal(Literal::Real(0.4)),
+                            expr: Expr::Literal(Literal::Float(0.4)),
                         }),
                     ],
                     expr: Box::new(Expr::Error),
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn bad_rel_3() {
-        // rel_t NUM () -> Real = {
+        // rel_t NUM () -> Float = {
         //     let p = 0.5;
         //     let q = 0.4;
 
@@ -408,18 +408,18 @@ mod tests {
             LParen,
             RParen,
             Arrow,
-            Real,
+            Float,
             Equals,
             LBrace,
             Let,
             Ident("p".to_string()),
             Equals,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Semicolon,
             Let,
             Ident("q".to_string()),
             Equals,
-            RealLiteral(0.4),
+            FloatLiteral(0.4),
             Semicolon,
             Ident("p".to_string()),
             Plus,
@@ -440,7 +440,7 @@ mod tests {
 
     #[test]
     fn bad_rel_4() {
-        // rel_t NUM () -> Real = {
+        // rel_t NUM () -> Float = {
         //     let p = 0.5;
         //     let q = 0.4;
 
@@ -451,18 +451,18 @@ mod tests {
             LParen,
             RParen,
             Arrow,
-            Real,
+            Float,
             Equals,
             LBrace,
             Let,
             Ident("p".to_string()),
             Equals,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Semicolon,
             Let,
             Ident("q".to_string()),
             Equals,
-            RealLiteral(0.4),
+            FloatLiteral(0.4),
             Semicolon,
             Ident("p".to_string()),
             Plus,

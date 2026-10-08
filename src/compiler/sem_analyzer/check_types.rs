@@ -356,9 +356,9 @@ impl<'a> SemAnalyzer<'a> {
 
             (Type::Int, Type::Mod(_)) => Some(Type::Int),
             (Type::Int, Type::Int) => Some(Type::Int),
-            (Type::Real, Type::Mod(_)) => Some(Type::Real),
-            (Type::Real, Type::Int) => Some(Type::Real),
-            (Type::Real, Type::Real) => Some(Type::Real),
+            (Type::Float, Type::Mod(_)) => Some(Type::Float),
+            (Type::Float, Type::Int) => Some(Type::Float),
+            (Type::Float, Type::Float) => Some(Type::Float),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
@@ -474,7 +474,7 @@ mod tests {
 
     #[test]
     fn check_rel_1() {
-        // rel_t ADD : (a: Real) -> Real = a + 1;
+        // rel_t ADD : (a: Float) -> Float = a + 1;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program { items: Vec::new() },
@@ -504,9 +504,9 @@ mod tests {
             name: Ident::Symbol(0),
             params: vec![Param {
                 name: Ident::Symbol(1),
-                param_type: Type::Real,
+                param_type: Type::Float,
             }],
-            return_type: Type::Real,
+            return_type: Type::Float,
             body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Int(1))),
@@ -522,15 +522,15 @@ mod tests {
                 name: Ident::Symbol(0),
                 params: vec![Param {
                     name: Ident::Symbol(1),
-                    param_type: Type::Real,
+                    param_type: Type::Float,
                 }],
-                return_type: Type::Real,
+                return_type: Type::Float,
                 body: Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Ident(Ident::Symbol(1))),
                     right: Box::new(Expr::Literal(Literal::Int(1))),
                     op: BinaryOp::Add,
                     op_span: Span { line: 0, col: 10 },
-                    expr_type: Type::Real,
+                    expr_type: Type::Float,
                 }),
             })
         );
@@ -540,14 +540,14 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
                     name: "a".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 5 },
                 },
             ]
@@ -675,7 +675,7 @@ mod tests {
             return_type: Type::Int,
             body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                right: Box::new(Expr::Literal(Literal::Real(1.0))),
+                right: Box::new(Expr::Literal(Literal::Float(1.0))),
                 op: BinaryOp::Add,
                 op_span: Span { line: 0, col: 10 },
                 expr_type: Type::Unknown,
@@ -693,10 +693,10 @@ mod tests {
                 return_type: Type::Error,
                 body: Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Ident(Ident::Symbol(1))),
-                    right: Box::new(Expr::Literal(Literal::Real(1.0))),
+                    right: Box::new(Expr::Literal(Literal::Float(1.0))),
                     op: BinaryOp::Add,
                     op_span: Span { line: 0, col: 10 },
-                    expr_type: Type::Real,
+                    expr_type: Type::Float,
                 }),
             })
         );
@@ -724,7 +724,7 @@ mod tests {
 
     #[test]
     fn check_rel_4() {
-        // rel_t ADD : (a: Bool) -> Real = a + 1; // incompatible types
+        // rel_t ADD : (a: Bool) -> Float = a + 1; // incompatible types
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program { items: Vec::new() },
@@ -756,7 +756,7 @@ mod tests {
                 name: Ident::Symbol(1),
                 param_type: Type::Bool,
             }],
-            return_type: Type::Real,
+            return_type: Type::Float,
             body: Expr::Binary(BinaryExpr {
                 left: Box::new(Expr::Ident(Ident::Symbol(1))),
                 right: Box::new(Expr::Literal(Literal::Int(1))),
@@ -1095,9 +1095,9 @@ mod tests {
     #[test]
     fn check_net_4() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: COIN;
-        //     output c: Real;
+        //     output c: Float;
 
         //     c := ADD(a, b);
         // }
@@ -1129,8 +1129,8 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1190,7 +1190,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(5),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1204,7 +1204,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1225,7 +1225,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(5),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1239,7 +1239,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(7),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1279,8 +1279,8 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1315,7 +1315,7 @@ mod tests {
                 },
                 Symbol {
                     name: "a".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1325,7 +1325,7 @@ mod tests {
                 },
                 Symbol {
                     name: "c".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
             ]
@@ -1336,7 +1336,7 @@ mod tests {
     #[test]
     fn check_net_5() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: COIN;
         //     output c: Int; // Wrong type
 
@@ -1370,8 +1370,8 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1431,7 +1431,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(5),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1468,7 +1468,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(5),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1496,9 +1496,9 @@ mod tests {
     #[test]
     fn check_net_6() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: COIN;
-        //     output c: Real;
+        //     output c: Float;
 
         //     c := ADD(a); // Missing argument
         // }
@@ -1530,8 +1530,8 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1591,7 +1591,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(5),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1605,7 +1605,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1626,7 +1626,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(5),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1640,7 +1640,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(7),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1654,9 +1654,9 @@ mod tests {
     #[test]
     fn check_net_7() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: Bool;
-        //     output c: Real;
+        //     output c: Float;
 
         //     c := ADD(a, b); // Wrong type for b
         // }
@@ -1688,8 +1688,8 @@ mod tests {
                 Symbol {
                     name: "ADD".to_string(),
                     kind: SymbolKind::Rel_t {
-                        input_types: vec![Type::Real, Type::Custom(Ident::Symbol(0))],
-                        return_type: Type::Real,
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1749,7 +1749,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(5),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1763,7 +1763,7 @@ mod tests {
                 NetItem::Output(OutputEnt {
                     param: Param {
                         name: Ident::Symbol(7),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                 }),
                 NetItem::RelInst(RelInst {
@@ -1783,7 +1783,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(5),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -1797,7 +1797,7 @@ mod tests {
                     NetItem::Output(OutputEnt {
                         param: Param {
                             name: Ident::Symbol(7),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                     }),
                     NetItem::Error,
@@ -1810,9 +1810,9 @@ mod tests {
     #[test]
     fn check_net_8() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: COIN;
-        //     output c: Real;
+        //     output c: Float;
 
         //     ADD {
         //         A := a,
@@ -1876,7 +1876,7 @@ mod tests {
                 },
                 Symbol {
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1886,7 +1886,7 @@ mod tests {
                 },
                 Symbol {
                     name: "C".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1945,7 +1945,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(8),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1959,7 +1959,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(10),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -1994,7 +1994,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(8),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -2008,7 +2008,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(10),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),
@@ -2090,7 +2090,7 @@ mod tests {
                 },
                 Symbol {
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -2100,7 +2100,7 @@ mod tests {
                 },
                 Symbol {
                     name: "C".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -2134,7 +2134,7 @@ mod tests {
                 },
                 Symbol {
                     name: "a".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -2144,7 +2144,7 @@ mod tests {
                 },
                 Symbol {
                     name: "c".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
             ]
@@ -2155,7 +2155,7 @@ mod tests {
     #[test]
     fn check_net_9() {
         // net TEST {
-        //     input a: Real;
+        //     input a: Float;
         //     input b: COIN;
         //     output c: Int; // c is wrong type
 
@@ -2221,7 +2221,7 @@ mod tests {
                 },
                 Symbol {
                     name: "A".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -2231,7 +2231,7 @@ mod tests {
                 },
                 Symbol {
                     name: "C".to_string(),
-                    kind: SymbolKind::Ent(Type::Real),
+                    kind: SymbolKind::Ent(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -2290,7 +2290,7 @@ mod tests {
                 NetItem::Input(InputEnt {
                     param: Param {
                         name: Ident::Symbol(8),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                     span: Span { line: 0, col: 0 },
                 }),
@@ -2339,7 +2339,7 @@ mod tests {
                     NetItem::Input(InputEnt {
                         param: Param {
                             name: Ident::Symbol(8),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                         span: Span { line: 0, col: 0 },
                     }),

@@ -322,7 +322,7 @@ impl<'a> SemAnalyzer<'a> {
             Type::Bool => Some(Type::Bool),
             Type::Impulse => Some(Type::Impulse),
             Type::Int => Some(Type::Int),
-            Type::Real => Some(Type::Real),
+            Type::Float => Some(Type::Float),
 
             Type::Tuple(mut types) => {
                 for type_box in &mut types {
@@ -997,7 +997,7 @@ mod tests {
     fn net_1() {
         // net TEST {
         //     input a: Bool;
-        //     output b: Real;
+        //     output b: Float;
         //     init c: Int = 3;
 
         //     d = REL(a, c);
@@ -1081,7 +1081,7 @@ mod tests {
                             val: "b".to_string(),
                             span: Span { line: 0, col: 0 },
                         },
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                 }),
                 NetItem::Init(EntInit {
@@ -1163,7 +1163,7 @@ mod tests {
                     NetItem::Output(OutputEnt {
                         param: Param {
                             name: Ident::Symbol(6),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                     }),
                     NetItem::Init(EntInit {
@@ -1300,7 +1300,7 @@ mod tests {
     fn bad_net_1() {
         // net TEST {
         //     input a: Bool;
-        //     output b: Real;
+        //     output b: Float;
         //     init c Int = 3; // Error net member (already reported)
 
         //     d = REL(a, c); // REL is not defined
@@ -1362,7 +1362,7 @@ mod tests {
                             val: "b".to_string(),
                             span: Span { line: 0, col: 0 },
                         },
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                 }),
                 NetItem::Error,
@@ -1435,7 +1435,7 @@ mod tests {
                     NetItem::Output(OutputEnt {
                         param: Param {
                             name: Ident::Symbol(4),
-                            param_type: Type::Real,
+                            param_type: Type::Float,
                         },
                     }),
                     NetItem::Error,

@@ -80,7 +80,7 @@ impl<'a> CodeGen<'a> {
 
             Type::Int => self.coerce_int(&mut ir_bytecode, src, &result_type)?,
 
-            Type::Real => self.coerce_real(&mut ir_bytecode, src, &result_type, true)?,
+            Type::Float => self.coerce_float(&mut ir_bytecode, src, &result_type, true)?,
 
             Type::Mod(_) => self.coerce_int(&mut ir_bytecode, src, &result_type)?, // handles taking modulus
 
@@ -153,7 +153,7 @@ impl<'a> CodeGen<'a> {
     }
 
     // Reduce mod should be false for add/sub/mul because (a + b) mod n == (a mod n + b mod n) mod n but it is not true for div nor the right side of pow
-    pub fn coerce_real(
+    pub fn coerce_float(
         &mut self,
         bytecode: &mut Vec<Instruction>,
         src: Source,
@@ -196,8 +196,8 @@ impl<'a> CodeGen<'a> {
 
                 Some(Source::RegInter(dest))
             }
-            Type::Real => Some(src),
-            _ => unreachable!("cannot coerce {:?} to be Real", ty.clone()),
+            Type::Float => Some(src),
+            _ => unreachable!("cannot coerce {:?} to be Float", ty.clone()),
         }
     }
 
@@ -283,17 +283,17 @@ impl<'a> CodeGen<'a> {
         type_r: &Type,
     ) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
-            Type::Real => (
-                self.coerce_real(bytecode, src_l, &type_l, true)?,
-                Type::Real,
+            Type::Float => (
+                self.coerce_float(bytecode, src_l, &type_l, true)?,
+                Type::Float,
             ),
 
-            // Need to be careful not to try and coerce real to be int (the next match will take that int to be real)
-            Type::Int if *type_l != Type::Real => {
+            // Need to be careful not to try and coerce float to be int (the next match will take that int to be float)
+            Type::Int if *type_l != Type::Float => {
                 (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int)
             }
 
-            Type::Mod(n) if (*type_l != Type::Real && *type_l != Type::Int) => {
+            Type::Mod(n) if (*type_l != Type::Float && *type_l != Type::Int) => {
                 (self.coerce_int(bytecode, src_l, &type_l)?, Type::Mod(*n))
             }
 
@@ -303,7 +303,7 @@ impl<'a> CodeGen<'a> {
         };
 
         let new_src_r = match new_type {
-            Type::Real => self.coerce_real(bytecode, src_r, &type_r, true)?,
+            Type::Float => self.coerce_float(bytecode, src_r, &type_r, true)?,
 
             Type::Int => self.coerce_int(bytecode, src_r, &type_r)?,
 
@@ -802,7 +802,7 @@ mod tests {
 
     #[test]
     fn block_and_sample() {
-        // rel_t RND : (a: Int) -> Real {
+        // rel_t RND : (a: Int) -> Float {
         //     let b = 1;
         //     let c = (a + sample {
         //         0.5 : 3,
@@ -817,7 +817,7 @@ mod tests {
                 name: "RND".to_string(),
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int],
-                    return_type: Type::Real,
+                    return_type: Type::Float,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -844,7 +844,7 @@ mod tests {
                 name: Ident::Symbol(1),
                 param_type: Type::Int,
             }],
-            return_type: Type::Real,
+            return_type: Type::Float,
             body: Expr::Block(BlockExpr {
                 statements: vec![
                     Statement::Let(LetStatement {
@@ -859,7 +859,7 @@ mod tests {
                                 right: Box::new(Expr::Sample(SampleExpr {
                                     arms: vec![
                                         SampleArm {
-                                            prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                                            prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                                             expr: Expr::Literal(Literal::Int(3)),
                                             arm_span: Span { line: 0, col: 0 },
                                         },
@@ -885,12 +885,12 @@ mod tests {
                 ],
                 expr: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Ident(Ident::Symbol(3))),
-                    right: Box::new(Expr::Literal(Literal::Real(1.5))),
+                    right: Box::new(Expr::Literal(Literal::Float(1.5))),
                     op: BinaryOp::Div,
                     op_span: Span { line: 0, col: 0 },
-                    expr_type: Type::Real,
+                    expr_type: Type::Float,
                 })),
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }),
         };
 
@@ -964,7 +964,7 @@ mod tests {
             ~c
         };
 
-        rel_t P (x: Real) -> Real = 3 * (x * x) + 4 * x + 5;
+        rel_t P (x: Float) -> Float = 3 * (x * x) + 4 * x + 5;
         ";
         let mut diagnostics = Diagnostics::new();
 

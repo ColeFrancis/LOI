@@ -90,9 +90,9 @@ impl<'a> Parser<'a> {
                 Some(Expr::Literal(Literal::Int(n)))
             }
 
-            TokenKind::RealLiteral(n) => {
+            TokenKind::FloatLiteral(n) => {
                 self.next();
-                Some(Expr::Literal(Literal::Real(n)))
+                Some(Expr::Literal(Literal::Float(n)))
             }
 
             TokenKind::Ident(str) => {
@@ -331,7 +331,7 @@ impl<'a> Parser<'a> {
 
             TokenKind::BoolLiteral(n) => Some(SimplePattern::Literal(Literal::Bool(n))),
             TokenKind::IntLiteral(n) => Some(SimplePattern::Literal(Literal::Int(n))),
-            TokenKind::RealLiteral(n) => Some(SimplePattern::Literal(Literal::Real(n))),
+            TokenKind::FloatLiteral(n) => Some(SimplePattern::Literal(Literal::Float(n))),
 
             TokenKind::Ident(name) => Some(SimplePattern::Ident(Ident::Str {
                 val: name,
@@ -467,7 +467,7 @@ mod tests {
         match expr {
             Expr::Literal(Literal::Int(n)) => n.to_string(),
             Expr::Literal(Literal::Bool(b)) => b.to_string(),
-            Expr::Literal(Literal::Real(x)) => x.to_string(),
+            Expr::Literal(Literal::Float(x)) => x.to_string(),
 
             Expr::Ident(ident) => match ident {
                 ast::Ident::Str { val, .. } => val.clone(),
@@ -583,7 +583,7 @@ mod tests {
 
             SimplePattern::Literal(Literal::Int(n)) => n.to_string(),
             SimplePattern::Literal(Literal::Bool(b)) => b.to_string(),
-            SimplePattern::Literal(Literal::Real(x)) => x.to_string(),
+            SimplePattern::Literal(Literal::Float(x)) => x.to_string(),
 
             SimplePattern::Ident(ident) => match ident {
                 ast::Ident::Str { val, .. } => val.clone(),
@@ -1013,7 +1013,7 @@ mod tests {
         let kinds: Vec<TokenKind> = vec![
             Sample,
             LBrace,
-            RealLiteral(0.5),
+            FloatLiteral(0.5),
             Colon,
             IntLiteral(1),
             Comma,
@@ -1053,7 +1053,7 @@ mod tests {
             Colon,
             Sample,
             LBrace,
-            RealLiteral(0.1),
+            FloatLiteral(0.1),
             Colon,
             Ident("H".to_string()),
             Comma,
@@ -1066,7 +1066,7 @@ mod tests {
             Colon,
             Sample,
             LBrace,
-            RealLiteral(0.8),
+            FloatLiteral(0.8),
             Colon,
             Ident("H".to_string()),
             Comma,

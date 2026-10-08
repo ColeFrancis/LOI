@@ -58,13 +58,13 @@ pub enum TokenKind {
     Bool,    // Bool
     Impulse, // Impulse
     Int,     // Int
-    Real,    // Real
+    Float,    // Float
     Mod,     // Mod
 
     Ident(String),
     BoolLiteral(bool),
     IntLiteral(i64),
-    RealLiteral(f64),
+    FloatLiteral(f64),
 
     // Punctuation
     Colon,     // :
@@ -121,13 +121,13 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Bool => write!(f, "\"Bool\""),
             TokenKind::Impulse => write!(f, "\"Impulse\""),
             TokenKind::Int => write!(f, "\"Int\""),
-            TokenKind::Real => write!(f, "\"Real\""),
+            TokenKind::Float => write!(f, "\"Float\""),
             TokenKind::Mod => write!(f, "\"Mod\""),
 
             TokenKind::Ident(_) => write!(f, "Identifier"),
             TokenKind::BoolLiteral(_) => write!(f, "Bool Literal"),
             TokenKind::IntLiteral(_) => write!(f, "Int Literal"),
-            TokenKind::RealLiteral(_) => write!(f, "Real Literal"),
+            TokenKind::FloatLiteral(_) => write!(f, "Float Literal"),
 
             TokenKind::Colon => write!(f, "\":\""),
             TokenKind::Semicolon => write!(f, "\";\""),

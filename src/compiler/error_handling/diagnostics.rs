@@ -142,7 +142,7 @@ pub enum Diagnostic {
     },
 
     // Prob expr literal but incorrect type
-    NonRealProb {
+    NonFloatProb {
         prob_type: Type,
         arm_span: Span,
     },
@@ -421,13 +421,13 @@ impl std::fmt::Display for Diagnostic {
                 )
             }
 
-            Diagnostic::NonRealProb {
+            Diagnostic::NonFloatProb {
                 prob_type,
                 arm_span,
             } => {
                 write!(
                     f,
-                    "Probability type must be Real. Instead found: {}\nat line {}:{}",
+                    "Probability type must be Float. Instead found: {}\nat line {}:{}",
                     prob_type, arm_span.line, arm_span.col
                 )
             }
@@ -667,7 +667,7 @@ mod tests {
         
             let a = 1;
 
-            rel_t ONE () -> Real = 1;
+            rel_t ONE () -> Float = 1;
 
             net EMPTY {}
         ",
@@ -709,7 +709,7 @@ mod tests {
     fn rel() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-            "rel_t A :() -> Real a;
+            "rel_t A :() -> Float a;
         ",
             &mut diagnostics,
         )

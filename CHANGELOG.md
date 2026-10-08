@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Cannonical examples
 
+## [1.0.1] - 2026-10-08
+
+### Changed
+
+- Bug fix in relation evaluation
+- Real changed to Float throughout entire project
+
 ## [1.1.0] - 2026-10-07
 
 ### Changed
@@ -60,7 +67,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Added new core entity type: Real with ADD and MUL ops
+- Added new core entity type: Float with ADD and MUL ops
 
 ## [0.2.0] - 2026-06-1
 

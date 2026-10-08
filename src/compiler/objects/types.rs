@@ -30,7 +30,7 @@ pub enum Type {
     Bool,
     Impulse,
     Int,
-    Real,
+    Float,
     Tuple(Vec<Type>),
     Mod(i64),
     Custom(Ident),
@@ -44,7 +44,7 @@ impl std::fmt::Display for Type {
             Type::Bool => write!(f, "Bool"),
             Type::Impulse => write!(f, "Impulse"),
             Type::Int => write!(f, "Int"),
-            Type::Real => write!(f, "Real"),
+            Type::Float => write!(f, "Float"),
             Type::Tuple(types) => {
                 write!(f, "(")?;
 

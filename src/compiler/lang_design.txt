@@ -21,7 +21,7 @@ Some other design constraints:
 - Relations have exactly one output.
 - Networks are represented as graphs of relation instances connected by wires.
 - The simulator is event-driven, like Verilog
-- Arithmetic types such as Reals may have predefined operations like +, -, *, etc.
+- Arithmetic types such as Floats may have predefined operations like +, -, *, etc.
 - I'm trying to balance mathematical elegance, simplicity, and practical usability.
 - All variables (declared through let statements) are immutable, all relations (act as functions) contain
     no state. State is created through the structure of nets
@@ -45,7 +45,7 @@ Bool (true or false)
 Impulse (think of it as a single spike, or a delta dirac function)
     Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
 Int (represented as u64)
-Real (represented as f64)
+Float (represented as f64)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 Relations: Inspired by logic gates in a digital circuit. Implemented as mathematical functions. Like functions in 
@@ -85,7 +85,7 @@ rel_t COND_PROB (x: COIN) -> COIN =
 
 
 // Returns a 1 if x is over some threshold
-rel_t THRESH (x:Real) -> Bool = 
+rel_t THRESH (x:Float) -> Bool = 
     cases x {
         >= 1 : true,
         _ : false
@@ -93,10 +93,10 @@ rel_t THRESH (x:Real) -> Bool =
 
 // or
 
-rel_t THRESH (x:Real) -> Bool =
+rel_t THRESH (x:Float) -> Bool =
     x >= 1;
 
-rel_t CUSTOM_BINOM (p : Real) -> Bool = 
+rel_t CUSTOM_BINOM (p : Float) -> Bool = 
     sample {
         p : true,
         _ : false
@@ -223,14 +223,14 @@ rel_t EXAMPLE (a: Int) -> Int = {
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 Leaky integrate and fire neuron example
 
-rel_t SYNAPSE (spike_in: Inpulse, weight: Real, last_potential: Real) -> Real = {
+rel_t SYNAPSE (spike_in: Inpulse, weight: Float, last_potential: Float) -> Float = {
     cases (spike_in) {
         true : last_potential + weight,
         _ : last_potential,
     }
 }
 
-rel_t AXON (curr_potential: Real) -> Impulse = {
+rel_t AXON (curr_potential: Float) -> Impulse = {
     let threshold = 10;
 
     cases (curr_potential) {
@@ -239,7 +239,7 @@ rel_t AXON (curr_potential: Real) -> Impulse = {
     }
 }
 
-rel_t BODY (spike: Impulse, curr_potential: Real) -> Real {
+rel_t BODY (spike: Impulse, curr_potential: Float) -> Float {
     let refrac_potential = 0;
     let tau = 0.1;
 
@@ -253,7 +253,7 @@ net Neuron {
     input spike_in: Impulse;
     output spike_out: Impulse;
 
-    init weight: Real = 1.0;
+    init weight: Float = 1.0;
 
     /*               
                            _________             ______

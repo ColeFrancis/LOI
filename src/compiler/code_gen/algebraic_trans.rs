@@ -99,13 +99,13 @@ impl CodeGen {
                             (&Expr::Literal(Literal::Int(0)), _) => return (*binary.right, true),
 
                             // 0.0 + x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return (*binary.right, true),
+                            (&Expr::Literal(Literal::Float(0.0)), _) => return (*binary.right, true),
 
                             // x + 0
                             (_, &Expr::Literal(Literal::Int(0))) => return (*binary.left, true),
 
                             // x + 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return (*binary.left, true),
+                            (_, &Expr::Literal(Literal::Float(0.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
@@ -315,7 +315,7 @@ impl CodeGen {
                             }), true),
 
                             // 0.0 - x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Unary(UnaryExpr {
+                            (&Expr::Literal(Literal::Float(0.0)), _) => return (Expr::Unary(UnaryExpr {
                                 expr: binary.right,
                                 op: UnaryOp::Neg,
                                 op_span: Span{line: 0, col: 0}, // span no longer matters
@@ -326,7 +326,7 @@ impl CodeGen {
                             (_, &Expr::Literal(Literal::Int(0))) => return (*binary.left, true),
 
                             // x - 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return (*binary.left, true),
+                            (_, &Expr::Literal(Literal::Float(0.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
@@ -346,25 +346,25 @@ impl CodeGen {
                             (&Expr::Literal(Literal::Int(0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 0.0 * x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
+                            (&Expr::Literal(Literal::Float(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x * 0
                             (_, &Expr::Literal(Literal::Int(0))) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x * 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return (Expr::Literal(Literal::Int(0)), true),
+                            (_, &Expr::Literal(Literal::Float(0.0))) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 1 * x
                             (&Expr::Literal(Literal::Int(1)), _) => return (*binary.right, true),
 
                             // 1.0 * x
-                            (&Expr::Literal(Literal::Real(1.0)), _) => return (*binary.right, true),
+                            (&Expr::Literal(Literal::Float(1.0)), _) => return (*binary.right, true),
 
                             // x * 1
                             (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x * 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
+                            (_, &Expr::Literal(Literal::Float(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
@@ -384,13 +384,13 @@ impl CodeGen {
                             (&Expr::Literal(Literal::Int(0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // 0.0 / x
-                            (&Expr::Literal(Literal::Real(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
+                            (&Expr::Literal(Literal::Float(0.0)), _) => return (Expr::Literal(Literal::Int(0)), true),
 
                             // x / 1
                             (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x / 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
+                            (_, &Expr::Literal(Literal::Float(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
@@ -412,19 +412,19 @@ impl CodeGen {
                             (_, &Expr::Literal(Literal::Int(0))) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // x ^ 0.0
-                            (_, &Expr::Literal(Literal::Real(0.0))) => return (Expr::Literal(Literal::Int(1)), true),
+                            (_, &Expr::Literal(Literal::Float(0.0))) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // 1 ^ x
                             (&Expr::Literal(Literal::Int(1)), _) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // 1.0 ^ x
-                            (&Expr::Literal(Literal::Real(1.0)), _) => return (Expr::Literal(Literal::Int(1)), true),
+                            (&Expr::Literal(Literal::Float(1.0)), _) => return (Expr::Literal(Literal::Int(1)), true),
 
                             // x ^ 1
                             (_, &Expr::Literal(Literal::Int(1))) => return (*binary.left, true),
 
                             // x ^ 1.0
-                            (_, &Expr::Literal(Literal::Real(1.0))) => return (*binary.left, true),
+                            (_, &Expr::Literal(Literal::Float(1.0))) => return (*binary.left, true),
 
                             _ => {},
                         }
@@ -545,13 +545,13 @@ impl CodeGen {
     pub(super) fn expr_equal(left: &Expr, right: &Expr) -> bool {
         match (left, right) {
             (Expr::Literal(left_literal), Expr::Literal(right_literal)) => {
-                // Int(a) == Real(b) is true if  a == b in value
+                // Int(a) == Float(b) is true if  a == b in value
                 match (left_literal, right_literal) {
-                    (Literal::Int(left_val), Literal::Real(right_val)) => {
+                    (Literal::Int(left_val), Literal::Float(right_val)) => {
                         *left_val as f64 == *right_val
                     }
 
-                    (Literal::Real(left_val), Literal::Int(right_val)) => {
+                    (Literal::Float(left_val), Literal::Int(right_val)) => {
                         *left_val == *right_val as f64
                     }
 
@@ -646,7 +646,7 @@ mod tests {
 
         // 3.0 + x
         let right = Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            left: Box::new(Expr::Literal(Literal::Float(3.0))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
             op: BinaryOp::Add,
             op_span: Span{line: 0, col: 0},
@@ -671,7 +671,7 @@ mod tests {
 
         // 3.0 - x
         let right = Expr::Binary(BinaryExpr {
-            left: Box::new(Expr::Literal(Literal::Real(3.0))),
+            left: Box::new(Expr::Literal(Literal::Float(3.0))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
             op: BinaryOp::Sub,
             op_span: Span{line: 0, col: 0},
@@ -802,7 +802,7 @@ mod tests {
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
             op: BinaryOp::Add,
             op_span: Span{line: 0, col: 0},
-            expr_type: Type::Real,
+            expr_type: Type::Float,
         });
 
         let (result, _modified) = CodeGen::algebraic_transform(expr);
@@ -812,7 +812,7 @@ mod tests {
             right: Box::new(Expr::Literal(Literal::Int(2))),
             op: BinaryOp::Mul,
             op_span: Span{line: 0, col: 0},
-            expr_type: Type::Real,
+            expr_type: Type::Float,
         }));
     }
 
@@ -911,15 +911,15 @@ mod tests {
         // -(0.0 - x)
         let expr = Expr::Unary(UnaryExpr {
             expr: Box::new(Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Real(0.0))),
+                left: Box::new(Expr::Literal(Literal::Float(0.0))),
                 right: Box::new(Expr::Ident(Ident::Symbol(0))),
                 op: BinaryOp::Sub,
                 op_span: Span{line: 0, col: 0},
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             })),
             op: UnaryOp::Neg,
             op_span: Span{line: 0, col: 0},
-            expr_type: Type::Real,
+            expr_type: Type::Float,
         });
 
         let (result, _modified) = CodeGen::algebraic_transform(expr);

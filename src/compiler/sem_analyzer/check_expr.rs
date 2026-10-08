@@ -197,8 +197,8 @@ impl<'a> SemAnalyzer<'a> {
                     if let Prob::Expr(expr) = &arm.prob {
                         let prob_type = self.get_expr_type(&expr);
 
-                        if prob_type != Type::Int && prob_type != Type::Real {
-                            self.diagnostics.error(Diagnostic::NonRealProb {
+                        if prob_type != Type::Int && prob_type != Type::Float {
+                            self.diagnostics.error(Diagnostic::NonFloatProb {
                                 prob_type,
                                 arm_span: arm.arm_span.clone(),
                             });
@@ -228,7 +228,7 @@ impl<'a> SemAnalyzer<'a> {
 
                 Literal::Int(_) => Type::Int,
 
-                Literal::Real(_) => Type::Real,
+                Literal::Float(_) => Type::Float,
             },
 
             Expr::Ident(ident) => match ident {
@@ -276,7 +276,7 @@ impl<'a> SemAnalyzer<'a> {
 
                 Literal::Int(_) => Type::Int,
 
-                Literal::Real(_) => Type::Real,
+                Literal::Float(_) => Type::Float,
             },
 
             SimplePattern::Ident(ident) => match ident {
@@ -301,7 +301,7 @@ impl<'a> SemAnalyzer<'a> {
                 Type::Tuple(types)
             }
 
-            SimplePattern::Comparison(_) => Type::Int, // Int can be converted to Real.
+            SimplePattern::Comparison(_) => Type::Int, // Int can be converted to Float.
 
             SimplePattern::Error => Type::Error,
         }
@@ -318,7 +318,7 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Impulse, UnaryOp::BitNot) => Some(()),
 
             (Type::Int, UnaryOp::Neg) => Some(()),
-            (Type::Real, UnaryOp::Neg) => Some(()),
+            (Type::Float, UnaryOp::Neg) => Some(()),
             (Type::Mod(_), UnaryOp::Neg) => Some(()),
 
             (Type::Error, _) => None,
@@ -369,11 +369,11 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Mod(_), Type::Int) => Some(Type::Int),
             (Type::Int, Type::Mod(_)) => Some(Type::Int),
             (Type::Int, Type::Int) => Some(Type::Int),
-            (Type::Mod(_), Type::Real) => Some(Type::Real),
-            (Type::Real, Type::Mod(_)) => Some(Type::Real),
-            (Type::Int, Type::Real) => Some(Type::Real),
-            (Type::Real, Type::Int) => Some(Type::Real),
-            (Type::Real, Type::Real) => Some(Type::Real),
+            (Type::Mod(_), Type::Float) => Some(Type::Float),
+            (Type::Float, Type::Mod(_)) => Some(Type::Float),
+            (Type::Int, Type::Float) => Some(Type::Float),
+            (Type::Float, Type::Int) => Some(Type::Float),
+            (Type::Float, Type::Float) => Some(Type::Float),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
@@ -443,15 +443,15 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Int, BinaryOp::Mul) => Some(Type::Int),
             (Type::Int, BinaryOp::Div) => Some(Type::Int),
             (Type::Int, BinaryOp::Pow) => Some(Type::Int),
-            (Type::Real, BinaryOp::Gt) => Some(Type::Bool),
-            (Type::Real, BinaryOp::Lt) => Some(Type::Bool),
-            (Type::Real, BinaryOp::Le) => Some(Type::Bool),
-            (Type::Real, BinaryOp::Ge) => Some(Type::Bool),
-            (Type::Real, BinaryOp::Add) => Some(Type::Real),
-            (Type::Real, BinaryOp::Sub) => Some(Type::Real),
-            (Type::Real, BinaryOp::Mul) => Some(Type::Real),
-            (Type::Real, BinaryOp::Div) => Some(Type::Real),
-            (Type::Real, BinaryOp::Pow) => Some(Type::Real),
+            (Type::Float, BinaryOp::Gt) => Some(Type::Bool),
+            (Type::Float, BinaryOp::Lt) => Some(Type::Bool),
+            (Type::Float, BinaryOp::Le) => Some(Type::Bool),
+            (Type::Float, BinaryOp::Ge) => Some(Type::Bool),
+            (Type::Float, BinaryOp::Add) => Some(Type::Float),
+            (Type::Float, BinaryOp::Sub) => Some(Type::Float),
+            (Type::Float, BinaryOp::Mul) => Some(Type::Float),
+            (Type::Float, BinaryOp::Div) => Some(Type::Float),
+            (Type::Float, BinaryOp::Pow) => Some(Type::Float),
 
             (Type::Error, _) => None,
 
@@ -596,13 +596,13 @@ impl<'a> SemAnalyzer<'a> {
                 }
             }
             (Type::Mod(_), Type::Int) => Some(()),
-            (Type::Mod(_), Type::Real) => Some(()),
+            (Type::Mod(_), Type::Float) => Some(()),
             (Type::Int, Type::Mod(_)) => Some(()),
             (Type::Int, Type::Int) => Some(()),
-            (Type::Int, Type::Real) => Some(()),
-            (Type::Real, Type::Mod(_)) => Some(()),
-            (Type::Real, Type::Int) => Some(()),
-            (Type::Real, Type::Real) => Some(()),
+            (Type::Int, Type::Float) => Some(()),
+            (Type::Float, Type::Mod(_)) => Some(()),
+            (Type::Float, Type::Int) => Some(()),
+            (Type::Float, Type::Float) => Some(()),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
@@ -705,7 +705,7 @@ mod tests {
                 expr_type: Type::Int,
             }),
             Expr::Literal(Literal::Bool(true)),
-            Expr::Literal(Literal::Real(2.0)),
+            Expr::Literal(Literal::Float(2.0)),
             Expr::Ident(Ident::Symbol(0)),
             Expr::Ident(Ident::Symbol(2)),
         ]));
@@ -715,7 +715,7 @@ mod tests {
             Type::Tuple(vec![
                 Type::Int,
                 Type::Bool,
-                Type::Real,
+                Type::Float,
                 Type::Int,
                 Type::Custom(Ident::Symbol(1)),
             ])
@@ -779,13 +779,13 @@ mod tests {
 
     #[test]
     fn binary_expr_1() {
-        // 1 + r // r is a Real
+        // 1 + r // r is a Float
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program { items: Vec::new() },
             symbols: vec![Symbol {
                 name: "r".to_string(),
-                kind: SymbolKind::Variable(Type::Real),
+                kind: SymbolKind::Variable(Type::Float),
                 span: Span { line: 0, col: 0 },
             }],
             scopes: vec![Scope {
@@ -809,7 +809,7 @@ mod tests {
                 right: Box::new(Expr::Ident(Ident::Symbol(0))),
                 op: BinaryOp::Add,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }))
         );
     }
@@ -874,13 +874,13 @@ mod tests {
 
     #[test]
     fn binary_expr_4() {
-        // 1 < r // r is a Real
+        // 1 < r // r is a Float
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program { items: Vec::new() },
             symbols: vec![Symbol {
                 name: "r".to_string(),
-                kind: SymbolKind::Variable(Type::Real),
+                kind: SymbolKind::Variable(Type::Float),
                 span: Span { line: 0, col: 0 },
             }],
             scopes: vec![Scope {
@@ -1131,7 +1131,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1222,7 +1222,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1277,7 +1277,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1336,7 +1336,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1398,7 +1398,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1461,7 +1461,7 @@ mod tests {
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
-                    kind: SymbolKind::Variable(Type::Real),
+                    kind: SymbolKind::Variable(Type::Float),
                     span: Span { line: 0, col: 0 },
                 },
                 Symbol {
@@ -1695,7 +1695,7 @@ mod tests {
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                     expr: Expr::Literal(Literal::Bool(true)),
                     arm_span: Span { line: 0, col: 0 },
                 },
@@ -1714,7 +1714,7 @@ mod tests {
             Some(Expr::Sample(SampleExpr {
                 arms: vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                         expr: Expr::Literal(Literal::Bool(true)),
                         arm_span: Span { line: 0, col: 0 },
                     },
@@ -1743,12 +1743,12 @@ mod tests {
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                     expr: Expr::Literal(Literal::Bool(true)),
                     arm_span: Span { line: 0, col: 0 },
                 },
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.2))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.2))),
                     expr: Expr::Literal(Literal::Int(1)),
                     arm_span: Span { line: 0, col: 0 },
                 },
@@ -1813,7 +1813,7 @@ mod tests {
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                     expr: Expr::Ident(Ident::Symbol(1)),
                     arm_span: Span { line: 0, col: 0 },
                 },
@@ -1834,7 +1834,7 @@ mod tests {
             Some(Expr::Sample(SampleExpr {
                 arms: vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                         expr: Expr::Ident(Ident::Symbol(1)),
                         arm_span: Span { line: 0, col: 0 },
                     },
@@ -1853,7 +1853,7 @@ mod tests {
     #[test]
     fn sample_expr_4() {
         // sample {
-        //     true : true, // Non real probability
+        //     true : true, // Non float probability
         //     _ : false,
         // }
         let mut diagnostics = Diagnostics::new();
@@ -1902,9 +1902,9 @@ mod tests {
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
                 SampleArm {
-                    prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                    prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                     expr: Expr::Unary(UnaryExpr {
-                        expr: Box::new(Expr::Literal(Literal::Real(1.0))),
+                        expr: Box::new(Expr::Literal(Literal::Float(1.0))),
                         op: UnaryOp::Neg,
                         op_span: Span { line: 0, col: 0 },
                         expr_type: Type::Unknown,
@@ -1931,12 +1931,12 @@ mod tests {
             Some(Expr::Sample(SampleExpr {
                 arms: vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(0.5))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
                         expr: Expr::Unary(UnaryExpr {
-                            expr: Box::new(Expr::Literal(Literal::Real(1.0))),
+                            expr: Box::new(Expr::Literal(Literal::Float(1.0))),
                             op: UnaryOp::Neg,
                             op_span: Span { line: 0, col: 0 },
-                            expr_type: Type::Real,
+                            expr_type: Type::Float,
                         }),
                         arm_span: Span { line: 0, col: 0 },
                     },
@@ -1951,7 +1951,7 @@ mod tests {
                         arm_span: Span { line: 0, col: 0 },
                     },
                 ],
-                expr_type: Type::Real,
+                expr_type: Type::Float,
                 span: Span { line: 0, col: 0 },
             }))
         );

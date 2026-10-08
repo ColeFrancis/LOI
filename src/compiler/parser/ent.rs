@@ -132,12 +132,12 @@ mod tests {
     }
 
     #[test]
-    fn bad_real_ent() {
-        // ent_t r = real;    real, not Real
+    fn bad_float_ent() {
+        // ent_t r = float;    float, not Float
         let kinds: Vec<TokenKind> = vec![
             Ident("r".to_string()),
             Equals,
-            Ident("real".to_string()),
+            Ident("float".to_string()),
             Eof,
         ];
 

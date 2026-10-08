@@ -66,7 +66,7 @@ impl Synthesis {
                         Type::Bool => Type::Bool,
                         Type::Impulse => Type::Impulse,
                         Type::Int => Type::Int,
-                        Type::Real => Type::Real,
+                        Type::Float => Type::Float,
                         Type::Mod(n) => Type::Mod(n),
                         Type::Custom(Ident::Symbol(id)) => {
                             let name = symbols[id].name.clone();
@@ -97,7 +97,7 @@ impl Synthesis {
                         Type::Bool => Type::Bool,
                         Type::Impulse => Type::Impulse,
                         Type::Int => Type::Int,
-                        Type::Real => Type::Real,
+                        Type::Float => Type::Float,
                         Type::Mod(n) => Type::Mod(n),
                         Type::Custom(Ident::Symbol(id)) => {
                             let name = symbols[id].name.clone();
@@ -306,9 +306,9 @@ impl Synthesis {
 
                             (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
                             (Literal::Int(i), &Type::Int) => i as u64,
-                            (Literal::Int(i), &Type::Real) => (i as f64).to_bits(),
+                            (Literal::Int(i), &Type::Float) => (i as f64).to_bits(),
 
-                            (Literal::Real(r), &Type::Real) => r.to_bits(),
+                            (Literal::Float(r), &Type::Float) => r.to_bits(),
 
                             _ => unreachable!("type checking already occured"),
                         },
@@ -1563,11 +1563,11 @@ mod tests {
     }
 
     #[test]
-    fn real_init() {
+    fn float_init() {
         // net NET {
-        //     output A: Real;
+        //     output A: Float;
 
-        //     init A: Real = 1;
+        //     init A: Float = 1;
         // }
         let mut diagnostics = Diagnostics::new();
 
@@ -1587,7 +1587,7 @@ mod tests {
             },
             Symbol {
                 name: "A".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
+                kind: SymbolKind::Ent(Type::Float),
                 span: Span { line: 0, col: 0 },
             },
         ];
@@ -1598,15 +1598,15 @@ mod tests {
                 NetItem::Output(OutputEnt {
                     param: Param {
                         name: Ident::Symbol(1),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
                 }),
                 NetItem::Init(EntInit {
                     param: Param {
                         name: Ident::Symbol(1),
-                        param_type: Type::Real,
+                        param_type: Type::Float,
                     },
-                    val: Expr::Literal(Literal::Real(1.0)),
+                    val: Expr::Literal(Literal::Float(1.0)),
                 }),
             ],
         };
@@ -1798,7 +1798,7 @@ mod tests {
             },
             Symbol {
                 name: "A".to_string(),
-                kind: SymbolKind::Ent(Type::Real),
+                kind: SymbolKind::Ent(Type::Float),
                 span: Span { line: 0, col: 0 },
             },
         ];

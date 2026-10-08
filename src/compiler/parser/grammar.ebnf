@@ -15,18 +15,18 @@ IDENT = letter (letter | digit | "_")* ;
 literal = 
       bool_literal
     | int_literal
-    | real_literal 
+    | float_literal 
     | math_const ;
 
 bool_literal = "true" | "false"
 int_literal = digit+ ;
-real_literal = digit+ ("." digit+)? ;
+float_literal = digit+ ("." digit+)? ;
 math_const = "e" | "pi" ;
 
 type = 
       "Bool"
     | "Int"
-    | "Real" 
+    | "Float" 
     | IDENT ;
 
 mod_type = "Mod" "(" int_literal ")" ;

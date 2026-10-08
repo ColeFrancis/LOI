@@ -79,9 +79,9 @@ impl Simulator {
                     },
 
                     (IoVal::Int(i), Type::Int) => *i as u64,
-                    (IoVal::Int(i), Type::Real) => (*i as f64).to_bits(),
+                    (IoVal::Int(i), Type::Float) => (*i as f64).to_bits(),
 
-                    (IoVal::Real(f), Type::Real) => f.to_bits(),
+                    (IoVal::Float(f), Type::Float) => f.to_bits(),
 
                     (IoVal::Custom(given_str), Type::Custom(Ident::Str { val, .. })) => self
                         .interface
@@ -99,7 +99,7 @@ impl Simulator {
                         let found = match io_val {
                             IoVal::Bool(_) => Type::Bool,
                             IoVal::Int(_) => Type::Int,
-                            IoVal::Real(_) => Type::Real,
+                            IoVal::Float(_) => Type::Float,
                             IoVal::Custom(_) => Type::Unknown,
                         };
 
@@ -137,7 +137,7 @@ impl Simulator {
                         Type::Impulse if raw_val == timestep as u64 => IoVal::Bool(true),
                         Type::Impulse if raw_val != timestep as u64 => continue,
                         Type::Int => IoVal::Int(raw_val as i64),
-                        Type::Real => IoVal::Real(f64::from_bits(raw_val)),
+                        Type::Float => IoVal::Float(f64::from_bits(raw_val)),
                         Type::Mod(_) => IoVal::Int(raw_val as i64),
                         Type::Custom(Ident::Str { val, .. }) => {
                             let name = self
@@ -413,8 +413,8 @@ mod tests {
     #[test]
     fn type_conversion() {
         // net A {
-        //     input a: Real;
-        //     output a: Real;
+        //     input a: Float;
+        //     output a: Float;
         // }
         let netlist = Netlist {
             relations: vec![],
@@ -424,8 +424,8 @@ mod tests {
             }],
         };
         let interface = Interface {
-            inputs: HashMap::from([("a".to_string(), (0, Type::Real))]),
-            outputs: HashMap::from([(0, ("a".to_string(), Type::Real))]),
+            inputs: HashMap::from([("a".to_string(), (0, Type::Float))]),
+            outputs: HashMap::from([(0, ("a".to_string(), Type::Float))]),
             custom_type_maps: HashMap::new(),
         };
 
@@ -447,7 +447,7 @@ mod tests {
 
         assert_eq!(
             output,
-            vec![("a".to_string(), vec![(2, IoVal::Real(1.0)),]),]
+            vec![("a".to_string(), vec![(2, IoVal::Float(1.0)),]),]
         );
     }
 
@@ -476,7 +476,7 @@ mod tests {
 
         let mut sim = Simulator::new(netlist, interface, relations, inits);
 
-        let inputs = vec![("a".to_string(), vec![(2, IoVal::Real(1.0))])];
+        let inputs = vec![("a".to_string(), vec![(2, IoVal::Float(1.0))])];
 
         let success = sim.load_inputs(inputs);
 
@@ -485,7 +485,7 @@ mod tests {
             Err(RuntimeError::IncompatibleTypes {
                 ent_id: 0,
                 expected: Type::Int,
-                found: Type::Real,
+                found: Type::Float,
             })
         );
     }

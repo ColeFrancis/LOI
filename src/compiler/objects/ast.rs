@@ -67,7 +67,7 @@ pub enum Expr {
 pub enum Literal {
     Bool(bool),
     Int(i64),
-    Real(f64),
+    Float(f64),
 }
 
 #[derive(PartialEq, Debug, Clone)]

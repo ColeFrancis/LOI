@@ -22,7 +22,7 @@
 //! - The last token must be EoF
 //! - All keywords turned into individual tokens
 //! - All unknown strings turned into idents
-//! - If a valid number has one decimal it becomes a Real, otherwise it is an int
+//! - If a valid number has one decimal it becomes a Float, otherwise it is an int
 //! - Tabs count as 4 spaces in span.col
 //! - Integers so large they cannot be parsed result in an invald num token
 //! - Idents must begin with a letter or underscore
@@ -251,7 +251,7 @@ impl<'a> Lexer<'a> {
             "let" => TokenKind::Let,
             "Bool" => TokenKind::Bool,
             "Impulse" => TokenKind::Impulse,
-            "Real" => TokenKind::Real,
+            "Float" => TokenKind::Float,
             "Int" => TokenKind::Int,
             "Mod" => TokenKind::Mod,
             "true" => TokenKind::BoolLiteral(true),
@@ -311,7 +311,7 @@ impl<'a> Lexer<'a> {
             return TokenKind::ErrorToken;
         } else if is_float {
             match buf.parse::<f64>() {
-                Ok(n) => TokenKind::RealLiteral(n),
+                Ok(n) => TokenKind::FloatLiteral(n),
                 Err(_) => {
                     self.diagnostics.error(Diagnostic::InvalidNum {
                         lexeme: buf.clone(),
@@ -382,7 +382,7 @@ mod test {
                 ErrorToken,
                 ErrorToken,
                 IntLiteral(99),
-                RealLiteral(9.8),
+                FloatLiteral(9.8),
                 IntLiteral(1000),
                 Eof
             ]
@@ -415,7 +415,7 @@ mod test {
             "
             ent_t rel_t net cases sample 
             input output init let
-            Bool Impulse Int Real Mod
+            Bool Impulse Int Float Mod
             apple true 10 1.0
             : ; , .
             ( ) { }
@@ -445,12 +445,12 @@ mod test {
                 Bool,
                 Impulse,
                 Int,
-                Real,
+                Float,
                 Mod,
                 Ident("apple".to_string()),
                 BoolLiteral(true),
                 IntLiteral(10),
-                RealLiteral(1.0),
+                FloatLiteral(1.0),
                 Colon,
                 Semicolon,
                 Comma,

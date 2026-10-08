@@ -117,7 +117,7 @@ bits:
     0 1 0 1 d d:
         0 0: 
         0 1: F2C            // not implemented yet
-        1 0: I2F // to convert int to float (real)
+        1 0: I2F // to convert int to float (float)
         1 1: I2C            // not implemented yet
 
 

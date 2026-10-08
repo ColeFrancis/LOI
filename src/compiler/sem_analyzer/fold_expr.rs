@@ -21,7 +21,7 @@
 //! ## Invariants:
 //!
 //! - If an expression is folded into a literal, its type must match the original expr_type
-//! - Literals in a binary expression must always match types with expr_type (therefore, int literals in real binary expressions must be converted to real literals)
+//! - Literals in a binary expression must always match types with expr_type (therefore, int literals in float binary expressions must be converted to float literals)
 //!
 //! Author: Cole Francis
 
@@ -80,14 +80,14 @@ impl<'a> SemAnalyzer<'a> {
                 let mut expr_right =
                     Self::fold_expr_inner(*binary.right, fold_sample, symbols, diagnostics);
 
-                // if you have int + real convert to real + real to simplify eval_binary
-                if binary.expr_type == Type::Real {
+                // if you have int + float convert to float + float to simplify eval_binary
+                if binary.expr_type == Type::Float {
                     if let Expr::Literal(Literal::Int(val)) = expr_left {
-                        expr_left = Expr::Literal(Literal::Real(val as f64));
+                        expr_left = Expr::Literal(Literal::Float(val as f64));
                     }
 
                     if let Expr::Literal(Literal::Int(val)) = expr_right {
-                        expr_right = Expr::Literal(Literal::Real(val as f64));
+                        expr_right = Expr::Literal(Literal::Float(val as f64));
                     }
                 }
 
@@ -245,14 +245,14 @@ impl<'a> SemAnalyzer<'a> {
                                 symbols,
                                 diagnostics,
                             );
-                            // Convert prob to real number
+                            // Convert prob to float number
                             if let Expr::Literal(Literal::Int(int)) = folded_expr {
-                                folded_expr = Expr::Literal(Literal::Real(int as f64));
+                                folded_expr = Expr::Literal(Literal::Float(int as f64));
                             }
                             *expr = folded_expr;
 
                             match expr {
-                                Expr::Literal(Literal::Real(prob)) => {
+                                Expr::Literal(Literal::Float(prob)) => {
                                     if *prob < 0.0 || *prob > 1.0 {
                                         diagnostics.error(Diagnostic::ProbOutOfRange {
                                             total_prob: false,
@@ -302,7 +302,7 @@ impl<'a> SemAnalyzer<'a> {
                 let random_val: f64 = rng.random();
                 running_prob = 0.0;
                 for arm in sample_expr.arms {
-                    if let Prob::Expr(Expr::Literal(Literal::Real(prob))) = arm.prob {
+                    if let Prob::Expr(Expr::Literal(Literal::Float(prob))) = arm.prob {
                         running_prob += prob;
 
                         if random_val < running_prob {
@@ -326,7 +326,7 @@ impl<'a> SemAnalyzer<'a> {
 
             (UnaryOp::Neg, Literal::Int(x)) => Some(Literal::Int(-x)),
 
-            (UnaryOp::Neg, Literal::Real(x)) => Some(Literal::Real(-x)),
+            (UnaryOp::Neg, Literal::Float(x)) => Some(Literal::Float(-x)),
 
             _ => None,
         }
@@ -370,23 +370,23 @@ impl<'a> SemAnalyzer<'a> {
                 }
             }
 
-            (BinaryOp::Lt, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a < b)),
-            (BinaryOp::Gt, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a > b)),
-            (BinaryOp::Le, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a <= b)),
-            (BinaryOp::Ge, Literal::Real(a), Literal::Real(b)) => Some(Literal::Bool(a >= b)),
-            (BinaryOp::Add, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a + b)),
-            (BinaryOp::Sub, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a - b)),
-            (BinaryOp::Mul, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a * b)),
-            (BinaryOp::Div, Literal::Real(a), Literal::Real(b)) => {
+            (BinaryOp::Lt, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a < b)),
+            (BinaryOp::Gt, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a > b)),
+            (BinaryOp::Le, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a <= b)),
+            (BinaryOp::Ge, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a >= b)),
+            (BinaryOp::Add, Literal::Float(a), Literal::Float(b)) => Some(Literal::Float(a + b)),
+            (BinaryOp::Sub, Literal::Float(a), Literal::Float(b)) => Some(Literal::Float(a - b)),
+            (BinaryOp::Mul, Literal::Float(a), Literal::Float(b)) => Some(Literal::Float(a * b)),
+            (BinaryOp::Div, Literal::Float(a), Literal::Float(b)) => {
                 if *b != 0.0 {
-                    Some(Literal::Real(a / b))
+                    Some(Literal::Float(a / b))
                 } else {
                     diagnostics.error(Diagnostic::DivideByZero { op_span });
 
                     None
                 }
             }
-            (BinaryOp::Pow, Literal::Real(a), Literal::Real(b)) => Some(Literal::Real(a.powf(*b))),
+            (BinaryOp::Pow, Literal::Float(a), Literal::Float(b)) => Some(Literal::Float(a.powf(*b))),
 
             _ => None,
         }
@@ -565,7 +565,7 @@ mod tests {
             ast: Program { items: Vec::new() },
             symbols: vec![Symbol {
                 name: "a".to_string(),
-                kind: SymbolKind::Const(Literal::Real(1.0)),
+                kind: SymbolKind::Const(Literal::Float(1.0)),
                 span: Span { line: 0, col: 0 },
             }],
             scopes: vec![Scope {
@@ -580,12 +580,12 @@ mod tests {
                 expr: Box::new(Expr::Ident(Ident::Symbol(0))),
                 op: UnaryOp::Neg,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }),
             true,
         );
 
-        assert_eq!(result, Expr::Literal(Literal::Real(-1.0)));
+        assert_eq!(result, Expr::Literal(Literal::Float(-1.0)));
     }
 
     #[test]
@@ -596,7 +596,7 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                left: Box::new(Expr::Literal(Literal::Float(1.0))),
                 right: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(2))),
                     right: Box::new(Expr::Literal(Literal::Int(3))),
@@ -606,12 +606,12 @@ mod tests {
                 })),
                 op: BinaryOp::Add,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }),
             true,
         );
 
-        assert_eq!(result, Expr::Literal(Literal::Real(9.0)));
+        assert_eq!(result, Expr::Literal(Literal::Float(9.0)));
     }
 
     #[test]
@@ -622,7 +622,7 @@ mod tests {
 
         let _result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                left: Box::new(Expr::Literal(Literal::Float(1.0))),
                 right: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(2))),
                     right: Box::new(Expr::Unary(UnaryExpr {
@@ -637,7 +637,7 @@ mod tests {
                 })),
                 op: BinaryOp::Add,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }),
             true,
         );
@@ -653,9 +653,9 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Real(1.0))),
+                left: Box::new(Expr::Literal(Literal::Float(1.0))),
                 right: Box::new(Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Literal(Literal::Real(2.0))),
+                    left: Box::new(Expr::Literal(Literal::Float(2.0))),
                     right: Box::new(Expr::Unary(UnaryExpr {
                         expr: Box::new(Expr::Literal(Literal::Int(3))),
                         op: UnaryOp::Neg,
@@ -664,16 +664,16 @@ mod tests {
                     })),
                     op: BinaryOp::Pow,
                     op_span: Span { line: 0, col: 1 },
-                    expr_type: Type::Real,
+                    expr_type: Type::Float,
                 })),
                 op: BinaryOp::Add,
                 op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Real,
+                expr_type: Type::Float,
             }),
             true,
         );
 
-        assert_eq!(result, Expr::Literal(Literal::Real(1.125)));
+        assert_eq!(result, Expr::Literal(Literal::Float(1.125)));
     }
 
     #[test]
@@ -1476,7 +1476,7 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Cases(CasesExpr {
-                scrutinee: Box::new(Expr::Literal(Literal::Real(3.5))),
+                scrutinee: Box::new(Expr::Literal(Literal::Float(3.5))),
                 arms: vec![
                     CasesArm {
                         pattern: vec![SimplePattern::Comparison(ComparisonPattern {
@@ -1636,7 +1636,7 @@ mod tests {
             Expr::Sample(SampleExpr {
                 arms: vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(0.0))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(0.0))),
                         expr: Expr::Literal(Literal::Bool(true)),
                         arm_span: Span { line: 0, col: 0 },
                     },
@@ -1673,12 +1673,12 @@ mod tests {
             Expr::Sample(SampleExpr {
                 arms: vec![
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(1.2))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(1.2))),
                         expr: Expr::Literal(Literal::Bool(true)),
                         arm_span: Span { line: 0, col: 0 },
                     },
                     SampleArm {
-                        prob: Prob::Expr(Expr::Literal(Literal::Real(-0.1))),
+                        prob: Prob::Expr(Expr::Literal(Literal::Float(-0.1))),
                         expr: Expr::Literal(Literal::Bool(true)),
                         arm_span: Span { line: 0, col: 0 },
                     },

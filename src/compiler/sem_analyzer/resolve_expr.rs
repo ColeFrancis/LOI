@@ -552,7 +552,7 @@ mod tests {
                 CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
-                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                        expr: Box::new(Expr::Literal(Literal::Float(0.5))),
                     })],
                     expr: Expr::Ident(Ident::Str {
                         val: "b".to_string(),
@@ -578,7 +578,7 @@ mod tests {
                     CasesArm {
                         pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                             op: CompOp::Ge,
-                            expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                            expr: Box::new(Expr::Literal(Literal::Float(0.5))),
                         })],
                         expr: Expr::Error,
                         arm_span: Span { line: 0, col: 0 },
@@ -622,7 +622,7 @@ mod tests {
                 CasesArm {
                     pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                         op: CompOp::Ge,
-                        expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                        expr: Box::new(Expr::Literal(Literal::Float(0.5))),
                     })],
                     expr: Expr::Ident(Ident::Str {
                         val: "b".to_string(),
@@ -648,7 +648,7 @@ mod tests {
                     CasesArm {
                         pattern: vec![SimplePattern::Comparison(ComparisonPattern {
                             op: CompOp::Ge,
-                            expr: Box::new(Expr::Literal(Literal::Real(0.5))),
+                            expr: Box::new(Expr::Literal(Literal::Float(0.5))),
                         })],
                         expr: Expr::Ident(Ident::Symbol(10)),
                         arm_span: Span { line: 0, col: 0 },

@@ -128,7 +128,7 @@ impl IoFile {
 
                 if num_str.contains('.') {
                     match num_str.parse::<f64>() {
-                        Ok(x) => IoVal::Real(x),
+                        Ok(x) => IoVal::Float(x),
                         Err(_) => {
                             return Err(InputFileReadError::InvalidNumber {
                                 num: num_str.to_string(),
@@ -304,7 +304,7 @@ mod tests {
                 ),
                 (
                     "B".to_string(),
-                    vec![(0, IoVal::Real(1.0)), (5, IoVal::Bool(false)),]
+                    vec![(0, IoVal::Float(1.0)), (5, IoVal::Bool(false)),]
                 ),
                 (
                     "C".to_string(),
@@ -326,8 +326,8 @@ mod tests {
                 vec![(0, IoVal::Int(42)), (1, IoVal::Int(-123))],
             ),
             (
-                "real".to_string(),
-                vec![(0, IoVal::Real(3.14159)), (1, IoVal::Real(-0.25))],
+                "float".to_string(),
+                vec![(0, IoVal::Float(3.14159)), (1, IoVal::Float(-0.25))],
             ),
             (
                 "custom".to_string(),
