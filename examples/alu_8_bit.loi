@@ -18,7 +18,7 @@ net Xor {
     NAND(inter_2, inter_3) := Q;
 }
 
-net Or_8bit {
+net Or_8input {
     input A_0: Bool;
     input A_1: Bool;
     input A_2: Bool;
