@@ -180,6 +180,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_net_inst(&mut self) -> Option<NetInst> {
+        let span = self.peek().span.clone();
         let net = self.expect_ident(&SyncRule::NetItem { depth: 0 })?;
 
         self.expect(TokenKind::LBrace, &SyncRule::NetItem { depth: 0 })?;
@@ -200,7 +201,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::NetItem { depth: 0 })?;
 
-        Some(NetInst { net, connections })
+        Some(NetInst { net, connections, span})
     }
 
     fn parse_connection(&mut self) -> Option<Connection> {
@@ -423,6 +424,7 @@ mod tests {
                                 span: Span { line: 0, col: 0 },
                             },
                         ],
+                        span: Span{line: 0, col: 0},
                     }),
                     NetItem::NetInst(NetInst {
                         net: build_ident_str("HALF_ADD"),
@@ -448,6 +450,7 @@ mod tests {
                                 span: Span { line: 0, col: 0 },
                             },
                         ],
+                        span: Span{line: 0, col: 0},
                     }),
                     NetItem::RelInst(RelInst {
                         asignee: build_ident_str("cout"),

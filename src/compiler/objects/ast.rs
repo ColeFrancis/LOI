@@ -269,6 +269,7 @@ pub struct RelInst {
 pub struct NetInst {
     pub net: Ident,
     pub connections: Vec<Connection>,
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug)]

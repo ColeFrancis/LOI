@@ -294,6 +294,7 @@ net SECOND {
                                         span: Span { line: 27, col: 11 },
                                     },
                                 ],
+                                span: Span{line: 25, col: 5},
                             }),
                         ],
                     })

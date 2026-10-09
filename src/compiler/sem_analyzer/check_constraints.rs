@@ -461,6 +461,7 @@ mod tests {
                         ent: Ident::Symbol(5),
                         span: Span { line: 0, col: 0 },
                     }],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });

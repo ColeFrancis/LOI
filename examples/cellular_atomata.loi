@@ -1,0 +1,65 @@
+// Loi is convenient for modeling cellular atomata, and will be much more convenient
+// after the introduction of arrays/matrices of entites (with modular indexing) and generate blocks in v2
+
+// By placing entites in a pattern, looping back on themselves and receiving inputs from neighbors, a cellular atomata is created
+
+rel_t Rule30_Cell(left: Int, center: Int, right: Int) -> Int = {
+    cases (left, center, right) {
+        (1,0,0) | (0,1,1) | (0,1,0) | (0,0,1) : 1,
+        _ : 0
+    }
+};
+
+// Creating rule 30 on a 17 wide grid, taking center value as an output to generate a pseudorandom sequence
+net Rule30PseudorandomGenerator {
+    output s: Int;
+
+    init s: Int = 1;
+    init sl1: Int = 0;
+    init sl2: Int = 0;
+    init sl3: Int = 0;
+    init sl4: Int = 0;
+    init sl5: Int = 0;
+    init sl6: Int = 0;
+    init sl7: Int = 0;
+    init sl8: Int = 0;
+    init sr1: Int = 0;
+    init sr2: Int = 0;
+    init sr3: Int = 0;
+    init sr4: Int = 0;
+    init sr5: Int = 0;
+    init sr6: Int = 0;
+    init sr7: Int = 0;
+    init sr8: Int = 0;
+
+    Rule30_Cell(sr8, sl8, sl7) := sl8;
+    Rule30_Cell(sl8, sl7, sl6) := sl7;
+    Rule30_Cell(sl7, sl6, sl5) := sl6;
+    Rule30_Cell(sl6, sl5, sl4) := sl5;
+    Rule30_Cell(sl5, sl4, sl3) := sl4;
+    Rule30_Cell(sl4, sl3, sl2) := sl3;
+    Rule30_Cell(sl3, sl2, sl1) := sl2;
+    Rule30_Cell(sl2, sl1, s  ) := sl1;
+    Rule30_Cell(sl1, s,   sr1) := s;
+    Rule30_Cell(s,   sr1, sr2) := sr1;
+    Rule30_Cell(sr1, sr2, sr3) := sr2;
+    Rule30_Cell(sr2, sr3, sr4) := sr3;
+    Rule30_Cell(sr3, sr4, sr5) := sr4;
+    Rule30_Cell(sr4, sr5, sr6) := sr5;
+    Rule30_Cell(sr5, sr6, sr7) := sr6;
+    Rule30_Cell(sr6, sr7, sr8) := sr7;
+    Rule30_Cell(sr7, sr8, sl8) := sr8;
+}
+
+rel_t GameOfLifeCell(c: Int, r: Int, ur: Int, u: Int, ul: Int, l: Int, dl: Int, d: Int, dr: Int) -> Int = {
+    let num_neighbors = r+ur+u+ul+l+dl+d+dr;
+
+    cases (c, num_neighbors) {
+        // Survival rule (alive and 2-3 neighbors)
+        (1, 2) | (1, 3) : 1,
+        // Birth rule (dead and 3 neighbors)
+        (0, 3) : 1,
+        // Otherwise, dead
+        _ : 0
+    }
+};

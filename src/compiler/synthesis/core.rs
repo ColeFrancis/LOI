@@ -726,6 +726,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         };
@@ -1069,6 +1070,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
@@ -1089,6 +1091,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
@@ -1109,6 +1112,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(12),

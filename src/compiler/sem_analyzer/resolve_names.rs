@@ -1144,6 +1144,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });
@@ -1193,6 +1194,7 @@ mod tests {
                                 span: Span { line: 0, col: 0 },
                             },
                         ],
+                        span: Span{line: 0, col: 0},
                     }),
                 ],
             })
@@ -1416,6 +1418,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });
@@ -1544,6 +1547,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });
@@ -1811,6 +1815,7 @@ net SECOND {
                                         span: Span { line: 24, col: 11 },
                                     },
                                 ],
+                                span: Span{line: 22, col: 5},
                             }),
                         ],
                     })

@@ -204,7 +204,7 @@ impl<'a> SemAnalyzer<'a> {
                                 return_type: Type::Unknown,
                             }],
                             found: other.clone(),
-                            span: self.symbols[rel_id].span.clone(),
+                            span: rel_inst.span,
                         });
 
                         return None;
@@ -1982,6 +1982,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });
@@ -2031,6 +2032,7 @@ mod tests {
                                 span: Span { line: 0, col: 0 },
                             },
                         ],
+                        span: Span{line: 0, col: 0},
                     }),
                 ],
             })
@@ -2327,6 +2329,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    span: Span{line: 0, col: 0},
                 }),
             ],
         });
