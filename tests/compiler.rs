@@ -735,6 +735,7 @@ fn calculator() {
                 name: "NAND".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: false,
                 bytecode: assemble(
                     "
                     AND r4 r2 r3
@@ -812,6 +813,7 @@ fn coin_flip() {
             name: "FLIP".to_string(),
             complexity: 0,
             deterministic: false,
+            impulse_input: true,
             bytecode: assemble(
                 "
                 RND r3

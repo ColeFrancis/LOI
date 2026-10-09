@@ -970,6 +970,7 @@ mod tests {
             name: "".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     FADD r0 r2 r3

@@ -49,6 +49,7 @@ impl Simulator {
     ) -> Self {
         let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
         let mut nondeterministic_rel_ids = Vec::new();
+        let mut impulse_input_rel_ids = Vec::new();
 
         for output_ent_id in interface.outputs.keys() {
             watcher.insert(*output_ent_id, Vec::new());
@@ -57,6 +58,9 @@ impl Simulator {
         for (id, relation) in netlist.relations.iter().enumerate() {
             if !compiled_relations[relation.idx].deterministic {
                 nondeterministic_rel_ids.push(id);
+            }
+            if compiled_relations[relation.idx].impulse_input {
+                impulse_input_rel_ids.push(id);
             }
         }
 
@@ -67,6 +71,7 @@ impl Simulator {
             interpreter: RelInterpreter::new(compiled_relations),
             watcher,
             nondeterministic_rel_ids,
+            impulse_input_rel_ids,
         }
     }
 
@@ -242,6 +247,12 @@ impl Simulator {
                     relations_to_call.push(rel_id);
                 }
             }
+            // Schedule second evluation of relations receiving impulse as an input
+            for &rel_id in &self.impulse_input_rel_ids {
+                if rel_last_called[rel_id] == self.scheduler.curr_time - 1 {
+                    relations_to_call.push(rel_id);
+                }
+            }
             // Evaluate needed relations
             for rel_id in relations_to_call {
                 let timestep = self.scheduler.curr_time - 1;
@@ -349,6 +360,7 @@ mod tests {
             name: "ADD".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     IADD r4 r2 r3
@@ -644,6 +656,7 @@ mod tests {
             name: "DIV".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     IDIV r4 r2 r3
@@ -790,6 +803,7 @@ mod tests {
                 name: "RND".to_string(),
                 complexity: 0,
                 deterministic: false,
+                impulse_input: false,
                 bytecode: assemble(
                 "
                     RET i0
@@ -863,6 +877,7 @@ mod tests {
             name: "NAND".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     AND r4 r2 r3
@@ -954,6 +969,7 @@ mod tests {
                 name: "AND".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: false,
                 bytecode: assemble(
                     "
                     AND r4 r2 r3
@@ -966,6 +982,7 @@ mod tests {
                 name: "NOT".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: false,
                 bytecode: assemble(
                     "
                     NOT r4 r3
@@ -1096,6 +1113,7 @@ mod tests {
             name: "NAND".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     AND r4 r2 r3
@@ -1183,6 +1201,7 @@ mod tests {
             name: "NAND".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     IADD r4 r2 i1
@@ -1221,7 +1240,144 @@ mod tests {
     }
 
     #[test]
-    fn impulse_oscillator() {
+    fn impulse_oscillator_1() {
+        // rel_t imp_delay : (a: Impulse) -> Impulse = a;
+        // rel_t read_imp: (a: Impulse) -> Int = {
+        //     cases a {
+        //         true: 1,
+        //         _ : 0,
+        //     }
+        // };
+        // net OSC {
+        //     output i: Impulse
+        //     output a: Int;
+
+        //     init imp: Impulse = true; // will cause impulse on sim step 1
+
+        //     imp_delay(imp) := imp;
+
+        //     i := imp_delay(imp);
+
+        //     a := read_imp(i);
+        // }
+        let netlist = Netlist {
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![2],
+                    output_ent: 2,
+                },
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![2],
+                    output_ent: 0,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![0],
+                    output_ent: 1,
+                },
+            ],
+            ents: vec![
+                Entity {
+                    // i
+                    val: None,
+                    sinks: vec![2],
+                },
+                Entity {
+                    // a
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    // imp
+                    val: None,
+                    sinks: vec![0, 1],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::new(),
+            outputs: HashMap::from([
+                (0, ("i".to_string(), Type::Impulse)),
+                (1, ("a".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![
+            CompiledRel {
+                name: "imp_delay".to_string(),
+                complexity: 0,
+                deterministic: true,
+                impulse_input: true,
+                bytecode: assemble(
+                    "
+                    IADD r3 r2 r1
+                    RET r3
+                ",
+                )
+                .unwrap(),
+            },
+            CompiledRel {
+                name: "read_imp".to_string(),
+                complexity: 0,
+                deterministic: true,
+                impulse_input: true,
+                bytecode: assemble(
+                    "
+                    IEQ r3 r2 r0
+                    IJNE o13 r3 i1
+                    MOV r4 i1
+                    JMP o10
+                    MOV r4 i0
+                    RET r4
+                ",
+                )
+                .unwrap(),
+            },
+        ];
+
+        let inits = vec![Event {
+            timestep: 0,
+            ent_id: 2,
+            new_val: 0,
+        }];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let _steps = sim.run(5, false);
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(
+            output,
+            vec![
+                (
+                    "i".to_string(),
+                    vec![
+                        (1, IoVal::Bool(true)),
+                        (2, IoVal::Bool(true)),
+                        (3, IoVal::Bool(true)),
+                        (4, IoVal::Bool(true)),
+                        (5, IoVal::Bool(true)),
+                    ]
+                ),
+                (
+                    "a".to_string(), 
+                    vec![
+                        (2, IoVal::Int(1)),
+                    ]
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn impulse_oscillator_2() {
         // rel_t imp_delay : (a: Impulse) -> Impulse = a;
         // rel_t read_imp: (a: Impulse) -> Int = {
         //     cases a {
@@ -1306,6 +1462,7 @@ mod tests {
                 name: "imp_delay".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: true,
                 bytecode: assemble(
                     "
                     IADD r3 r2 r1
@@ -1318,6 +1475,7 @@ mod tests {
                 name: "read_imp".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: true,
                 bytecode: assemble(
                     "
                     IEQ r3 r2 r0
@@ -1357,7 +1515,118 @@ mod tests {
                         (10, IoVal::Bool(true)),
                     ]
                 ),
-                ("a".to_string(), vec![(3, IoVal::Int(1)),]),
+                (
+                    "a".to_string(), 
+                    vec![
+                        (3, IoVal::Int(1)),
+                        (4, IoVal::Int(0)),
+                        (5, IoVal::Int(1)),
+                        (6, IoVal::Int(0)),
+                        (7, IoVal::Int(1)),
+                        (8, IoVal::Int(0)),
+                        (9, IoVal::Int(1)),
+                        (10, IoVal::Int(0)),
+                    ]
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn impulse_duration() {
+        // rel_t read_imp: (a: Impulse) -> Int = {
+        //     cases a {
+        //         true: 1,
+        //         _ : 0,
+        //     }
+        // };
+        // net Convert {
+        //     input a: Impulse
+        //     output b: Int;
+
+        //     read_imp(a) := b;
+        // }
+        let netlist = Netlist {
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![0],
+                    output_ent: 1,
+                },
+            ],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::from([
+                ("a".to_string(), (0, Type::Impulse)),
+            ]),
+            outputs: HashMap::from([
+                (1, ("b".to_string(), Type::Int)),
+            ]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![
+            CompiledRel {
+                name: "read_imp".to_string(),
+                complexity: 0,
+                deterministic: true,
+                impulse_input: true,
+                bytecode: assemble(
+                    "
+                    IEQ r3 r2 r0
+                    IJNE o13 r3 i1
+                    MOV r4 i1
+                    JMP o10
+                    MOV r4 i0
+                    RET r4
+                ",
+                )
+                .unwrap(),
+            },
+        ];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let inputs = vec![
+            (
+                "a".to_string(),
+                vec![
+                    (3, IoVal::Bool(true)),
+                ],
+            ),
+        ];
+
+        let success = sim.load_inputs(inputs);
+
+        assert_eq!(success, Ok(()));
+
+        let _steps = sim.run(10, false);
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(
+            output,
+            vec![
+                (
+                    "b".to_string(),
+                    vec![
+                        (4, IoVal::Int(1)),
+                        (5, IoVal::Int(0)),
+                    ]
+                ),
             ]
         );
     }
@@ -1436,6 +1705,7 @@ mod tests {
             name: "SHIFT".to_string(),
             complexity: 0,
             deterministic: true,
+            impulse_input: false,
             bytecode: assemble(
                 "
                     IJNE o13 r2 i0

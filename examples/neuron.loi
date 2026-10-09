@@ -1,55 +1,75 @@
 // This network approximates a leaky integrate and fire model of a neuron (mathematical equivalence yet to be established)
 
-// Adds one weights worth of potential to the neuron when a spike comes in
-rel_t SYNAPSE (spike_in: Impulse, weight: Float, last_potential: Float) -> Float = {
-    cases (spike_in) {
-        true : last_potential + weight,
-        _ : last_potential,
+//// Adds one weights worth of potential to the neuron when a spike comes in
+//rel_t SYNAPSE (spike_in: Impulse, spike_out: Impulse, weight: Float, last_potential: Float) -> Float = {
+//    let refrac_potential = 0;
+//    let tau = 0.1;
+//    
+//    cases (spike_in, spike_out) {
+//        (_, true)     : refrac_potential,
+//        (true, false) : last_potential + weight,
+//        _             : last_potential * (1 - tau),
+//    }
+//};
+//
+//// Causes a spike when the neuron potential rises above the threshold
+//rel_t AXON (curr_potential: Float) -> Impulse = {
+//    let threshold = 2;
+//
+//    curr_potential >= threshold
+//};
+//
+//net Neuron {
+//    input spike_in: Impulse;
+//
+//    output spike_out: Impulse;
+//    output potential: Float;
+//
+//    init weight: Float = 1.0;
+//    init potential: Float = 0;
+//
+//
+//    SYNAPSE(spike_in, spike_out, weight, potential) := potential;
+//
+//    AXON(potential) := spike_out;
+//}
+
+rel_t SYNAPSE(spike_in: Impulse, weight: Float) -> Float = {
+    cases spike_in {
+        true : weight,
+        _ : 0,
     }
 };
 
-// Causes a spike when the neuron potential rises above the threshold
-rel_t AXON (curr_potential: Float) -> Impulse = {
-    let threshold = 2;
-
-    curr_potential >= threshold
-};
-
-// exponentially decays the neuron potential unless an action potential is produced, then potential goes to the refrac potential
-rel_t BODY (outgoing_spike: Impulse, curr_potential: Float) -> Float = {
+rel_t BODY(potential: Float, incoming_potential: Float, spiking: Impulse) -> Float = {
     let refrac_potential = 0;
     let tau = 0.1;
-
-    cases outgoing_spike {
+    
+    cases spiking {
         true: refrac_potential,
-        _ : curr_potential * (1 - tau),
+        _ : potential * (1-tau) + incoming_potential,
     }
+};
+
+rel_t AXON(potential: Float) -> Impulse = {
+    let threshold = 2;
+
+    potential >= threshold
 };
 
 net Neuron {
     input spike_in: Impulse;
 
-    output spike_in: Impulse;
     output spike_out: Impulse;
-    output curr_potential: Float;
-    output next_potential: Float;
+    output potential: Float;
+    output incoming_potential: Float;
 
-    init weight: Float = 1.0;
-    init curr_potential: Float = 0;
+    init weight: Float = 1;
+    init potential: Float = 0;
 
-    /*               
-                           _________             ______
-        spike_in -------->|         |           | AXON |
-                          | SYNAPSE |---------->|______| ----------> spike_out
-        weight = 1 ------>|_________|      |               |
-                               ^        ___v__             |
-                               |-------| BODY |<------------
-                                       |______|
-    */
+    SYNAPSE(spike_in, weight) := incoming_potential;
 
-    SYNAPSE(spike_in, weight, curr_potential) := next_potential;
+    BODY(potential, incoming_potential, spike_out) := potential;
 
-    AXON(next_potential) := spike_out;
-
-    BODY(spike_out, next_potential) := curr_potential;
+    AXON(potential) := spike_out;
 }

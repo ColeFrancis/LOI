@@ -60,6 +60,8 @@ impl<'a> CodeGen<'a> {
         self.reg_used[0] = true;
         self.reg_used[1] = true;
 
+        let mut impulse_input = false;
+
         // reserve registers for params
         for param in relation.params {
             if let Ident::Symbol(symbol_id) = param.name {
@@ -67,6 +69,9 @@ impl<'a> CodeGen<'a> {
                 let idx = self.get_next_reg()?;
 
                 self.reg_map.insert(symbol_id, idx);
+            }
+            if param.param_type == Type::Impulse {
+                impulse_input = true;
             }
         }
 
@@ -104,6 +109,7 @@ impl<'a> CodeGen<'a> {
             name: self.symbol_table[self.rel_symbol_id].name.clone(),
             complexity: 0,
             deterministic,
+            impulse_input,
             bytecode,
         })
     }
@@ -573,6 +579,7 @@ mod tests {
                 name: "ADD".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: false,
                 bytecode,
             })
         );
@@ -626,6 +633,7 @@ mod tests {
                 name: "DELAY".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: true,
                 bytecode,
             })
         );
@@ -700,6 +708,7 @@ mod tests {
                 name: "AND".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: true,
                 bytecode,
             })
         );
@@ -795,6 +804,7 @@ mod tests {
                 name: "REVERSE".to_string(),
                 complexity: 0,
                 deterministic: true,
+                impulse_input: false,
                 bytecode,
             })
         );
@@ -940,6 +950,7 @@ mod tests {
                 name: "RND".to_string(),
                 complexity: 0,
                 deterministic: false,
+                impulse_input: false,
                 bytecode,
             })
         );

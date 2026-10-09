@@ -27,5 +27,6 @@ pub struct CompiledRel {
     pub name: String,
     pub complexity: usize,
     pub deterministic: bool,
+    pub impulse_input: bool,
     pub bytecode: Vec<u8>,
 }
