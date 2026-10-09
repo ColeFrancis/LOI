@@ -284,9 +284,6 @@ impl Simulator {
                         new_val: new_val,
                     });
                 }
-                else {
-                    println!("val not changed at timestep: {timestep}");
-                }
             }
 
             if self.scheduler.curr_time > max_steps || stopping {
