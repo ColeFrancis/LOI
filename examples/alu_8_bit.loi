@@ -621,7 +621,7 @@ net Alu {
         cout := C,
     };
 
-    Or_8bit {
+    Or_8input {
         A_0 := Q_0,
         A_1 := Q_1,
         A_2 := Q_2,

@@ -60,8 +60,6 @@ impl Synthesis {
                         unreachable!("should not be ident string");
                     };
 
-                    let idx = ents.len();
-
                     let ent_type = match input.param.param_type {
                         Type::Bool => Type::Bool,
                         Type::Impulse => Type::Impulse,
@@ -78,20 +76,14 @@ impl Synthesis {
                         _ => unreachable!("type should match one of above"),
                     };
 
+                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut ents);
                     inputs.insert(symbols[id].name.to_string(), (idx, ent_type));
-                    ent_map.insert(id, idx);
-                    ents.push(Entity {
-                        val: None,
-                        sinks: vec![],
-                    });
                 }
 
                 NetItem::Output(output) => {
                     let Ident::Symbol(id) = output.param.name else {
                         unreachable!("should not be ident string");
                     };
-
-                    let idx = ents.len();
 
                     let ent_type = match output.param.param_type {
                         Type::Bool => Type::Bool,
@@ -109,12 +101,8 @@ impl Synthesis {
                         _ => unreachable!("type should match one of above"),
                     };
 
+                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut ents);
                     outputs.insert(idx, (symbols[id].name.to_string(), ent_type));
-                    ent_map.insert(id, idx);
-                    ents.push(Entity {
-                        val: None,
-                        sinks: vec![],
-                    });
                 }
 
                 _ => {}
