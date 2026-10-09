@@ -23,7 +23,7 @@ use std::collections::HashMap;
 
 use crate::simulator::{objects::scheduler::Scheduler, rel_interpreter::RelInterpreter};
 
-use crate::compiler::objects::netlist::{EntId, Interface, Netlist};
+use crate::compiler::objects::netlist::{RelId, EntId, Interface, Netlist};
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum IoVal {
@@ -51,4 +51,5 @@ pub struct Simulator {
     scheduler: Scheduler,
     interpreter: RelInterpreter,
     watcher: HashMap<EntId, Vec<(usize, u64)>>,
+    nondeterministic_rel_ids: Vec<RelId>,
 }

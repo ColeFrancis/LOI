@@ -18,6 +18,10 @@
 //!
 //! ## Invariants
 //!
+//! - Relation outputs are only registered as events if the value changes
+//! - Deterministic relations are only evaluated if one or more inputs change
+//! - Nondetrministic relations are evaluated every simulation timestep
+//!
 //! Author: Cole Francis
 
 use std::collections::HashMap;
@@ -40,21 +44,29 @@ impl Simulator {
     pub fn new(
         netlist: Netlist,
         interface: Interface,
-        relations: Vec<CompiledRel>,
+        compiled_relations: Vec<CompiledRel>,
         inits: Vec<Event>,
     ) -> Self {
         let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
+        let mut nondeterministic_rel_ids = Vec::new();
 
         for output_ent_id in interface.outputs.keys() {
             watcher.insert(*output_ent_id, Vec::new());
+        }
+
+        for (id, relation) in netlist.relations.iter().enumerate() {
+            if !compiled_relations[relation.idx].deterministic {
+                nondeterministic_rel_ids.push(id);
+            }
         }
 
         Self {
             netlist,
             interface,
             scheduler: Scheduler::new(inits),
-            interpreter: RelInterpreter::new(relations),
+            interpreter: RelInterpreter::new(compiled_relations),
             watcher,
+            nondeterministic_rel_ids,
         }
     }
 
@@ -187,7 +199,10 @@ impl Simulator {
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
-        while let Some(curr_events) = self.scheduler.pop() {
+        // If there are nondeterministic relations, 
+        while self.scheduler.has_events() || !self.nondeterministic_rel_ids.is_empty() {
+            let curr_events = self.scheduler.pop();
+            
             let mut relations_to_call = Vec::new();
 
             for event in curr_events {
@@ -212,13 +227,22 @@ impl Simulator {
                     }
                 }
 
-                for rel_id in &self.netlist.ents[event.ent_id].sinks {
-                    if rel_last_called[*rel_id] != self.scheduler.curr_time {
-                        rel_last_called[*rel_id] = self.scheduler.curr_time;
-                        relations_to_call.push(*rel_id);
+                // Schedule relations driven by this entity
+                for &rel_id in &self.netlist.ents[event.ent_id].sinks {
+                    if rel_last_called[rel_id] != self.scheduler.curr_time {
+                        rel_last_called[rel_id] = self.scheduler.curr_time;
+                        relations_to_call.push(rel_id);
                     }
                 }
             }
+            // Schedule all nondeterministic relations
+            for &rel_id in &self.nondeterministic_rel_ids {
+                if rel_last_called[rel_id] != self.scheduler.curr_time {
+                    rel_last_called[rel_id] = self.scheduler.curr_time;
+                    relations_to_call.push(rel_id);
+                }
+            }
+            // Evaluate needed relations
             for rel_id in relations_to_call {
                 let timestep = self.scheduler.curr_time - 1;
                 let compiled_rel_id = self.netlist.relations[rel_id].idx;
@@ -253,31 +277,16 @@ impl Simulator {
                         }
                     };
 
-                // if old_val != Some(new_val) {
-                //     self.scheduler.push(Event {
-                //         timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
-                //         ent_id: output_ent_id,
-                //         new_val: new_val,
-                //     });
-                // }
-                if old_val == Some(new_val) {
-                    // Must check if any of sink relations are stoastic. If all are deterministic, we dont need to propogate the event
-                    let needs_propogation = self.netlist.ents[output_ent_id]
-                        .sinks
-                        .iter()
-                        .any(|rel_id| {
-                            !self.interpreter.rel_is_deterministic(self.netlist.relations[*rel_id].idx)
-                        });
-                    
-                    if !needs_propogation {
-                        continue;
-                    }
+                if old_val != Some(new_val) {
+                    self.scheduler.push(Event {
+                        timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
+                        ent_id: output_ent_id,
+                        new_val: new_val,
+                    });
                 }
-                self.scheduler.push(Event {
-                    timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
-                    ent_id: output_ent_id,
-                    new_val: new_val,
-                });
+                else {
+                    println!("val not changed at timestep: {timestep}");
+                }
             }
 
             if self.scheduler.curr_time > max_steps || stopping {
@@ -743,6 +752,81 @@ mod tests {
         let result = sim.run(10, false);
 
         assert_eq!(result, Ok(10));
+    }
+
+    #[test]
+    fn nondeterministic_runtime() {
+        // net A {
+        //     input a: Int;
+        //     output b: Int;
+
+        //     RND(a) := b;
+        // }
+        let netlist = Netlist {
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![0],
+                    output_ent: 1,
+                },
+            ],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![0],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        };
+        let interface = Interface {
+            inputs: HashMap::from([("a".to_string(), (0, Type::Int))]),
+            outputs: HashMap::from([(1, ("b".to_string(), Type::Int))]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![
+            CompiledRel {
+                name: "RND".to_string(),
+                complexity: 0,
+                deterministic: false,
+                bytecode: assemble(
+                "
+                    RET i0
+                ",
+            )
+            .unwrap(),
+            },
+        ];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let inputs = vec![("a".to_string(), vec![(5, IoVal::Int(1))])];
+
+        let success = sim.load_inputs(inputs);
+
+        assert_eq!(success, Ok(()));
+
+        let result = sim.run(10, false);
+
+        assert_eq!(result, Ok(10));
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(
+            output,
+            vec![(
+                "b".to_string(),
+                vec![
+                    (6 as usize, IoVal::Int(0)),
+                ]
+            ),]
+        );
     }
 
     #[test]

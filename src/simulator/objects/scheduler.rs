@@ -53,11 +53,7 @@ impl Scheduler {
         self.event_count += 1;
     }
 
-    pub fn pop(&mut self) -> Option<Vec<Event>> {
-        if self.event_count == 0 {
-            return None;
-        }
-
+    pub fn pop(&mut self) -> Vec<Event> {
         let curr_events: Vec<Event> = self.events[self.curr_time % WHEEL_SIZE]
             .extract_if(.., |e| e.timestep == self.curr_time)
             .collect();
@@ -65,6 +61,10 @@ impl Scheduler {
         self.event_count -= curr_events.len();
         self.curr_time += 1;
 
-        Some(curr_events)
+        curr_events
+    }
+
+    pub fn has_events(&self) -> bool {
+        self.event_count > 0
     }
 }

@@ -26,6 +26,7 @@ use std::collections::HashMap;
 
 use super::types::Type;
 
+pub type RelId = usize;
 pub type EntId = usize;
 
 #[derive(PartialEq, Debug)]
@@ -67,8 +68,6 @@ pub struct Relation {
     pub input_ents: Vec<EntId>,
     pub output_ent: EntId,
 }
-
-pub type RelId = usize;
 
 #[derive(PartialEq, Debug)]
 pub struct Entity {
