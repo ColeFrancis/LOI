@@ -573,6 +573,11 @@ impl<'a> SemAnalyzer<'a> {
         simple_pattern: &SimplePattern,
         arm_span: &Span,
     ) -> Option<()> {
+        // Default pattern always matches
+        if *simple_pattern == SimplePattern::Default {
+            return Some(())
+        }
+
         let pattern_type = self.get_simple_pattern_type(simple_pattern);
 
         match (scrutinee_type, &pattern_type) {
@@ -1676,6 +1681,97 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn cases_expr_9() {
+        // cases (r, b) {
+        //     (1, true) | (0, _) : true,
+        //     _ : false,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "r".to_string(),
+                    kind: SymbolKind::Variable(Type::Float),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("r".to_string(), 0), ("b".to_string(), 1)]),
+            }],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1)),
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Bool(true)),
+                        ]),
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(0)),
+                            SimplePattern::Default,
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span { line: 0, col: 0 },
+        }));
+
+        assert_eq!(
+            result,
+            Some(Expr::Cases(CasesExpr {
+                scrutinee: Box::new(Expr::Tuple(vec![
+                    Expr::Ident(Ident::Symbol(0)),
+                    Expr::Ident(Ident::Symbol(1)),
+                ])),
+                arms: vec![
+                    CasesArm {
+                        pattern: vec![
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Literal(Literal::Int(1)),
+                                SimplePattern::Literal(Literal::Bool(true)),
+                            ]),
+                            SimplePattern::Tuple(vec![
+                                SimplePattern::Literal(Literal::Int(0)),
+                                SimplePattern::Default,
+                            ]),
+                        ],
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    CasesArm {
+                        pattern: vec![SimplePattern::Default],
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }))
+        );
     }
 
     #[test]

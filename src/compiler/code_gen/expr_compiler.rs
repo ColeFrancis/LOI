@@ -2198,6 +2198,120 @@ mod tests {
 
     #[test]
     fn cases_2() {
+        // cases (a, b) {
+        //     (1, 2) : 1,
+        //     (5, _): 2,
+        //     _: 3
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+        ];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 0);
+        compiler.reg_used[0] = true;
+        compiler.reg_map.insert(1, 1);
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Tuple(vec![
+                Expr::Ident(Ident::Symbol(0)),
+                Expr::Ident(Ident::Symbol(1))
+            ])),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Tuple(vec![
+                            SimplePattern::Literal(Literal::Int(1)),
+                            SimplePattern::Literal(Literal::Int(2)),
+                        ]),
+                    ],
+                    expr: Expr::Literal(Literal::Int(1)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Tuple(vec![
+                        SimplePattern::Literal(Literal::Int(5)),
+                        SimplePattern::Default,
+                    ])],
+                    expr: Expr::Literal(Literal::Int(2)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Int(3)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+            ],
+            expr_type: Type::Int,
+            span: Span { line: 0, col: 0 },
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::IJNE {
+                        offset: 25, // past next JMP
+                        src1: Source::RegVar(0),
+                        src2: Source::Int(1),
+                    },
+                    Instruction::IJNE {
+                        offset: 13, // past next JMP
+                        src1: Source::RegVar(1),
+                        src2: Source::Int(2),
+                    },
+                    Instruction::MOV {
+                        dest: 2,
+                        src: Source::Int(1),
+                    },
+                    Instruction::JMP {
+                        offset: 35, // After last inst
+                    },
+                    Instruction::IJNE {
+                        offset: 13, // past next JMP
+                        src1: Source::RegVar(0),
+                        src2: Source::Int(5),
+                    },
+                    Instruction::MOV {
+                        dest: 2,
+                        src: Source::Int(2),
+                    },
+                    Instruction::JMP {
+                        offset: 10, // After last inst
+                    },
+                    Instruction::MOV {
+                        dest: 2,
+                        src: Source::Int(3),
+                    },
+                ],
+                Source::RegInter(2),
+                Type::Int
+            ))
+        );
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[2], true);
+        assert_eq!(compiler.reg_used[3], false);
+    }
+
+    #[test]
+    fn cases_3() {
         // cases c { // type of c is ent_t coin = {H, T};
         //     H : true,
         //     _ : false,
@@ -2285,7 +2399,7 @@ mod tests {
     }
 
     #[test]
-    fn cases_3() {
+    fn cases_4() {
         // cases var {
         //     A: sample {
         //         0.5: A,
@@ -2635,7 +2749,4 @@ mod tests {
         assert_eq!(compiler.reg_used[5], false);
         assert_eq!(compiler.reg_used[6], false);
     }
-
-    // test adding two cases together
-    // corner cases with mod/impulse/custom type
 }

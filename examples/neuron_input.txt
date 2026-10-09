@@ -1,16 +1,6 @@
 step entity value
 
-// 5 spike_in true
-// 10 spike_in true
-// 12 spike_in true
-// 15 spike_in true
-
-4 a 1
-
-5 b 1
-
-6 b 2
-
-7 a 2
-
-8 b 1
+5 spike_in true
+10 spike_in true
+12 spike_in true
+15 spike_in true
