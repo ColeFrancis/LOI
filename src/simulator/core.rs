@@ -21,6 +21,7 @@
 //! - Relation outputs are only registered as events if the value changes
 //! - Deterministic relations are only evaluated if one or more inputs change
 //! - Nondetrministic relations are evaluated every simulation timestep
+//! - Relations with at least one impuse type as an imput must be evaluated twice in a row. Once when the impulse value changes (likely to true), and one step later becaue impulse types are only true for one timestep unless changed.
 //!
 //! Author: Cole Francis
 
