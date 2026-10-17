@@ -1,0 +1,143 @@
+// Implementation of several classical reversible-computing gates
+
+rel_t DELAY(a: Bool) -> Bool = a;
+rel_t XOR(a: Bool, b: Bool) -> Bool = (~a & b) | (a & ~b);
+rel_t TOFFOLI_CORE(a: Bool, b: Bool, c: Bool) -> Bool = {
+    let ab = a&b;
+
+    (~ab & b) | (ab & ~b)
+};
+rel_t MUX(a: Bool, b: Bool, s: Bool) -> Bool = {
+    cases s {
+        true: b,
+        _ : a,
+    }
+};
+
+net CNOT {
+    input a: Bool;
+    input b: Bool;
+
+    output p: Bool;
+    output q: Bool;
+
+    DELAY(a) := p;
+    XOR(a, b) := q;
+}
+
+net TOFOLLI {
+    input a: Bool;
+    input b: Bool;
+    input c: Bool;
+
+    output p: Bool;
+    output q: Bool;
+    output r: Bool;
+
+    DELAY(a) := p;
+    DELAY(b) := q;
+    TOFFOLI_CORE(a, b, c) := r;
+}
+
+net FREDKIN {
+    input a: Bool;
+    input b: Bool;
+    input c: Bool;
+
+    output p: Bool;
+    output q: Bool;
+    output r: Bool;
+
+    DELAY(a) := p;
+    MUX(b, c, a) := q;
+    MUX(c, b, a) := r;
+}
+
+net PERES {
+    input a: Bool;
+    input b: Bool;
+    input c: Bool;
+
+    output p: Bool;
+    output q: Bool;
+    output r: Bool;
+
+    DELAY(a) := p;
+    XOR(a, b) := q;
+    TOFFOLI_CORE(a, b, c) := r;
+}
+
+net EXCHANGE {
+    input a: Bool;
+    input b: Bool;
+
+    output p: Bool;
+    output q: Bool;
+
+    CNOT {
+        a := a,
+        b := b,
+        p := inter_11,
+        q := inter_12,
+    };
+    CNOT {
+        b := inter_11,
+        a := inter_12,
+        q := inter_21,
+        p := inter_22,
+    };
+    CNOT {
+        a := inter_21,
+        b := inter_22,
+        p := p,
+        q := q,
+    };
+}
+
+// Based on implementation in "Optimized quantum implementation of novel controlled adders/subtractors"
+net ADD_SUB {
+    input ctrl: Bool;
+    input a: Bool;
+    input b: Bool;
+    input zero: Bool;
+    input cin: Bool;
+
+    output g1: Bool;
+    output g2: Bool;
+    output g3: Bool;
+    output s : Bool;
+    output cout: Bool;
+
+    init zero: Bool = false;
+
+    CNOT {
+        a := ctrl,
+        b := a,
+        p := ctrl_p,
+        q := a_r,
+    };
+    CNOT {
+        a := ctrl_p,
+        b := b_f,
+        p := g3,
+        q := s,
+    };
+    PERES {
+        a := a_r,
+        b := b,
+        c := zero,
+
+        p := g1,
+        q := b_p,
+        r := c_p,
+    };
+    PERES {
+        a := cin,
+        b := b_p,
+        c := c_p,
+
+        p := g2,
+        q := b_f,
+        r := cout,
+    };
+}
