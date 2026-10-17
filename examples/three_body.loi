@@ -1,4 +1,6 @@
-let dt = 0.1;
+// Performa 3 body orbit simulation by integrating over gravitational force equation
+
+let dt = 0.01;
 let G = 1;
 
 rel_t INTEGRATE(last: Float, in: Float) -> Float = last + (in * dt);
