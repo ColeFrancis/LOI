@@ -41,35 +41,33 @@ rel_t SYNAPSE(spike_in: Impulse, weight: Float) -> Float = {
     }
 };
 
-rel_t BODY(potential: Float, incoming_potential: Float, spiking: Impulse) -> Float = {
+rel_t BODY(potential: Float, incoming_potential: Float, threshold: Float) -> Float = {
     let refrac_potential = 0;
     let tau = 0.1;
+
+    let spike = potential >= threshold;
     
-    cases spiking {
+    cases spike {
         true: refrac_potential,
         _ : potential * (1-tau) + incoming_potential,
     }
 };
 
-rel_t AXON(potential: Float) -> Impulse = {
-    let threshold = 2;
-
-    potential >= threshold
-};
+rel_t AXON(potential: Float, threshold: Float) -> Impulse = potential >= threshold;
 
 net Neuron {
     input spike_in: Impulse;
 
     output spike_out: Impulse;
     output potential: Float;
-    output incoming_potential: Float;
 
     init weight: Float = 1;
     init potential: Float = 0;
+    init threshold: Float = 2;
 
     SYNAPSE(spike_in, weight) := incoming_potential;
 
-    BODY(potential, incoming_potential, spike_out) := potential;
+    BODY(potential, incoming_potential, threshold) := potential;
 
-    AXON(potential) := spike_out;
+    AXON(potential, threshold) := spike_out;
 }
