@@ -1,0 +1,80 @@
+// Some useful signal processing blocks like amplifiers and filters
+
+rel_t DELAY(a: Float) -> Float = a;
+rel_t MULT(a: Float, b: Float) -> Float = a*b;
+rel_t ADD(a: Float, b: Float) -> Float = a+b;
+rel_t SUB(a: Float, b: Float) -> Float = a-b;
+rel_t ADD3(a:Float, b:Float, c:Float) -> Float = a+b+c;
+rel_t ADD8(a:Float, b:Float, c:Float, d:Float, e:Float, f:Float, g:Float, h:Float) -> Float = a+b+c+d+e+f+g+h;
+
+net FIR_Filter{
+    input r: Float;
+
+    output q: Float;
+
+    DELAY(r ) := r1;
+    DELAY(r1) := r2;
+    DELAY(r2) := r3;
+    DELAY(r3) := r4;
+    DELAY(r4) := r5;
+    DELAY(r5) := r6;
+    DELAY(r6) := r7;
+
+    init h0: Float = 1.0/16;
+    init h1: Float = 2.0/16;
+    init h2: Float = 3.0/16;
+    init h3: Float = 4.0/16;
+    init h4: Float = 3.0/16;
+    init h5: Float = 2.0/16;
+    init h6: Float = 1.0/16;
+    init h7: Float = 0.0;
+
+    MULT(r,  h0) := p0;
+    MULT(r1, h1) := p1;
+    MULT(r2, h2) := p2;
+    MULT(r3, h3) := p3;
+    MULT(r4, h4) := p4;
+    MULT(r5, h5) := p5;
+    MULT(r6, h6) := p6;
+    MULT(r7, h7) := p7;
+
+    ADD8(p0, p1, p2, p3, p4, p5, p6, p7) := q;
+}
+
+net PI_Loop_Filter {
+    input r: Float;
+
+    output q: Float;
+
+    init KP: Float = 1.0;
+    init KI: Float = 1.0;
+
+    MULT(r, KP) := rp;
+    MULT(r, KI) := ri;
+
+    ADD(ri, ri_int) := ri_int;
+
+    ADD(rp, ri_int) := q;
+}
+
+net PID_Loop_Filter {
+    input r: Float;
+
+    output q: Float;
+
+    init KD: Float = 1.0;
+    init KP: Float = 1.0;
+    init KI: Float = 1.0;
+
+    MULT(r, KD) := rd;
+    MULT(r, KP) := rp;
+    MULT(r, KI) := ri;
+    
+    DELAY(rd) := rd_delay;
+    SUB(r, rd) := rd_diff;
+
+    ADD(ri, ri_int) := ri_int;
+
+    ADD3(rp, ri_int, rd_diff) := q;
+}
+
