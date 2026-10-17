@@ -53,4 +53,5 @@ pub struct Simulator {
     watcher: HashMap<EntId, Vec<(usize, u64)>>,
     nondeterministic_rel_ids: Vec<RelId>,
     impulse_input_rel_ids: Vec<RelId>,
+    no_input_rel_ids: Vec<RelId>,
 }

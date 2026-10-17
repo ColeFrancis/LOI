@@ -51,6 +51,7 @@ impl Simulator {
         let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
         let mut nondeterministic_rel_ids = Vec::new();
         let mut impulse_input_rel_ids = Vec::new();
+        let mut no_input_rel_ids = Vec::new();
 
         for output_ent_id in interface.outputs.keys() {
             watcher.insert(*output_ent_id, Vec::new());
@@ -63,6 +64,9 @@ impl Simulator {
             if compiled_relations[relation.idx].impulse_input {
                 impulse_input_rel_ids.push(id);
             }
+            if relation.input_ents.len() == 0 {
+                no_input_rel_ids.push(id);
+            }
         }
 
         Self {
@@ -73,6 +77,7 @@ impl Simulator {
             watcher,
             nondeterministic_rel_ids,
             impulse_input_rel_ids,
+            no_input_rel_ids,
         }
     }
 
@@ -205,6 +210,15 @@ impl Simulator {
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
+        // All relations with one input must be called at least once
+        let mut relations_to_call = Vec::new();
+        if self.scheduler.curr_time == 0 {
+            for &rel_id in &self.no_input_rel_ids {
+                relations_to_call.push(rel_id);
+            }
+        }
+        self.evaluate_relations(relations_to_call, 0)?;
+
         // If there are nondeterministic relations, 
         while self.scheduler.has_events() || !self.nondeterministic_rel_ids.is_empty() {
             let curr_events = self.scheduler.pop();
@@ -255,48 +269,8 @@ impl Simulator {
                 }
             }
             // Evaluate needed relations
-            for rel_id in relations_to_call {
-                let timestep = self.scheduler.curr_time - 1;
-                let compiled_rel_id = self.netlist.relations[rel_id].idx;
-                let delay = self.netlist.relations[rel_id].delay;
-                let output_ent_id = self.netlist.relations[rel_id].output_ent;
-
-                let args: Option<Vec<u64>> = self.netlist.relations[rel_id]
-                    .input_ents
-                    .iter()
-                    .map(|&value| self.netlist.ents[value].val)
-                    .collect();
-
-                // dont execute relation if any inputs are none;
-                let Some(args) = args else {
-                    continue;
-                };
-
-                let old_val = self.netlist.ents[output_ent_id].val;
-                let new_val =
-                    match self
-                        .interpreter
-                        .evaluate(compiled_rel_id, &args, timestep, delay)
-                    {
-                        Ok(val) => val,
-                        Err(err) => {
-                            return Err(RuntimeError::Interpreter {
-                                err,
-                                rel_name: self.interpreter.get_rel_name(compiled_rel_id),
-                                rel_id,
-                                timestep,
-                            });
-                        }
-                    };
-
-                if old_val != Some(new_val) {
-                    self.scheduler.push(Event {
-                        timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
-                        ent_id: output_ent_id,
-                        new_val: new_val,
-                    });
-                }
-            }
+            let timestep = self.scheduler.curr_time - 1;
+            self.evaluate_relations(relations_to_call, timestep)?;
 
             if self.scheduler.curr_time > max_steps || stopping {
                 return Ok(self.scheduler.curr_time - 1);
@@ -304,6 +278,52 @@ impl Simulator {
         }
 
         Ok(self.scheduler.curr_time)
+    }
+
+    fn evaluate_relations(&mut self, relations_to_call: Vec<usize>, timestep: usize) -> Result<(), RuntimeError> {
+        for rel_id in relations_to_call {
+            let compiled_rel_id = self.netlist.relations[rel_id].idx;
+            let delay = self.netlist.relations[rel_id].delay;
+            let output_ent_id = self.netlist.relations[rel_id].output_ent;
+
+            let args: Option<Vec<u64>> = self.netlist.relations[rel_id]
+                .input_ents
+                .iter()
+                .map(|&value| self.netlist.ents[value].val)
+                .collect();
+
+            // dont execute relation if any inputs are none;
+            let Some(args) = args else {
+                continue;
+            };
+
+            let old_val = self.netlist.ents[output_ent_id].val;
+            let new_val =
+                match self
+                    .interpreter
+                    .evaluate(compiled_rel_id, &args, timestep, delay)
+                {
+                    Ok(val) => val,
+                    Err(err) => {
+                        return Err(RuntimeError::Interpreter {
+                            err,
+                            rel_name: self.interpreter.get_rel_name(compiled_rel_id),
+                            rel_id,
+                            timestep,
+                        });
+                    }
+                };
+
+            if old_val != Some(new_val) {
+                self.scheduler.push(Event {
+                    timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
+                    ent_id: output_ent_id,
+                    new_val: new_val,
+                });
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -1752,6 +1772,65 @@ mod tests {
                     (1, IoVal::Custom("C".to_string())),
                     (3, IoVal::Custom("B".to_string())),
                     (5, IoVal::Custom("A".to_string())),
+                ]
+            ),]
+        );
+    }
+
+    #[test]
+    fn no_input_relation() {
+        // rel_t CONST() -> Int = 1;
+
+        // net TEST {
+        //     output a: Int;
+
+        //     CONST() := a;
+        // }
+        let netlist = Netlist {
+            relations: vec![Relation {
+                idx: 0,
+                delay: 1,
+                input_ents: vec![],
+                output_ent: 0,
+            }],
+            ents: vec![Entity {
+                val: None,
+                sinks: vec![],
+            }],
+        };
+        let interface = Interface {
+            inputs: HashMap::new(),
+            outputs: HashMap::from([(0, ("a".to_string(), Type::Int))]),
+            custom_type_maps: HashMap::new(),
+        };
+
+        let relations = vec![CompiledRel {
+            name: "CONST".to_string(),
+            complexity: 0,
+            deterministic: true,
+            impulse_input: false,
+            bytecode: assemble(
+                "
+                    RET i1
+                ",
+            )
+            .unwrap(),
+        }];
+
+        let inits = vec![];
+
+        let mut sim = Simulator::new(netlist, interface, relations, inits);
+
+        let _steps = sim.run(5, false);
+
+        let output = sim.dump_outputs();
+
+        assert_eq!(
+            output,
+            vec![(
+                "a".to_string(),
+                vec![
+                    (1 as usize, IoVal::Int(1)),
                 ]
             ),]
         );
