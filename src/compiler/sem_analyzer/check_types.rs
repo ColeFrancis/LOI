@@ -165,7 +165,7 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::Output(output_ent))
             }
 
-            NetItem::Init(ent_init) => {
+            NetItem::Init(mut ent_init) => {
                 let Ident::Symbol(id) = ent_init.param.name else {
                     return None; // Not reachable
                 };
@@ -175,6 +175,7 @@ impl<'a> SemAnalyzer<'a> {
                 let new_type =
                     self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), span)?;
 
+                ent_init.val = self.add_types_expr(ent_init.val)?;
                 let expr_type = self.get_expr_type(&ent_init.val);
 
                 let new_type = self.verify_return_type(&new_type, &expr_type, &span)?;
@@ -2365,5 +2366,118 @@ mod tests {
             })
         );
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_10() {
+        // net TEST {
+        //     input a: Float;
+        //     init a: Float = -1;
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Float,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Float,
+                    },
+                    val: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(1))),
+                        op: UnaryOp::Neg,
+                        op_span: Span {line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                }),
+            ],
+        });
+
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(0),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Float,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Init(EntInit {
+                        param: Param {
+                            name: Ident::Symbol(1),
+                            param_type: Type::Float,
+                        },
+                        val: Expr::Unary(UnaryExpr {
+                            expr: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: UnaryOp::Neg,
+                            op_span: Span {line: 0, col: 0},
+                            expr_type: Type::Int,
+                        }),
+                    }),
+                ],
+            })
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Float),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
+        
+        assert_eq!(diagnostics.num_errors(), 0);
     }
 }

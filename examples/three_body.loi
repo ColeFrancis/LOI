@@ -1,0 +1,58 @@
+let dt = 0.1;
+let G = 1;
+
+rel_t INTEGRATE(last: Float, in: Float) -> Float = last + (in * dt);
+
+// Calculates the next velocity (x or y) induced on a given b and c
+// if calculating x velocity, this_a is x pos, other_a is y pos
+rel_t VELOCITY(va: Float, this_a: Float, other_a: Float, this_b: Float, other_b: Float, mb: Float, this_c: Float, other_c: Float, mc: Float) -> Float = {
+    let dab_sq = (this_b - this_a)*(this_b - this_a) + (other_b - other_a)*(other_b - other_a);
+    let dac_sq = (this_c - this_a)*(this_c - this_a) + (other_c - other_a)*(other_c - other_a);
+
+    let accel = G * ((mb * (this_b - this_a) / dab_sq ^ 1.5) + (mc * (this_c - this_a) / dac_sq ^ 1.5));
+
+    va + accel*dt
+};
+
+net THREE_BODY {
+    output x1: Float;
+    output y1: Float;
+
+    output x2: Float;
+    output y2: Float;
+
+    output x3: Float;
+    output y3: Float;
+
+    init m1: Float = 1;
+    init m2: Float = 1;
+    init m3: Float = 1;
+
+    init x1: Float = -1;
+    init y1: Float = 0;
+    init x2: Float = 1;
+    init y2: Float = 0;
+    init x3: Float = 0;
+    init y3: Float = 0;
+    
+    init vx1: Float = 0.30689;
+    init vy1: Float = 0.53273;
+    init vx2: Float = 0.30689;
+    init vy2: Float = 0.53273;
+    init vx3: Float = -0.61378;
+    init vy3: Float = -1.06546;
+
+    VELOCITY(vx1, x1, y1, x2, y2, m2, x3, y3, m3) := vx1;
+    VELOCITY(vy1, y1, x1, y2, x2, m2, y3, x3, m3) := vy1;
+    VELOCITY(vx2, x2, y2, x1, y1, m1, x3, y3, m3) := vx2;
+    VELOCITY(vy2, y2, x2, y1, x1, m1, y3, x3, m3) := vy2;
+    VELOCITY(vx3, x3, y3, x2, y2, m2, x1, y1, m1) := vx3;
+    VELOCITY(vy3, y3, x3, y2, x2, m2, y1, x1, m1) := vy3;
+
+    INTEGRATE(x1, vx1) := x1;
+    INTEGRATE(y1, vy1) := y1;
+    INTEGRATE(x2, vx2) := x2;
+    INTEGRATE(y2, vy2) := y2;
+    INTEGRATE(x3, vx3) := x3;
+    INTEGRATE(y3, vy3) := y3;
+}
