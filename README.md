@@ -149,7 +149,7 @@ cargo run -- simulate-full <relative path to program>.loi <input file>.txt <outp
 
 # Learning the language
 
-1. ***README*** for a brief introduction
+1. **README** for a brief introduction
 
 2. **Language reference** in /docs/language to learn language syntax and abilities
 
@@ -157,7 +157,7 @@ cargo run -- simulate-full <relative path to program>.loi <input file>.txt <outp
 
 3. **Examples** in /examples for several examples of valid networks.
 
-4. **CLI*** in /docs/cli for details on how to run your program.
+4. **CLI** in /docs/cli for details on how to run your program.
 
 # Project status
 
