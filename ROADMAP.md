@@ -23,10 +23,11 @@ Goal: Improve the language and its abilities while preserving a coherent mathema
 - Add examples demonstrating progressivly more complex systems
 - Add a binary file type to store compiled nets rather than immeately simulating them
 - Add additional command line tools for simulation including the ability to add inputs from the commandline rather than a dedicated file and to step through simulation one timestep at a time
+- Support standard filetypes for inputs and outputs such as csv, and vcd
 
 # Phase 2 - Simulation tools
 
-## Status: Planned
+## Status: Planned for v2.0
 
 Goal: It's one thing to create and simulate a single network, but what other analsis can be done on it? Perhaps:
 
@@ -39,6 +40,16 @@ Goal: It's one thing to create and simulate a single network, but what other ana
 The possibilities are endless, and this phase of the project is where the research power will really begin to shine.
 
 Stick around and find out!
+
+# Phase 3 - GUI and Visualization
+
+## Status: Planned for v3.0
+
+Goal: Add a graphical user interface similar to matlab to allow users to move beyond command line use. With this comes the following:
+
+- Build-in command line and text editor for creating and simulating networks
+- Visualization tool to view a network as a graph
+- Waveform viewer to graph and visualize the changes of input and output values
 
 # Long-term direction
 
