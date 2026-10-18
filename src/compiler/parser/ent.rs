@@ -35,11 +35,15 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::LBrace, &SyncRule::Item)?;
 
-        let mut members = vec![self.expect_ident(&SyncRule::Item)?];
-
-        while self.peek().kind == TokenKind::Comma {
-            self.next();
+        let mut members = Vec::new();
+        while self.peek().kind != TokenKind::RBrace {
             members.push(self.expect_ident(&SyncRule::Item)?);
+
+            if self.peek().kind == TokenKind::Comma {
+                self.next();
+            } else {
+                break;
+            }
         }
 
         self.expect(TokenKind::RBrace, &SyncRule::Item)?;
@@ -77,7 +81,7 @@ mod tests {
 
     #[test]
     fn set_ent() {
-        // ent_t coin = {H, T};
+        // ent_t coin = {H, T,};
         let kinds: Vec<TokenKind> = vec![
             Ident("coin".to_string()),
             Equals,
@@ -85,6 +89,7 @@ mod tests {
             Ident("H".to_string()),
             Comma,
             Ident("T".to_string()),
+            Comma,
             RBrace,
             Semicolon,
             Eof,
