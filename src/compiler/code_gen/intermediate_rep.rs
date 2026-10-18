@@ -31,6 +31,7 @@ pub enum Source {
     Float(f64),
 }
 
+#[allow(dead_code)]
 #[derive(PartialEq, Debug)]
 pub enum Instruction {
     IADD {
