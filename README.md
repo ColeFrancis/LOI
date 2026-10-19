@@ -58,8 +58,8 @@ Install Rust and Cargo using rustup if they are not already available.
 Clone the repository and build the project:
 
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/ColeFrancis/LOI.git
+cd ./LOI
 cargo build --release
 ```
 
