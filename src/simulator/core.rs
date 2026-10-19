@@ -256,6 +256,7 @@ impl Simulator {
                     }
                 }
             }
+            
             // Schedule all nondeterministic relations
             for &rel_id in &self.nondeterministic_rel_ids {
                 if rel_last_called[rel_id] != self.scheduler.curr_time {
@@ -263,12 +264,14 @@ impl Simulator {
                     relations_to_call.push(rel_id);
                 }
             }
+
             // Schedule second evluation of relations receiving impulse as an input
             for &rel_id in &self.impulse_input_rel_ids {
                 if rel_last_called[rel_id] == self.scheduler.curr_time - 1 {
                     relations_to_call.push(rel_id);
                 }
             }
+
             // Evaluate needed relations
             let timestep = self.scheduler.curr_time - 1;
             self.evaluate_relations(relations_to_call, timestep)?;
