@@ -6,7 +6,7 @@ Please note that this document only outlines the syntax of LOI. For a guide on t
 
 # Files
 
-All files are of the .LOI filetype
+All files are of the .LOI file type
 
 # Structures
 
