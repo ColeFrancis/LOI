@@ -16,6 +16,12 @@ simulate-full requires exactly 5 arguments:
 - **Steps:** The maximum number of timesteps the simulator should run
 - **Top:** The name of the network in the LOI program that is to be simulated (case sensitive)
 
+Calling simulate-full may look like:
+
+```
+loi simulate-full ./my_program.loi ./inputs.txt ./outputs.txt 255 OUTER
+```
+
 # Input/Output Files
 
 A network's input entities need a way to receive input values. This is achieved through input/output files.
