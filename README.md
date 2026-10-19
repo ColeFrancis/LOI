@@ -1,4 +1,4 @@
-# LOI - A Research Tool for Emergent Computatin
+# LOI - A Research Tool for Emergent Computation 
 
 Language Of Interaction (LOI) is a programming language and research tool for modeling, simulating, and analyzing complex systems. It is designed to explore how behaviors emerge from interactions between simple components, and to compare how systems with different structure may produce similar behaviors.
 
