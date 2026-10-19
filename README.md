@@ -12,9 +12,9 @@ LOI was cretaed to provide a common language and framework for studying these sy
 
 The project emphasizes:
 
-- **A unified mathematical model.** Describe systems using entites, relations, and networks.
+- **A unified mathematical model.** Describe systems using networks if entites and relations
 - **Emergent behavior.** Investigate how potentially simple local interactions produce complex global behavior
-- **Experimentation.** Construct models, run simulations, and analyze behavior of your systems.
+- **Experimentation.** Construct models, run simulations, and analyze behavior of your systems
 
 LOI is intended primarily as a research tool, not as a replacement for established HDLs or general-purpose programming languages.
 
