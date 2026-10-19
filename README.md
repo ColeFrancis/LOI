@@ -151,13 +151,15 @@ cargo run -- simulate-full <relative path to program>.loi <input file>.txt <outp
 
 1. **README** for a brief introduction
 
-2. **Language reference** in /docs/language to learn language syntax and abilities
+2. **Semantic reference** in /docs/semantics to learn how to think about and interpret networks.
 
-3. **Semantic reference** in /docs/semantics to learn the broader meaning and rules of the language
+3. **Language reference** in /docs/language to learn language syntax and abilities
 
-3. **Examples** in /examples for several examples of valid networks.
+4. **Examples** in /examples for several examples of valid networks.
 
-4. **CLI** in /docs/cli for details on how to run your program.
+5. **CLI** in /docs/cli for details on how to run your program.
+
+6. **Architecture** in /docs/architecture to learn how the simulator functions internally.
 
 # Project status
 
