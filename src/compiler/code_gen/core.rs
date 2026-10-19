@@ -512,7 +512,7 @@ mod tests {
         error_handling::span::Span, lexer::Lexer, objects::symbol::SymbolKind, parser::Parser,
         sem_analyzer::SemAnalyzer,
     };
-    use crate::simulator::rel_interpreter::{RelInterpreter, test_assembler::assemble};
+    use crate::simulator::rel_vm::{RelVM, test_assembler::assemble};
 
     #[test]
     fn simple_adder() {
@@ -957,7 +957,7 @@ mod tests {
     }
 
     #[test]
-    fn integrate_frontent_and_interpreter() {
+    fn integrate_frontent_and_vm() {
         let code = "
         ent_t SET = {A, B, C};
 
@@ -995,8 +995,8 @@ mod tests {
             }
         }
 
-        // Interpreter
-        let mut interpreter = RelInterpreter::new(compiled_relations);
+        // VM
+        let mut vm = RelVM::new(compiled_relations);
 
         // ROTATE args
         let args_1 = vec![0];
@@ -1013,15 +1013,15 @@ mod tests {
         let args_8 = vec![(1.0_f64).to_bits() as u64];
         let args_9 = vec![(2.5_f64).to_bits() as u64];
 
-        let result_1 = interpreter.evaluate(0, &args_1, 0, 1);
-        let result_2 = interpreter.evaluate(0, &args_2, 0, 1);
-        let result_3 = interpreter.evaluate(0, &args_3, 0, 1);
-        let result_4 = interpreter.evaluate(1, &args_4, 0, 1);
-        let result_5 = interpreter.evaluate(1, &args_5, 0, 1);
-        let result_6 = interpreter.evaluate(1, &args_6, 0, 1);
-        let result_7 = interpreter.evaluate(1, &args_7, 0, 1);
-        let result_8 = interpreter.evaluate(2, &args_8, 0, 1);
-        let result_9 = interpreter.evaluate(2, &args_9, 0, 1);
+        let result_1 = vm.evaluate(0, &args_1, 0, 1);
+        let result_2 = vm.evaluate(0, &args_2, 0, 1);
+        let result_3 = vm.evaluate(0, &args_3, 0, 1);
+        let result_4 = vm.evaluate(1, &args_4, 0, 1);
+        let result_5 = vm.evaluate(1, &args_5, 0, 1);
+        let result_6 = vm.evaluate(1, &args_6, 0, 1);
+        let result_7 = vm.evaluate(1, &args_7, 0, 1);
+        let result_8 = vm.evaluate(2, &args_8, 0, 1);
+        let result_9 = vm.evaluate(2, &args_9, 0, 1);
 
         assert_eq!(result_1, Ok(1));
         assert_eq!(result_2, Ok(2));

@@ -25,8 +25,8 @@ use crate::compiler::objects::{
 
 #[derive(Debug, PartialEq)]
 pub enum RuntimeError {
-    Interpreter {
-        err: InterpreterError,
+    VM {
+        err: VMError,
         rel_name: String,
         rel_id: RelId,
         timestep: usize,
@@ -45,7 +45,7 @@ pub enum RuntimeError {
 }
 
 #[derive(Debug, PartialEq)]
-pub enum InterpreterError {
+pub enum VMError {
     InvalidOpcode(u8),
     IntegerOverflow,
     DivisionByZero,
@@ -53,7 +53,7 @@ pub enum InterpreterError {
     InvalidProb(f64),
 }
 
-impl InterpreterError {
+impl VMError {
     pub fn from_index(index: usize, info: Option<u64>) -> Self {
         match index {
             0 => Self::InvalidOpcode(info.expect("InvalidOpcode requires info") as u8),
@@ -69,7 +69,7 @@ impl InterpreterError {
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            RuntimeError::Interpreter {
+            RuntimeError::VM {
                 err,
                 rel_name,
                 rel_id,
@@ -117,10 +117,10 @@ impl std::fmt::Display for RuntimeError {
     }
 }
 
-impl std::fmt::Display for InterpreterError {
+impl std::fmt::Display for VMError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            InterpreterError::InvalidOpcode(code) => {
+            VMError::InvalidOpcode(code) => {
                 // If the relation compiler is bug_free
                 write!(
                     f,
@@ -129,19 +129,19 @@ impl std::fmt::Display for InterpreterError {
                 )
             }
 
-            InterpreterError::IntegerOverflow => {
+            VMError::IntegerOverflow => {
                 write!(f, "Integer overflow")
             }
 
-            InterpreterError::DivisionByZero => {
+            VMError::DivisionByZero => {
                 write!(f, "Division by zero")
             }
 
-            InterpreterError::IntNegativeExponent => {
+            VMError::IntNegativeExponent => {
                 write!(f, "Integer raised to negative power")
             }
 
-            InterpreterError::InvalidProb(prob) => {
+            VMError::InvalidProb(prob) => {
                 write!(
                     f,
                     "Probability value \"{}\" out of range (Should be 1)",

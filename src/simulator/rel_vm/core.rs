@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! # interpreter
+//! # RelVM
 //!
 //! Used to execute relations during simulation
 //!
@@ -25,13 +25,13 @@
 
 use rand::Rng;
 
-use super::RelInterpreter;
+use super::RelVM;
 
-use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
+use crate::simulator::error_handling::runtime_diagnostics::VMError;
 
 use crate::compiler::objects::compiled_rel::CompiledRel;
 
-impl RelInterpreter {
+impl RelVM {
     pub fn new(relations: Vec<CompiledRel>) -> Self {
         Self {
             relations,
@@ -53,7 +53,7 @@ impl RelInterpreter {
         args: &[u64],
         sim_timestep: usize,
         rel_delay: usize,
-    ) -> Result<u64, InterpreterError> {
+    ) -> Result<u64, VMError> {
         // Fill time info and arguments
         self.registers[0] = sim_timestep as u64;
         self.registers[1] = rel_delay as u64;
@@ -64,7 +64,7 @@ impl RelInterpreter {
         Self::execute(&mut self.registers, code)
     }
 
-    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> Result<u64, InterpreterError> {
+    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> Result<u64, VMError> {
         let mut inst_counter = 0;
 
         loop {
@@ -96,7 +96,7 @@ impl RelInterpreter {
                         0b00010100 => {
                             registers[dest_reg] = src1_val
                                 .checked_abs()
-                                .ok_or(InterpreterError::IntegerOverflow)?
+                                .ok_or(VMError::IntegerOverflow)?
                                 as u64;
                             continue;
                         }
@@ -114,7 +114,7 @@ impl RelInterpreter {
                         0b00000000 => {
                             registers[dest_reg] = src1_val
                                 .checked_add(src2_val)
-                                .ok_or(InterpreterError::IntegerOverflow)?
+                                .ok_or(VMError::IntegerOverflow)?
                                 as u64;
                         }
 
@@ -122,7 +122,7 @@ impl RelInterpreter {
                         0b00000100 => {
                             registers[dest_reg] = src1_val
                                 .checked_sub(src2_val)
-                                .ok_or(InterpreterError::IntegerOverflow)?
+                                .ok_or(VMError::IntegerOverflow)?
                                 as u64;
                         }
 
@@ -130,7 +130,7 @@ impl RelInterpreter {
                         0b00001000 => {
                             registers[dest_reg] = src1_val
                                 .checked_mul(src2_val)
-                                .ok_or(InterpreterError::IntegerOverflow)?
+                                .ok_or(VMError::IntegerOverflow)?
                                 as u64;
                         }
 
@@ -138,19 +138,19 @@ impl RelInterpreter {
                         0b00001100 => {
                             registers[dest_reg] = src1_val
                                 .checked_div(src2_val)
-                                .ok_or(InterpreterError::DivisionByZero)?
+                                .ok_or(VMError::DivisionByZero)?
                                 as u64;
                         }
 
                         // POW
                         0b00010000 => {
                             if src2_val < 0 {
-                                return Err(InterpreterError::IntNegativeExponent);
+                                return Err(VMError::IntNegativeExponent);
                             }
 
                             registers[dest_reg] = src1_val
                                 .checked_pow(src2_val as u32)
-                                .ok_or(InterpreterError::IntegerOverflow)?
+                                .ok_or(VMError::IntegerOverflow)?
                                 as u64;
                         }
 
@@ -158,11 +158,11 @@ impl RelInterpreter {
                         0b00011000 => {
                             registers[dest_reg] = src1_val
                                 .checked_rem(src2_val)
-                                .ok_or(InterpreterError::DivisionByZero)?
+                                .ok_or(VMError::DivisionByZero)?
                                 as u64;
                         }
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -225,7 +225,7 @@ impl RelInterpreter {
                             registers[dest_reg] = src1_val.powf(src2_val).to_bits();
                         }
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -317,7 +317,7 @@ impl RelInterpreter {
                             registers[dest_reg] = (src_val as f64).to_bits();
                         }
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -413,7 +413,7 @@ impl RelInterpreter {
                             }
                         }
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -441,7 +441,7 @@ impl RelInterpreter {
 
                             if src1_is_reg {
                                 // no info, only code
-                                return Err(InterpreterError::from_index(code as usize, None));
+                                return Err(VMError::from_index(code as usize, None));
                             } else {
                                 let src_val = Self::read_source(
                                     registers,
@@ -450,7 +450,7 @@ impl RelInterpreter {
                                     src2_is_reg,
                                 );
 
-                                return Err(InterpreterError::from_index(
+                                return Err(VMError::from_index(
                                     code as usize,
                                     Some(src_val),
                                 ));
@@ -521,7 +521,7 @@ impl RelInterpreter {
                             }
                         }
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -576,7 +576,7 @@ impl RelInterpreter {
                         // IGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
@@ -631,11 +631,11 @@ impl RelInterpreter {
                         // FGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
                     }
                 }
 
-                _ => return Err(InterpreterError::InvalidOpcode(inst as u8)),
+                _ => return Err(VMError::InvalidOpcode(inst as u8)),
             }
         }
     }
@@ -665,8 +665,8 @@ impl RelInterpreter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
-    use crate::simulator::rel_interpreter::test_assembler::assemble;
+    use crate::simulator::error_handling::runtime_diagnostics::VMError;
+    use crate::simulator::rel_vm::test_assembler::assemble;
 
     #[test]
     fn int_arith() {
@@ -689,7 +689,7 @@ mod tests {
         let mut registers = [0; 64];
         registers[2] = 3;
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(5 as u64));
     }
@@ -712,7 +712,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok((1.0_f64).to_bits() as u64));
     }
@@ -732,7 +732,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(0 as u64));
     }
@@ -761,7 +761,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(6 as u64));
     }
@@ -792,7 +792,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(7 as u64));
     }
@@ -832,7 +832,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -872,7 +872,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -893,7 +893,7 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -909,9 +909,9 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(InterpreterError::DivisionByZero));
+        assert_eq!(result, Err(VMError::DivisionByZero));
     }
 
     #[test]
@@ -925,9 +925,9 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(InterpreterError::IntNegativeExponent));
+        assert_eq!(result, Err(VMError::IntNegativeExponent));
     }
 
     #[test]
@@ -940,9 +940,9 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(InterpreterError::IntegerOverflow));
+        assert_eq!(result, Err(VMError::IntegerOverflow));
     }
 
     #[test]
@@ -959,9 +959,9 @@ mod tests {
 
         let mut registers = [0; 64];
 
-        let result = RelInterpreter::execute(&mut registers, &bytecode);
+        let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Err(InterpreterError::InvalidProb(1.1)));
+        assert_eq!(result, Err(VMError::InvalidProb(1.1)));
     }
 
     #[test]
@@ -982,7 +982,7 @@ mod tests {
 
         let args = vec![(2.5_f64).to_bits() as u64, (3.0_f64).to_bits() as u64];
 
-        let result = RelInterpreter::new(relations).evaluate(0, &args, 0, 0);
+        let result = RelVM::new(relations).evaluate(0, &args, 0, 0);
 
         assert_eq!(Ok(5.5_f64.to_bits() as u64), result);
     }

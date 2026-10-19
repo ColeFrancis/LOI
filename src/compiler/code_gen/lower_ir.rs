@@ -677,7 +677,7 @@ impl<'a> CodeGen<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::simulator::rel_interpreter::test_assembler::assemble;
+    use crate::simulator::rel_vm::test_assembler::assemble;
 
     #[test]
     fn test_all_deterministic_instructions() {

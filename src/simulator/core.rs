@@ -22,6 +22,7 @@
 //! - Deterministic relations are only evaluated if one or more inputs change
 //! - Nondetrministic relations are evaluated every simulation timestep
 //! - Relations with at least one impuse type as an imput must be evaluated twice in a row. Once when the impulse value changes (likely to true), and one step later becaue impulse types are only true for one timestep unless changed.
+//! - Relations with no inputs must be evaluated on timestep zero.
 //!
 //! Author: Cole Francis
 
@@ -31,7 +32,7 @@ use super::{
     IoVal, Simulator,
     error_handling::runtime_diagnostics::RuntimeError,
     objects::{event::Event, scheduler::Scheduler},
-    rel_interpreter::RelInterpreter,
+    rel_vm::RelVM,
 };
 
 use crate::compiler::objects::{
@@ -73,7 +74,7 @@ impl Simulator {
             netlist,
             interface,
             scheduler: Scheduler::new(inits),
-            interpreter: RelInterpreter::new(compiled_relations),
+            vm: RelVM::new(compiled_relations),
             watcher,
             nondeterministic_rel_ids,
             impulse_input_rel_ids,
@@ -300,14 +301,14 @@ impl Simulator {
             let old_val = self.netlist.ents[output_ent_id].val;
             let new_val =
                 match self
-                    .interpreter
+                    .vm
                     .evaluate(compiled_rel_id, &args, timestep, delay)
                 {
                     Ok(val) => val,
                     Err(err) => {
-                        return Err(RuntimeError::Interpreter {
+                        return Err(RuntimeError::VM {
                             err,
-                            rel_name: self.interpreter.get_rel_name(compiled_rel_id),
+                            rel_name: self.vm.get_rel_name(compiled_rel_id),
                             rel_id,
                             timestep,
                         });
@@ -332,8 +333,8 @@ mod tests {
     use super::*;
     use crate::compiler::error_handling::span::Span;
     use crate::compiler::objects::netlist::{Entity, Relation};
-    use crate::simulator::error_handling::runtime_diagnostics::InterpreterError;
-    use crate::simulator::rel_interpreter::test_assembler::assemble;
+    use crate::simulator::error_handling::runtime_diagnostics::VMError;
+    use crate::simulator::rel_vm::test_assembler::assemble;
 
     #[test]
     fn only_known_inputs() {
@@ -632,7 +633,7 @@ mod tests {
     }
 
     #[test]
-    fn interpreter_error() {
+    fn vm_error() {
         // rel_t DIV : (a: Int, b: Int) -> Int = a/b;
 
         // net A {
@@ -704,8 +705,8 @@ mod tests {
 
         assert_eq!(
             result,
-            Err(RuntimeError::Interpreter {
-                err: InterpreterError::DivisionByZero,
+            Err(RuntimeError::VM {
+                err: VMError::DivisionByZero,
                 rel_name: "DIV".to_string(),
                 rel_id: 0,
                 timestep: 2,

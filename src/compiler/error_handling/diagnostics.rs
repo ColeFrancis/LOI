@@ -229,7 +229,7 @@ pub enum Diagnostic {
     // CodeGen
     ///////////////
 
-    // There are only 62 registers available for use in the interpreter
+    // There are only 62 registers available for use in the vm
     TooManySymbols {
         rel_name: String,
         rel_span: Span,

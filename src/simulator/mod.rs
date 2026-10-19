@@ -14,14 +14,14 @@
 
 mod core;
 pub mod io_file;
-pub mod rel_interpreter;
+pub mod rel_vm;
 
 pub mod error_handling;
 pub mod objects;
 
 use std::collections::HashMap;
 
-use crate::simulator::{objects::scheduler::Scheduler, rel_interpreter::RelInterpreter};
+use crate::simulator::{objects::scheduler::Scheduler, rel_vm::RelVM};
 
 use crate::compiler::objects::netlist::{RelId, EntId, Interface, Netlist};
 
@@ -49,7 +49,7 @@ pub struct Simulator {
     netlist: Netlist,
     interface: Interface,
     scheduler: Scheduler,
-    interpreter: RelInterpreter,
+    vm: RelVM,
     watcher: HashMap<EntId, Vec<(usize, u64)>>,
     nondeterministic_rel_ids: Vec<RelId>,
     impulse_input_rel_ids: Vec<RelId>,
