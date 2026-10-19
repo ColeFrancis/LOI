@@ -264,7 +264,7 @@ impl<'a> CodeGen<'a> {
                 Instruction::JMP { offset } => {
                     let opcode = 0b10000000;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -278,7 +278,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100010 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -293,7 +293,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100011 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -308,7 +308,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100100 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -323,7 +323,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100110 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -338,7 +338,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100101 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -353,7 +353,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b100111 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -369,7 +369,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101010 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -384,7 +384,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101011 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -399,7 +399,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101100 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -414,7 +414,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101110 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -429,7 +429,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101101 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -444,7 +444,7 @@ impl<'a> CodeGen<'a> {
 
                     let opcode = (0b101111 << 2) | ss;
 
-                    let offset_bytes = (offset as i16).to_le_bytes();
+                    let offset_bytes = offset.to_le_bytes();
 
                     bytes.push(opcode);
                     bytes.extend(offset_bytes);
@@ -633,20 +633,20 @@ impl<'a> CodeGen<'a> {
                 }
                 Instruction::ERR { code, src } => {
                     let (ss, src_bytes) = match src {
-                        Some(Source::RegInter(val)) => (0b10 as u8, vec![val as u8]),
-                        Some(Source::RegVar(val)) => (0b10 as u8, vec![val as u8]),
+                        Some(Source::RegInter(val)) => (0b10, vec![val as u8]),
+                        Some(Source::RegVar(val)) => (0b10, vec![val as u8]),
                         Some(Source::Bool(val)) => {
-                            (0b11 as u8, (val as u64).to_le_bytes().to_vec())
+                            (0b11, (val as u64).to_le_bytes().to_vec())
                         }
-                        Some(Source::Int(val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
-                        Some(Source::Float(val)) => (0b11 as u8, val.to_le_bytes().to_vec()),
-                        None => (0b00 as u8, vec![]),
+                        Some(Source::Int(val)) => (0b11, val.to_le_bytes().to_vec()),
+                        Some(Source::Float(val)) => (0b11, val.to_le_bytes().to_vec()),
+                        None => (0b00, vec![]),
                     };
 
                     let opcode = (0b101001 << 2) | ss;
 
                     bytes.push(opcode);
-                    bytes.push(code as u8);
+                    bytes.push(code);
                     bytes.extend(src_bytes);
                 }
                 Instruction::RND { dest } => {

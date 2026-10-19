@@ -290,33 +290,33 @@ impl<'a> CodeGen<'a> {
     ) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
             Type::Float => (
-                self.coerce_float(bytecode, src_l, &type_l, true)?,
+                self.coerce_float(bytecode, src_l, type_l, true)?,
                 Type::Float,
             ),
 
             // Need to be careful not to try and coerce float to be int (the next match will take that int to be float)
             Type::Int if *type_l != Type::Float => {
-                (self.coerce_int(bytecode, src_l, &type_l)?, Type::Int)
+                (self.coerce_int(bytecode, src_l, type_l)?, Type::Int)
             }
 
             Type::Mod(n) if (*type_l != Type::Float && *type_l != Type::Int) => {
-                (self.coerce_int(bytecode, src_l, &type_l)?, Type::Mod(*n))
+                (self.coerce_int(bytecode, src_l, type_l)?, Type::Mod(*n))
             }
 
-            Type::Bool => (self.coerce_bool(bytecode, src_l, &type_l)?, Type::Bool),
+            Type::Bool => (self.coerce_bool(bytecode, src_l, type_l)?, Type::Bool),
 
             _ => (src_l, type_l.clone()),
         };
 
         let new_src_r = match new_type {
-            Type::Float => self.coerce_float(bytecode, src_r, &type_r, true)?,
+            Type::Float => self.coerce_float(bytecode, src_r, type_r, true)?,
 
-            Type::Int => self.coerce_int(bytecode, src_r, &type_r)?,
+            Type::Int => self.coerce_int(bytecode, src_r, type_r)?,
 
-            Type::Bool => self.coerce_bool(bytecode, src_r, &type_r)?,
+            Type::Bool => self.coerce_bool(bytecode, src_r, type_r)?,
 
             // Take modulus before comparison
-            Type::Mod(_n) => self.coerce_int(bytecode, src_r, &type_r)?,
+            Type::Mod(_n) => self.coerce_int(bytecode, src_r, type_r)?,
 
             _ => src_r,
         };

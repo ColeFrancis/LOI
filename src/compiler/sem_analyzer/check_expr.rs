@@ -195,7 +195,7 @@ impl<'a> SemAnalyzer<'a> {
                     };
 
                     if let Prob::Expr(expr) = &arm.prob {
-                        let prob_type = self.get_expr_type(&expr);
+                        let prob_type = self.get_expr_type(expr);
 
                         if prob_type != Type::Int && prob_type != Type::Float {
                             self.diagnostics.error(Diagnostic::NonFloatProb {

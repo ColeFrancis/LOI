@@ -65,7 +65,7 @@ impl Simulator {
             if compiled_relations[relation.idx].impulse_input {
                 impulse_input_rel_ids.push(id);
             }
-            if relation.input_ents.len() == 0 {
+            if relation.input_ents.is_empty() {
                 no_input_rel_ids.push(id);
             }
         }
@@ -91,7 +91,7 @@ impl Simulator {
                 .interface
                 .inputs
                 .get(&ent_name)
-                .ok_or_else(|| RuntimeError::NonexistantInput(ent_name))?;
+                .ok_or(RuntimeError::NonexistantInput(ent_name))?;
 
             for (timestep, io_val) in trace {
                 let new_val = match (&io_val, ent_type) {
@@ -99,7 +99,7 @@ impl Simulator {
                     (IoVal::Bool(b), Type::Impulse) => match b {
                         true => timestep as u64,
                         false if timestep == 0 => u64::MAX, // 0 is the default value when needing to set impulse to 0, except for events at timestep 0 (like inits)
-                        _ => 0 as u64,
+                        _ => 0,
                     },
 
                     (IoVal::Int(i), Type::Int) => *i as u64,
@@ -151,7 +151,7 @@ impl Simulator {
         let mut outputs = Vec::with_capacity(self.interface.outputs.len());
 
         for (ent_id, (ent_name, ent_type)) in &self.interface.outputs {
-            if let Some(trace) = self.watcher.get_mut(&ent_id) {
+            if let Some(trace) = self.watcher.get_mut(ent_id) {
                 let trace = std::mem::take(trace);
                 let mut new_trace = Vec::new();
 
@@ -322,7 +322,7 @@ impl Simulator {
                 self.scheduler.push(Event {
                     timestep: timestep + delay, // -1 necessary because curr_time in scheduler increments after pop
                     ent_id: output_ent_id,
-                    new_val: new_val,
+                    new_val,
                 });
             }
         }

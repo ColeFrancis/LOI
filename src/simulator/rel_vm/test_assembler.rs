@@ -91,7 +91,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-            let opcode = (0b00 << 6) | ((float as u8) << 5) | (operation << 2) | ss;
+            let opcode = ((float as u8) << 5) | (operation << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -127,7 +127,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = (0b00 << 6) | ((float as u8) << 5) | (0b101 << 2) | ss;
+            let opcode = ((float as u8) << 5) | (0b101 << 2) | ss;
 
             output.push(opcode);
             output.push(dest);

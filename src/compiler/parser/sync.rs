@@ -37,14 +37,14 @@ impl<'a> Parser<'a> {
     // If you skip into a nested {...} block, skip the entire block before trying to resume.
     // Only recover at tokens that are valid starts of constructs at the current nesting level
     pub(super) fn sync(&mut self, rule: &SyncRule) {
-        match rule {
-            &SyncRule::Item => self.sync_item(),
+        match *rule {
+            SyncRule::Item => self.sync_item(),
 
-            &SyncRule::NetItem { depth } => self.sync_net_item(depth),
+            SyncRule::NetItem { depth } => self.sync_net_item(depth),
 
-            &SyncRule::Statement => self.sync_statement(),
+            SyncRule::Statement => self.sync_statement(),
 
-            &SyncRule::Expr { depth } => self.sync_expr(depth),
+            SyncRule::Expr { depth } => self.sync_expr(depth),
         }
     }
 

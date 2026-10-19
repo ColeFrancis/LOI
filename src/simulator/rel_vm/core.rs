@@ -162,7 +162,7 @@ impl RelVM {
                                 as u64;
                         }
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -225,7 +225,7 @@ impl RelVM {
                             registers[dest_reg] = src1_val.powf(src2_val).to_bits();
                         }
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -317,7 +317,7 @@ impl RelVM {
                             registers[dest_reg] = (src_val as f64).to_bits();
                         }
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -413,7 +413,7 @@ impl RelVM {
                             }
                         }
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -521,7 +521,7 @@ impl RelVM {
                             }
                         }
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -576,7 +576,7 @@ impl RelVM {
                         // IGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
@@ -631,11 +631,11 @@ impl RelVM {
                         // FGE
                         0b00011100 => registers[dest_reg] = (src1_val >= src2_val) as u64,
 
-                        _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                        _ => return Err(VMError::InvalidOpcode(inst)),
                     }
                 }
 
-                _ => return Err(VMError::InvalidOpcode(inst as u8)),
+                _ => return Err(VMError::InvalidOpcode(inst)),
             }
         }
     }
@@ -647,7 +647,7 @@ impl RelVM {
         is_reg: bool,
     ) -> u64 {
         if is_reg {
-            let result = registers[bytecode[*inst_counter] as usize] as u64;
+            let result = registers[bytecode[*inst_counter] as usize];
             *inst_counter += 1;
             result
         } else {

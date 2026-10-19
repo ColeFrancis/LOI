@@ -110,17 +110,14 @@ impl Synthesis {
         }
 
         for symbol in symbols.iter() {
-            match &symbol.kind {
-                SymbolKind::EntMember { parent, mapping } => {
-                    let symbol_name = symbol.name.clone();
-                    let parent_name = symbols[*parent].name.clone();
+            if let SymbolKind::EntMember { parent, mapping } = &symbol.kind {
+                let symbol_name = symbol.name.clone();
+                let parent_name = symbols[*parent].name.clone();
 
-                    custom_type_maps
-                        .entry(parent_name)
-                        .or_default()
-                        .push((symbol_name, *mapping as u64));
-                }
-                _ => {}
+                custom_type_maps
+                    .entry(parent_name)
+                    .or_default()
+                    .push((symbol_name, *mapping as u64));
             }
         }
 
@@ -273,47 +270,43 @@ impl Synthesis {
 
         // Process inits entirely after the rest so that if instantiated nets also have init values the outer overrides the inner
         for item in &nets[target_net_idx].items {
-            match item {
-                NetItem::Init(init) => {
-                    let Ident::Symbol(id) = init.param.name else {
-                        unreachable!("should not be ident string");
-                    };
+            if let NetItem::Init(init) = item {
+                let Ident::Symbol(id) = init.param.name else {
+                    unreachable!("should not be ident string");
+                };
 
-                    let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
+                let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
 
-                    // fold expression, deep clone necessary
-                    let result_expr =
-                        SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
-                    let folded_val = match result_expr {
-                        Expr::Literal(literal) => match (literal, &init.param.param_type) {
-                            (Literal::Bool(b), &Type::Bool) => b as u64,
-                            (Literal::Bool(b), &Type::Impulse) => match b {
-                                true => 0 as u64,
-                                false => u64::MAX, // typically 0 is chosen when an impulse needs to be set to a known false value but here we need to represent a true value at time 0
-                            },
-
-                            (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
-                            (Literal::Int(i), &Type::Int) => i as u64,
-                            (Literal::Int(i), &Type::Float) => (i as f64).to_bits(),
-
-                            (Literal::Float(r), &Type::Float) => r.to_bits(),
-
-                            _ => unreachable!("type checking already occured"),
+                // fold expression, deep clone necessary
+                let result_expr =
+                    SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
+                let folded_val = match result_expr {
+                    Expr::Literal(literal) => match (literal, &init.param.param_type) {
+                        (Literal::Bool(b), &Type::Bool) => b as u64,
+                        (Literal::Bool(b), &Type::Impulse) => match b {
+                            true => 0,
+                            false => u64::MAX, // typically 0 is chosen when an impulse needs to be set to a known false value but here we need to represent a true value at time 0
                         },
 
-                        Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
-                            SymbolKind::EntMember { mapping, .. } => mapping as u64,
+                        (Literal::Int(i), &Type::Mod(n)) => (i % n) as u64,
+                        (Literal::Int(i), &Type::Int) => i as u64,
+                        (Literal::Int(i), &Type::Float) => (i as f64).to_bits(),
 
-                            _ => unreachable!("ident should be ent member"),
-                        },
+                        (Literal::Float(r), &Type::Float) => r.to_bits(),
 
                         _ => unreachable!("type checking already occured"),
-                    };
+                    },
 
-                    ents[idx].val = Some(folded_val);
-                }
+                    Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
+                        SymbolKind::EntMember { mapping, .. } => mapping as u64,
 
-                _ => {}
+                        _ => unreachable!("ident should be ent member"),
+                    },
+
+                    _ => unreachable!("type checking already occured"),
+                };
+
+                ents[idx].val = Some(folded_val);
             }
         }
     }

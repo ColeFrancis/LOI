@@ -44,6 +44,12 @@ impl Netlist {
     }
 }
 
+impl Default for Netlist {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(PartialEq, Debug)]
 pub struct Interface {
     pub inputs: HashMap<String, (EntId, Type)>, // name of port needed for taking inputs in the simulator
@@ -58,6 +64,12 @@ impl Interface {
             outputs: HashMap::new(),
             custom_type_maps: HashMap::new(),
         }
+    }
+}
+
+impl Default for Interface {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

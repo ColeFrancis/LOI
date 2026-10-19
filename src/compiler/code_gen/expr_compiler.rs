@@ -44,10 +44,9 @@ impl<'a> CodeGen<'a> {
 
             Expr::Ident(Ident::Symbol(id)) => match self.symbol_table[id].kind.clone() {
                 SymbolKind::Variable(ident_type) => {
-                    let Some(reg) = self.reg_map.get(&id) else {
-                        return None;
-                    };
-                    (Source::RegVar(*reg as usize), ident_type)
+                    let reg = self.reg_map.get(&id)?;
+                    
+                    (Source::RegVar(*reg), ident_type)
                 }
 
                 SymbolKind::EntMember { parent, mapping } => (
@@ -71,7 +70,7 @@ impl<'a> CodeGen<'a> {
                         };
 
                         bytecode.push(Instruction::IMUL {
-                            dest: dest,
+                            dest,
                             src1: src,
                             src2: Source::Int(-1),
                         });
@@ -89,7 +88,7 @@ impl<'a> CodeGen<'a> {
                         };
 
                         bytecode.push(Instruction::IMUL {
-                            dest: dest,
+                            dest,
                             src1: src,
                             src2: Source::Int(-1),
                         });
@@ -107,7 +106,7 @@ impl<'a> CodeGen<'a> {
                         };
 
                         bytecode.push(Instruction::FMUL {
-                            dest: dest,
+                            dest,
                             src1: src,
                             src2: Source::Float(-1.0),
                         });
@@ -116,7 +115,7 @@ impl<'a> CodeGen<'a> {
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
-                        let (expr_bytecode, src, sup_type) = self.compile_expr(*unary.expr)?;
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(expr_bytecode);
 
                         let dest = match src {
@@ -125,23 +124,20 @@ impl<'a> CodeGen<'a> {
                         };
 
                         // Convert impulse to Bool by inserting bytecode
-                        match sup_type {
-                            Type::Impulse => {
-                                // Combine IEQ with NOT for efficency
-                                bytecode.push(Instruction::INE {
-                                    dest: dest,
-                                    src1: src,
-                                    src2: Source::RegInter(0),
-                                });
+                        if sub_type == Type::Impulse {
+                            // Combine IEQ with NOT for efficency
+                            bytecode.push(Instruction::INE {
+                                dest,
+                                src1: src,
+                                src2: Source::RegInter(0),
+                            });
 
-                                return Some((bytecode, Source::RegInter(dest), Type::Bool));
-                            }
-                            _ => {}
+                            return Some((bytecode, Source::RegInter(dest), Type::Bool));
                         }
 
                         bytecode.push(Instruction::NOT {
-                            dest: dest,
-                            src: src,
+                            dest,
+                            src,
                         });
 
                         (Source::RegInter(dest), Type::Bool)
@@ -163,9 +159,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IADD {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Mod(modulus))
@@ -180,9 +176,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::ISUB {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Mod(modulus))
@@ -197,9 +193,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IMUL {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Mod(modulus))
@@ -219,9 +215,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IDIV {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Mod(modulus))
@@ -239,9 +235,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IDIV {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Mod(modulus))
@@ -257,9 +253,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IADD {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Int)
@@ -274,9 +270,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::ISUB {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Int)
@@ -291,9 +287,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IMUL {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Int)
@@ -313,9 +309,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IDIV {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Int)
@@ -333,9 +329,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IPOW {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Int)
@@ -356,9 +352,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FADD {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Float)
@@ -378,9 +374,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FSUB {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Float)
@@ -400,9 +396,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FMUL {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Float)
@@ -422,9 +418,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FDIV {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Float)
@@ -444,9 +440,9 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FPOW {
-                            dest: dest,
-                            src1: src1,
-                            src2: src2,
+                            dest,
+                            src1,
+                            src2,
                         });
 
                         (Source::RegInter(dest), Type::Float)
@@ -472,9 +468,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::FLT {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -487,9 +483,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::ILT {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -516,9 +512,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::FGT {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -531,9 +527,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::IGT {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -560,9 +556,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::FLE {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -575,9 +571,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::ILE {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -604,9 +600,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::FGE {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -619,9 +615,9 @@ impl<'a> CodeGen<'a> {
                                 let dest = self.get_binary_dest(src1, src2)?;
 
                                 bytecode.push(Instruction::IGE {
-                                    dest: dest,
-                                    src1: src1,
-                                    src2: src2,
+                                    dest,
+                                    src1,
+                                    src2,
                                 });
 
                                 (Source::RegInter(dest), Type::Bool)
@@ -879,9 +875,7 @@ impl<'a> CodeGen<'a> {
                 }
 
                 // Verify cumulative prob is == 1.0
-                let Some(last_prob_reg) = last_prob_reg else {
-                    return None;
-                };
+                let last_prob_reg = last_prob_reg?;
                 bytecode.push(Instruction::FJEQ {
                     offset: 3,
                     src1: Source::RegInter(last_prob_reg),
@@ -1019,10 +1013,9 @@ impl<'a> CodeGen<'a> {
             SimplePattern::Ident(Ident::Symbol(id)) => {
                 let (mut ident_src, ident_type) = match self.symbol_table[id].kind.clone() {
                     SymbolKind::Variable(ident_type) => {
-                        let Some(reg) = self.reg_map.get(&id) else {
-                            return None;
-                        };
-                        (Source::RegVar(*reg as usize), ident_type)
+                        let reg = self.reg_map.get(&id)?;
+
+                        (Source::RegVar(*reg), ident_type)
                     }
 
                     SymbolKind::EntMember { mapping, .. } => {
@@ -1063,7 +1056,7 @@ impl<'a> CodeGen<'a> {
                 for ((scrutinee_source, scrutinee_type), simple_pattern) in scrutinee_sources
                     .iter_mut()
                     .zip(scrutinee_types.iter_mut())
-                    .zip(tuple_pattern.into_iter())
+                    .zip(tuple_pattern)
                 {
                     let (mut sub_bytecode, mut indices) = self.compile_pattern_comp(
                         std::slice::from_mut(scrutinee_source),

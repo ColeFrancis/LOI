@@ -40,7 +40,7 @@ use crate::compiler::{
 
 impl<'a> SemAnalyzer<'a> {
     pub(super) fn fold_expr(&mut self, expr: Expr, fold_sample: bool) -> Expr {
-        Self::fold_expr_inner(expr, fold_sample, &mut self.symbols, &mut self.diagnostics)
+        Self::fold_expr_inner(expr, fold_sample, &mut self.symbols, self.diagnostics)
     }
 
     pub fn fold_expr_inner(
@@ -53,7 +53,7 @@ impl<'a> SemAnalyzer<'a> {
             Expr::Literal(literal) => Expr::Literal(literal),
 
             Expr::Ident(Ident::Symbol(id)) => match symbols[id].kind {
-                SymbolKind::Const(literal) => Expr::Literal(literal.clone()),
+                SymbolKind::Const(literal) => Expr::Literal(literal),
                 _ => Expr::Ident(Ident::Symbol(id)),
             },
 
@@ -97,7 +97,7 @@ impl<'a> SemAnalyzer<'a> {
                 if let (Expr::Literal(left), Expr::Literal(right)) = (&*binary.left, &*binary.right)
                 {
                     if let Some(result) =
-                        Self::eval_binary(&binary.op, left, right, binary.op_span, diagnostics)
+                        Self::eval_binary(&binary.op, left, right, &binary.op_span, diagnostics)
                     {
                         return Expr::Literal(result);
                     }
@@ -147,9 +147,9 @@ impl<'a> SemAnalyzer<'a> {
                 let mut has_errors = false;
                 let mut seen_patterns: Vec<(&SimplePattern, Span)> = Vec::new();
 
-                if cases_expr.arms.len() == 0 {
+                if cases_expr.arms.is_empty() {
                     diagnostics.error(Diagnostic::NoReturnArm {
-                        span: cases_expr.span,
+                        span: cases_expr.span.clone(),
                     });
 
                     has_errors = true;
@@ -165,13 +165,13 @@ impl<'a> SemAnalyzer<'a> {
                         {
                             diagnostics.error(Diagnostic::DuplicatePattern {
                                 old_arm_span: old_span.clone(),
-                                arm_span: arm.arm_span,
+                                arm_span: arm.arm_span.clone(),
                             });
 
                             has_errors = true;
                         }
 
-                        seen_patterns.push((pattern, arm.arm_span));
+                        seen_patterns.push((pattern, arm.arm_span.clone()));
                     }
                 }
                 // All cases must have a default arm
@@ -225,9 +225,9 @@ impl<'a> SemAnalyzer<'a> {
                 let mut foldable = true;
                 let mut running_prob = 0.0;
 
-                if sample_expr.arms.len() == 0 {
+                if sample_expr.arms.is_empty() {
                     diagnostics.error(Diagnostic::NoReturnArm {
-                        span: sample_expr.span,
+                        span: sample_expr.span.clone(),
                     });
 
                     has_errors = true;
@@ -282,11 +282,11 @@ impl<'a> SemAnalyzer<'a> {
                         }
                     }
                 }
-                if running_prob < 0.0 || running_prob > 1.0 {
+                if !(0.0..=1.0).contains(&running_prob) {
                     diagnostics.error(Diagnostic::ProbOutOfRange {
                         total_prob: true,
                         val: running_prob,
-                        span: sample_expr.span,
+                        span: sample_expr.span.clone(),
                     });
                     has_errors = true;
                 }
@@ -336,7 +336,7 @@ impl<'a> SemAnalyzer<'a> {
         op: &BinaryOp,
         left: &Literal,
         right: &Literal,
-        op_span: Span,
+        op_span: &Span,
         diagnostics: &mut Diagnostics,
     ) -> Option<Literal> {
         match (op, left, right) {
@@ -354,7 +354,7 @@ impl<'a> SemAnalyzer<'a> {
                 if *b != 0 {
                     Some(Literal::Int(a / b))
                 } else {
-                    diagnostics.error(Diagnostic::DivideByZero { op_span });
+                    diagnostics.error(Diagnostic::DivideByZero { op_span: op_span.clone() });
 
                     None
                 }
@@ -364,7 +364,7 @@ impl<'a> SemAnalyzer<'a> {
                     Some(Literal::Int(a.pow(*b as u32)))
                 } else {
                     // negative exponent not allowed for ints
-                    diagnostics.error(Diagnostic::NegExpOnInt { op_span });
+                    diagnostics.error(Diagnostic::NegExpOnInt { op_span: op_span.clone() });
 
                     None
                 }
@@ -381,7 +381,7 @@ impl<'a> SemAnalyzer<'a> {
                 if *b != 0.0 {
                     Some(Literal::Float(a / b))
                 } else {
-                    diagnostics.error(Diagnostic::DivideByZero { op_span });
+                    diagnostics.error(Diagnostic::DivideByZero { op_span: op_span.clone() });
 
                     None
                 }
@@ -404,7 +404,7 @@ impl<'a> SemAnalyzer<'a> {
             SimplePattern::Literal(literal) => SimplePattern::Literal(literal),
 
             SimplePattern::Ident(Ident::Symbol(id)) => match symbols[id].kind {
-                SymbolKind::Const(literal) => SimplePattern::Literal(literal.clone()),
+                SymbolKind::Const(literal) => SimplePattern::Literal(literal),
                 _ => SimplePattern::Ident(Ident::Symbol(id)),
             },
 
@@ -490,22 +490,6 @@ impl<'a> SemAnalyzer<'a> {
             },
 
             _ => None, // only literals can match
-        }
-    }
-
-    pub fn pattern_matches_literal(pattern: &SimplePattern, literal: &Literal) -> bool {
-        match pattern {
-            SimplePattern::Literal(pattern_literal) => literal == pattern_literal,
-
-            SimplePattern::Ident(_) => false,
-
-            SimplePattern::Tuple(_) => false,
-
-            SimplePattern::Comparison(_) => false,
-
-            SimplePattern::Default => true,
-
-            SimplePattern::Error => false,
         }
     }
 }

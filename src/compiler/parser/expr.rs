@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
                             Some(expr) => match expr {
                                 Expr::Tuple(_) => {
                                     self.diagnostics
-                                        .error(Diagnostic::NestedTupleExpr { span: token.span });
+                                        .error(Diagnostic::NestedTupleExpr { span: token.span.clone() });
 
                                     Expr::Error
                                 }
@@ -158,7 +158,7 @@ impl<'a> Parser<'a> {
                                 Some(expr) => match expr {
                                     Expr::Tuple(_) => {
                                         self.diagnostics.error(Diagnostic::NestedTupleExpr {
-                                            span: token.span,
+                                            span: token.span.clone(),
                                         });
 
                                         Expr::Error
@@ -211,7 +211,7 @@ impl<'a> Parser<'a> {
                 self.diagnostics.error(Diagnostic::UnexpectedToken {
                     expected: vec![Expected::Expr],
                     found: other,
-                    span: token.span,
+                    span: token.span.clone(),
                 });
 
                 self.sync(&SyncRule::Expr { depth: 0 });

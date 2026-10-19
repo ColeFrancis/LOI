@@ -56,7 +56,7 @@ impl<'a> SemAnalyzer<'a> {
 
     fn check_constraints_net(&mut self, net: Net) -> Option<Net> {
         let mut has_errors = false;
-        let mut driven_ents: Vec<(SymbolId, Span)> = Vec::new();
+        let mut driven_ents: Vec<(SymbolId, &Span)> = Vec::new();
 
         for item in &net.items {
             match item {
@@ -69,13 +69,13 @@ impl<'a> SemAnalyzer<'a> {
                     {
                         self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                             name: self.symbols[symbol_id].name.to_string(),
-                            first_span: old_span.clone(),
+                            first_span: (*old_span).clone(),
                             last_span: input_ent.span.clone(),
                         });
 
                         has_errors = true;
                     }
-                    driven_ents.push((symbol_id, input_ent.span));
+                    driven_ents.push((symbol_id, &input_ent.span));
                 }
 
                 NetItem::RelInst(rel_inst) => {
@@ -88,13 +88,13 @@ impl<'a> SemAnalyzer<'a> {
                     {
                         self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                             name: self.symbols[asignee_symbol_id].name.to_string(),
-                            first_span: old_span.clone(),
+                            first_span: (*old_span).clone(),
                             last_span: rel_inst.span.clone(),
                         });
 
                         has_errors = true;
                     }
-                    driven_ents.push((asignee_symbol_id, rel_inst.span));
+                    driven_ents.push((asignee_symbol_id, &rel_inst.span));
                 }
 
                 NetItem::NetInst(net_inst) => {
@@ -125,13 +125,13 @@ impl<'a> SemAnalyzer<'a> {
                             {
                                 self.diagnostics.error(Diagnostic::MultipleEntDrivers {
                                     name: self.symbols[ent_symbol_id].name.to_string(),
-                                    first_span: old_span.clone(),
+                                    first_span: (*old_span).clone(),
                                     last_span: connection.span.clone(),
                                 });
 
                                 has_errors = true;
                             }
-                            driven_ents.push((ent_symbol_id, connection.span));
+                            driven_ents.push((ent_symbol_id, &connection.span));
                         }
                     }
                 }

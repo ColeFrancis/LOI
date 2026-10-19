@@ -34,7 +34,7 @@ pub struct Token {
 impl Token {
     pub fn new(kind: TokenKind, line: usize, col: usize) -> Self {
         Self {
-            kind: kind,
+            kind,
             span: Span { line, col },
         }
     }

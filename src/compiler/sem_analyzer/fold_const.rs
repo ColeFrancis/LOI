@@ -18,8 +18,7 @@
 //!
 //! Invariants
 //!
-//! - All global let statements must be folded.
-//!     Under normal compilation, assuming proper name resolution, it is impossible to have an unfolded global let statement.
+//! - All global let statements must be folded. Under normal compilation, assuming proper name resolution, it is impossible to have an unfolded global let statement.
 //!
 //! Author: Cole Francis
 
@@ -64,7 +63,7 @@ impl<'a> SemAnalyzer<'a> {
         stmt: LetStatement,
         fold_sample: bool,
     ) -> Option<LetStatement> {
-        Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, &mut self.diagnostics)
+        Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, self.diagnostics)
     }
 
     pub(super) fn fold_let_inner(
@@ -95,14 +94,11 @@ impl<'a> SemAnalyzer<'a> {
 
     fn fold_net(&mut self, mut net_t: Net) -> Net {
         for item in &mut net_t.items {
-            match item {
-                NetItem::Init(ent_init) => {
-                    let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
-                    // Do not fold samples as these are evaluated upon the instantiation of a net
-                    ent_init.val = self.fold_expr(owned_expr, false);
-                }
+            if let NetItem::Init(ent_init) = item {
+                let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
 
-                _ => {}
+                // Do not fold samples as these are evaluated upon the instantiation of a net
+                ent_init.val = self.fold_expr(owned_expr, false);
             }
         }
         net_t

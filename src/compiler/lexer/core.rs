@@ -198,7 +198,7 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
-                return None;
+                None
             }
             // Multi-line comment
             Some(b'*') => {
@@ -215,11 +215,11 @@ impl<'a> Lexer<'a> {
                     }
                 }
 
-                return None;
+                None
             }
             // Slash token
             _ => {
-                return Some(TokenKind::Slash);
+                Some(TokenKind::Slash)
             }
         }
     }
@@ -308,7 +308,8 @@ impl<'a> Lexer<'a> {
                 lexeme: buf.clone(),
                 span: Span { line, col },
             });
-            return TokenKind::ErrorToken;
+            
+            TokenKind::ErrorToken
         } else if is_float {
             match buf.parse::<f64>() {
                 Ok(n) => TokenKind::FloatLiteral(n),
@@ -317,7 +318,8 @@ impl<'a> Lexer<'a> {
                         lexeme: buf.clone(),
                         span: Span { line, col },
                     });
-                    return TokenKind::ErrorToken;
+                    
+                    TokenKind::ErrorToken
                 }
             }
         } else {
@@ -328,7 +330,8 @@ impl<'a> Lexer<'a> {
                         lexeme: buf.clone(),
                         span: Span { line, col },
                     });
-                    return TokenKind::ErrorToken;
+                    
+                    TokenKind::ErrorToken
                 }
             }
         }

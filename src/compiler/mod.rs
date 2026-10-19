@@ -16,7 +16,7 @@ mod code_gen;
 mod core;
 mod lexer;
 mod parser;
-pub mod sem_analyzer;
+mod sem_analyzer;
 mod synthesis;
 
 pub mod error_handling;

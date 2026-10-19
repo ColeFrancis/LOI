@@ -139,7 +139,7 @@ impl<'a> SemAnalyzer<'a> {
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
                 let new_type =
-                    self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), span)?;
+                    self.compare_ent_types(symbol_type, input_ent.param.param_type.clone(), &span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -156,7 +156,7 @@ impl<'a> SemAnalyzer<'a> {
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
                 let new_type =
-                    self.compare_ent_types(symbol_type, output_ent.param.param_type.clone(), span)?;
+                    self.compare_ent_types(symbol_type, output_ent.param.param_type.clone(), &span)?;
 
                 if let SymbolKind::Ent(ty) = &mut self.symbols[id].kind {
                     *ty = new_type;
@@ -173,7 +173,7 @@ impl<'a> SemAnalyzer<'a> {
                 let (symbol_type, span) = self.get_ent_type(id)?;
 
                 let new_type =
-                    self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), span)?;
+                    self.compare_ent_types(symbol_type, ent_init.param.param_type.clone(), &span)?;
 
                 ent_init.val = self.add_types_expr(ent_init.val)?;
                 let expr_type = self.get_expr_type(&ent_init.val);
@@ -228,7 +228,7 @@ impl<'a> SemAnalyzer<'a> {
                     };
                     let (actual_type, span) = self.get_ent_type(*arg_id)?;
 
-                    let Some(new_type) = self.compare_ent_types(actual_type, expected_type, span)
+                    let Some(new_type) = self.compare_ent_types(actual_type, expected_type, &span)
                     else {
                         return None;
                     };
@@ -244,9 +244,7 @@ impl<'a> SemAnalyzer<'a> {
                 };
                 let (asignee_type, span) = self.get_ent_type(asignee_id)?;
 
-                let Some(new_type) = self.compare_ent_types(asignee_type, return_type, span) else {
-                    return None;
-                };
+                let new_type = self.compare_ent_types(asignee_type, return_type, &span)?;
 
                 // if ent is first declared here, its type will be Unknown and it needs to be set based on the rel_t
                 if let SymbolKind::Ent(ty) = &mut self.symbols[asignee_id].kind {
@@ -340,19 +338,7 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Bool, Type::Impulse) => Some(Type::Bool), // Keep?
             (Type::Bool, Type::Bool) => Some(Type::Bool),
 
-            (Type::Mod(val_l), Type::Mod(val_r)) => {
-                if val_l == val_r {
-                    Some(Type::Mod(*val_l))
-                } else {
-                    self.diagnostics.error(Diagnostic::IncompatibleReturnType {
-                        return_type: return_type.clone(),
-                        expr_type: expr_type.clone(),
-                        rel_span: rel_span.clone(),
-                    });
-
-                    None
-                }
-            }
+            (Type::Mod(val_l), Type::Mod(val_r)) if val_l == val_r => Some(Type::Mod(*val_l)),
             (Type::Mod(val), Type::Int) => Some(Type::Mod(*val)),
 
             (Type::Int, Type::Mod(_)) => Some(Type::Int),
@@ -404,7 +390,7 @@ impl<'a> SemAnalyzer<'a> {
         &mut self,
         symbol_type: Type,
         object_type: Type,
-        span: Span,
+        span: &Span,
     ) -> Option<Type> {
         if symbol_type == object_type {
             return Some(object_type);
@@ -422,7 +408,7 @@ impl<'a> SemAnalyzer<'a> {
                 self.diagnostics.error(Diagnostic::MismatchedEntType {
                     expected: object_type,
                     found: symbol_type,
-                    span,
+                    span: span.clone(),
                 });
 
                 None

@@ -18,7 +18,7 @@
 //!
 //! Author: Cole Francis
 
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct Span {
     pub line: usize,
     pub col: usize,

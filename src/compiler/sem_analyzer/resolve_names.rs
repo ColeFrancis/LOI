@@ -260,13 +260,13 @@ impl<'a> SemAnalyzer<'a> {
                 for connection in &mut net_inst.connections {
                     // Port symbols have to be checked specialy
                     let (name, span) = self.extract_ident_str(connection.port.clone())?;
-                    let port_id = self.find_net_port(inst_net_id, &name, span)?;
+                    let port_id = self.find_net_port(inst_net_id, &name, &span)?;
 
                     // Verify port hasn't been used already
                     if !used_ports.insert(port_id) {
                         self.diagnostics.error(Diagnostic::DuplicatePort {
                             name: name.to_string(),
-                            span: span,
+                            span,
                         });
                         return None;
                     }
@@ -290,14 +290,14 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
-    fn find_net_port(&mut self, net_id: SymbolId, name: &str, span: Span) -> Option<SymbolId> {
+    fn find_net_port(&mut self, net_id: SymbolId, name: &str, span: &Span) -> Option<SymbolId> {
         match &self.symbols[net_id].kind {
             SymbolKind::Net { ports } => match ports.get(name) {
                 Some(port) => Some(port.symbol),
                 None => {
                     self.diagnostics.error(Diagnostic::UndefinedPort {
                         name: name.to_string(),
-                        span,
+                        span: span.clone(),
                     });
 
                     None
@@ -309,7 +309,7 @@ impl<'a> SemAnalyzer<'a> {
                         ports: HashMap::new(),
                     }],
                     found: other.clone(),
-                    span,
+                    span: span.clone(),
                 });
 
                 None
@@ -375,7 +375,7 @@ impl<'a> SemAnalyzer<'a> {
 
         // Duplicate definition
         if let Some(&old_id) = current.symbols.get(&name) {
-            let old_span = self.symbols[old_id].span;
+            let old_span = self.symbols[old_id].span.clone();
 
             self.diagnostics.error(Diagnostic::DuplicateDefinition {
                 name,

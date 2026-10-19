@@ -63,6 +63,12 @@ impl Diagnostics {
     }
 }
 
+impl Default for Diagnostics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum Diagnostic {
     ////////////////////
