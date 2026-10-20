@@ -1,3 +1,10 @@
+<p align="center">
+  <img src="assets/LOI_banner.png" alt="LOI — Language for emergent computation" width="100%">
+</p>
+
+[![Latest Release](https://img.shields.io/github/v/release/ColeFrancis/LOI)](https://github.com/ColeFrancis/LOI/releases)
+[![Build Status](https://github.com/ColeFrancis/LOI/actions/workflows/rust.yml/badge.svg)](https://github.com/ColeFrancis/LOI/actions/workflows/rust.yml)
+
 # LOI - A Research Tool for Emergent Computation 
 
 Language Of Interaction (LOI) is a programming language and research tool for modeling, simulating, and analyzing complex systems. It is designed to explore how behaviors emerge from interactions between simple components, and to compare how systems with different structure may produce similar behaviors.
