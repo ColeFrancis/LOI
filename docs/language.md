@@ -229,7 +229,7 @@ The first expression returns 10 if bool_var is true, otherwise it returns 15.
 
 The second expression returns var1 + 1 if var1 and var2 are equal to 1, otherwise if var1 is 1 (no matter the value of var2), then var1 + 2 is returned, otherwise var1 + 3 is returned.
 
-The third expression returns true if var holds the same value as b or c, otherwise it returns false.
+The third expression returns true if var holds the same value as b or the same value as c, otherwise it returns false.
 
 The fourth expression returns true if var is greater than or equal to 5, otherwise it returns false.
 
