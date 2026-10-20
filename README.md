@@ -1,6 +1,18 @@
-<p align="center">
-  <img src="assets/LOI_banner.png" alt="LOI — Language for emergent computation" width="100%">
-</p>
+<picture>
+  <source
+    media="(prefers-color-scheme: dark)"
+    srcset="assets/banner_dark.png"
+  >
+  <source
+    media="(prefers-color-scheme: light)"
+    srcset="assets/banner_light.png"
+  >
+  <img
+    src="assets/banner_dark.png"
+    alt="LOI — Research Platform for Emergent Computation"
+    width="100%"
+  >
+</picture>
 
 [![Latest Release](https://img.shields.io/github/v/release/ColeFrancis/LOI)](https://github.com/ColeFrancis/LOI/releases)
 [![Build Status](https://github.com/ColeFrancis/LOI/actions/workflows/rust.yml/badge.svg)](https://github.com/ColeFrancis/LOI/actions/workflows/rust.yml)
