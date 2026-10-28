@@ -55,11 +55,6 @@ pub enum Instruction {
         src1: Source,
         src2: Source,
     },
-    IPOW {
-        dest: usize,
-        src1: Source,
-        src2: Source,
-    },
     IABS {
         dest: usize,
         src: Source,
@@ -85,11 +80,6 @@ pub enum Instruction {
         src2: Source,
     },
     FDIV {
-        dest: usize,
-        src1: Source,
-        src2: Source,
-    },
-    FPOW {
         dest: usize,
         src1: Source,
         src2: Source,

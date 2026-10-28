@@ -353,9 +353,6 @@ impl<'a> CodeGen<'a> {
                 Instruction::IDIV { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
-                Instruction::IPOW { src1, src2, .. } => {
-                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
-                }
                 Instruction::IABS { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::IMOD { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
@@ -370,9 +367,6 @@ impl<'a> CodeGen<'a> {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::FDIV { src1, src2, .. } => {
-                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
-                }
-                Instruction::FPOW { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::FABS { src, .. } => 2 + Self::get_num_source_bytes(src),

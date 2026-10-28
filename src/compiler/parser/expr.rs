@@ -231,8 +231,8 @@ impl<'a> Parser<'a> {
             TokenKind::Minus => Some((BinaryOp::Sub, token.span.clone(), 10, 11)),
             TokenKind::Asterisk => Some((BinaryOp::Mul, token.span.clone(), 20, 21)),
             TokenKind::Slash => Some((BinaryOp::Div, token.span.clone(), 20, 21)),
-            TokenKind::Caret => Some((BinaryOp::Pow, token.span.clone(), 31, 30)),
             TokenKind::Pipe => Some((BinaryOp::Or, token.span.clone(), 10, 11)),
+            TokenKind::Caret => Some((BinaryOp::Xor, token.span.clone(), 15, 16)),
             TokenKind::Ampersand => Some((BinaryOp::And, token.span.clone(), 20, 21)),
             _ => None,
         }
@@ -636,8 +636,8 @@ mod tests {
             BinaryOp::Sub => "-",
             BinaryOp::Mul => "*",
             BinaryOp::Div => "/",
-            BinaryOp::Pow => "^",
             BinaryOp::Or => "|",
+            BinaryOp::Xor => "^",
             BinaryOp::And => "&",
             BinaryOp::Gt => ">",
             BinaryOp::Lt => "<",
@@ -782,42 +782,6 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(| (+ 9 10) 5)".to_string());
-
-        //-3^(-7)^(8-2-4/-1)
-        let kinds: Vec<TokenKind> = vec![
-            Minus,
-            IntLiteral(3),
-            Caret,
-            LParen,
-            Minus,
-            IntLiteral(7),
-            RParen,
-            Caret,
-            LParen,
-            IntLiteral(8),
-            Minus,
-            IntLiteral(2),
-            Minus,
-            IntLiteral(4),
-            Slash,
-            Minus,
-            IntLiteral(1),
-            RParen,
-            Eof,
-        ];
-        let tokens: Vec<Token> = build_token_vec(kinds);
-
-        let mut diagnostics = Diagnostics::new();
-        let mut parser = Parser::new(tokens, &mut diagnostics);
-
-        let result = parser.parse_expr(0).unwrap();
-
-        let result_str: String = build_s_expr(&result);
-
-        assert_eq!(
-            result_str,
-            "(- (^ 3 (^ (- 7) (- (- 8 2) (/ 4 (- 1))))))".to_string()
-        );
     }
 
     #[test]

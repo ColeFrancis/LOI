@@ -195,11 +195,6 @@ pub enum Diagnostic {
         op_span: Span,
     },
 
-    // When folding expressions
-    NegExpOnInt {
-        op_span: Span,
-    },
-
     // Checked when folding expressions
     NoReturnArm {
         span: Span,
@@ -265,8 +260,8 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
-    Pow,
     Or,
+    Xor,
     And,
     Not,
 }
@@ -520,14 +515,6 @@ impl std::fmt::Display for Diagnostic {
                 )
             }
 
-            Diagnostic::NegExpOnInt { op_span } => {
-                write!(
-                    f,
-                    "Integer raised to negative power.\nat line {}:{}",
-                    op_span.line, op_span.line
-                )
-            }
-
             Diagnostic::NoReturnArm { span } => {
                 write!(
                     f,
@@ -633,8 +620,8 @@ impl std::fmt::Display for Operation {
             Operation::Sub => write!(f, "Subtract"),
             Operation::Mul => write!(f, "Multiply"),
             Operation::Div => write!(f, "Divide"),
-            Operation::Pow => write!(f, "Power"),
             Operation::Or => write!(f, "Boolean Or"),
+            Operation::Xor => write!(f, "Boolean Xor"),
             Operation::And => write!(f, "Boolean And"),
             Operation::Not => write!(f, "Boolean Not"),
         }

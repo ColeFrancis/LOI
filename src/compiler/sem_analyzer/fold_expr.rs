@@ -341,6 +341,7 @@ impl<'a> SemAnalyzer<'a> {
     ) -> Option<Literal> {
         match (op, left, right) {
             (BinaryOp::Or, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a || *b)),
+            (BinaryOp::Xor, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool((*a || *b) && !(*a && *b))),
             (BinaryOp::And, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a && *b)),
 
             (BinaryOp::Lt, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a < b)),
@@ -355,16 +356,6 @@ impl<'a> SemAnalyzer<'a> {
                     Some(Literal::Int(a / b))
                 } else {
                     diagnostics.error(Diagnostic::DivideByZero { op_span: op_span.clone() });
-
-                    None
-                }
-            }
-            (BinaryOp::Pow, Literal::Int(a), Literal::Int(b)) => {
-                if *b >= 0 {
-                    Some(Literal::Int(a.pow(*b as u32)))
-                } else {
-                    // negative exponent not allowed for ints
-                    diagnostics.error(Diagnostic::NegExpOnInt { op_span: op_span.clone() });
 
                     None
                 }
@@ -386,7 +377,6 @@ impl<'a> SemAnalyzer<'a> {
                     None
                 }
             }
-            (BinaryOp::Pow, Literal::Float(a), Literal::Float(b)) => Some(Literal::Float(a.powf(*b))),
 
             _ => None,
         }
@@ -574,7 +564,7 @@ mod tests {
 
     #[test]
     fn test_binary_1() {
-        // 1.0 + 2^3
+        // 1.0 + 2*3
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
 
@@ -584,7 +574,7 @@ mod tests {
                 right: Box::new(Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(2))),
                     right: Box::new(Expr::Literal(Literal::Int(3))),
-                    op: BinaryOp::Pow,
+                    op: BinaryOp::Mul,
                     op_span: Span { line: 0, col: 1 },
                     expr_type: Type::Int,
                 })),
@@ -595,73 +585,11 @@ mod tests {
             true,
         );
 
-        assert_eq!(result, Expr::Literal(Literal::Float(9.0)));
+        assert_eq!(result, Expr::Literal(Literal::Float(7.0)));
     }
 
     #[test]
     fn test_binary_2() {
-        // 1.0 + 2^(-3) // Neg exp on integer error
-        let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
-
-        let _result = sem_analyzer.fold_expr(
-            Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Float(1.0))),
-                right: Box::new(Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Literal(Literal::Int(2))),
-                    right: Box::new(Expr::Unary(UnaryExpr {
-                        expr: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: UnaryOp::Neg,
-                        op_span: Span { line: 0, col: 2 },
-                        expr_type: Type::Int,
-                    })),
-                    op: BinaryOp::Pow,
-                    op_span: Span { line: 0, col: 1 },
-                    expr_type: Type::Int,
-                })),
-                op: BinaryOp::Add,
-                op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Float,
-            }),
-            true,
-        );
-
-        assert_eq!(diagnostics.num_errors(), 1);
-    }
-
-    #[test]
-    fn test_binary_3() {
-        // 1.0 + 2.0^(-3)
-        let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
-
-        let result = sem_analyzer.fold_expr(
-            Expr::Binary(BinaryExpr {
-                left: Box::new(Expr::Literal(Literal::Float(1.0))),
-                right: Box::new(Expr::Binary(BinaryExpr {
-                    left: Box::new(Expr::Literal(Literal::Float(2.0))),
-                    right: Box::new(Expr::Unary(UnaryExpr {
-                        expr: Box::new(Expr::Literal(Literal::Int(3))),
-                        op: UnaryOp::Neg,
-                        op_span: Span { line: 0, col: 2 },
-                        expr_type: Type::Int,
-                    })),
-                    op: BinaryOp::Pow,
-                    op_span: Span { line: 0, col: 1 },
-                    expr_type: Type::Float,
-                })),
-                op: BinaryOp::Add,
-                op_span: Span { line: 0, col: 0 },
-                expr_type: Type::Float,
-            }),
-            true,
-        );
-
-        assert_eq!(result, Expr::Literal(Literal::Float(1.125)));
-    }
-
-    #[test]
-    fn test_binary_4() {
         // n + (a + 1) where n is an unknown variable and a is a folded constant
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
@@ -715,7 +643,7 @@ mod tests {
     }
 
     #[test]
-    fn test_binary_5() {
+    fn test_binary_3() {
         // 1 < 2
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
@@ -732,6 +660,26 @@ mod tests {
         );
 
         assert_eq!(result, Expr::Literal(Literal::Bool(true)));
+    }
+
+    #[test]
+    fn test_binary_4() {
+        // true ^ true
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Bool(true))),
+                right: Box::new(Expr::Literal(Literal::Bool(true))),
+                op: BinaryOp::Xor,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Bool,
+            }),
+            true,
+        );
+
+        assert_eq!(result, Expr::Literal(Literal::Bool(false)));
     }
 
     #[test]

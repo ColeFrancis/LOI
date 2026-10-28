@@ -268,6 +268,7 @@ impl<'a> Lexer<'a> {
 
         let mut is_valid = true;
         let mut is_float = false;
+        let mut has_exponent = false;
 
         while let Some(c) = self.peek() {
             match c {
@@ -276,7 +277,7 @@ impl<'a> Lexer<'a> {
                     self.next();
                 }
 
-                b'.' if !is_float => {
+                b'.' if !is_float && !has_exponent => {
                     is_float = true;
                     buf.push('.');
                     self.next();
@@ -286,6 +287,19 @@ impl<'a> Lexer<'a> {
                     is_valid = false;
                     buf.push('.');
                     self.next();
+                }
+
+                b'e' | b'E' if !has_exponent => {
+                    is_float = true;
+                    has_exponent = true;
+                    buf.push(c as char);
+                    self.next();
+
+                    // Optional exponent sign
+                    if let Some(sign @ (b'+' | b'-')) = self.peek() {
+                        buf.push(sign as char);
+                        self.next();
+                    }
                 }
 
                 // Underscores are skipped in numbers
@@ -391,6 +405,28 @@ mod test {
             ]
         );
         assert_eq!(diagnostics.num_errors(), 3);
+    }
+
+    #[test]
+    fn test_scientific_notation() {
+        let mut diagnostics = Diagnostics::new();
+        let tokens = Lexer::new(
+            "10e3 5e-1 1e4 1.0e6",
+            &mut diagnostics,
+        )
+        .tokenize();
+
+        assert_eq!(
+            kinds(&tokens),
+            vec![
+                FloatLiteral(10000.0),
+                FloatLiteral(0.5),
+                FloatLiteral(10000.0),
+                FloatLiteral(1000000.0),
+                Eof
+            ]
+        );
+        assert_eq!(diagnostics.num_errors(), 0);
     }
 
     #[test]

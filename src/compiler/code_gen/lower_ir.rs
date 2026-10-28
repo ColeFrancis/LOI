@@ -83,19 +83,6 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
-                Instruction::IPOW { dest, src1, src2 } => {
-                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
-                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
-
-                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
-
-                    let opcode = (0b000100 << 2) | ss;
-
-                    bytes.push(opcode);
-                    bytes.push(dest as u8);
-                    bytes.extend(src1_bytes);
-                    bytes.extend(src2_bytes);
-                }
                 Instruction::IABS { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
@@ -167,19 +154,6 @@ impl<'a> CodeGen<'a> {
                     let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
                     let opcode = (0b001011 << 2) | ss;
-
-                    bytes.push(opcode);
-                    bytes.push(dest as u8);
-                    bytes.extend(src1_bytes);
-                    bytes.extend(src2_bytes);
-                }
-                Instruction::FPOW { dest, src1, src2 } => {
-                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
-                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
-
-                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
-
-                    let opcode = (0b001100 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);
@@ -790,11 +764,6 @@ ERR b3
                 src1: Source::RegInter(0),
                 src2: Source::RegInter(0),
             },
-            Instruction::IPOW {
-                dest: 0,
-                src1: Source::RegInter(0),
-                src2: Source::RegInter(0),
-            },
             Instruction::IABS {
                 dest: 0,
                 src: Source::RegInter(0),
@@ -820,11 +789,6 @@ ERR b3
                 src2: Source::RegInter(0),
             },
             Instruction::FDIV {
-                dest: 0,
-                src1: Source::RegInter(0),
-                src2: Source::RegInter(0),
-            },
-            Instruction::FPOW {
                 dest: 0,
                 src1: Source::RegInter(0),
                 src2: Source::RegInter(0),
@@ -995,7 +959,6 @@ IADD r0 r0 r0
 ISUB r0 r0 r0
 IMUL r0 r0 r0
 IDIV r0 r0 r0
-IPOW r0 r0 r0
 IABS r0 r0
 IMOD r0 r0 r0
 
@@ -1003,7 +966,6 @@ FADD r0 r0 r0
 FSUB r0 r0 r0
 FMUL r0 r0 r0
 FDIV r0 r0 r0
-FPOW r0 r0 r0
 FABS r0 r0
 
 AND r0 r0 r0

@@ -126,10 +126,10 @@ impl IoFile {
             let val = if Self::starts_with_number(fields[2]) {
                 let num_str = fields[2];
 
-                if num_str.contains('.') {
+                if num_str.contains('.') || num_str.contains('e') || num_str.contains('E') {
                     match num_str.parse::<f64>() {
-                        Ok(x) => IoVal::Float(x),
-                        Err(_) => {
+                        Ok(x) if x.is_finite() => IoVal::Float(x),
+                        _ => {
                             return Err(InputFileReadError::InvalidNumber {
                                 num: num_str.to_string(),
                                 line_num,
@@ -289,7 +289,7 @@ mod tests {
         let result = IoFile::read_txt_file(
             "step entity value
             0 A 0
-            0 B 1.0
+            0 B 1.0e2
             5 B false
             10 A true
             11 C this",
@@ -304,7 +304,7 @@ mod tests {
                 ),
                 (
                     "B".to_string(),
-                    vec![(0, IoVal::Float(1.0)), (5, IoVal::Bool(false)),]
+                    vec![(0, IoVal::Float(100.0)), (5, IoVal::Bool(false)),]
                 ),
                 (
                     "C".to_string(),

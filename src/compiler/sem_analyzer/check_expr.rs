@@ -420,9 +420,11 @@ impl<'a> SemAnalyzer<'a> {
     ) -> Option<Type> {
         match (expr_type, op) {
             (Type::Impulse, BinaryOp::Or) => Some(Type::Impulse),
+            (Type::Impulse, BinaryOp::Xor) => Some(Type::Impulse),
             (Type::Impulse, BinaryOp::And) => Some(Type::Impulse),
 
             (Type::Bool, BinaryOp::Or) => Some(Type::Bool),
+            (Type::Bool, BinaryOp::Xor) => Some(Type::Bool),
             (Type::Bool, BinaryOp::And) => Some(Type::Bool),
 
             (Type::Mod(_), BinaryOp::Lt) => Some(Type::Bool),
@@ -433,7 +435,6 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Div) => Some(Type::Mod(*val)),
-            (Type::Mod(val), BinaryOp::Pow) => Some(Type::Mod(*val)),
             (Type::Int, BinaryOp::Lt) => Some(Type::Bool),
             (Type::Int, BinaryOp::Gt) => Some(Type::Bool),
             (Type::Int, BinaryOp::Le) => Some(Type::Bool),
@@ -442,7 +443,6 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Int, BinaryOp::Sub) => Some(Type::Int),
             (Type::Int, BinaryOp::Mul) => Some(Type::Int),
             (Type::Int, BinaryOp::Div) => Some(Type::Int),
-            (Type::Int, BinaryOp::Pow) => Some(Type::Int),
             (Type::Float, BinaryOp::Gt) => Some(Type::Bool),
             (Type::Float, BinaryOp::Lt) => Some(Type::Bool),
             (Type::Float, BinaryOp::Le) => Some(Type::Bool),
@@ -451,7 +451,6 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Float, BinaryOp::Sub) => Some(Type::Float),
             (Type::Float, BinaryOp::Mul) => Some(Type::Float),
             (Type::Float, BinaryOp::Div) => Some(Type::Float),
-            (Type::Float, BinaryOp::Pow) => Some(Type::Float),
 
             (Type::Error, _) => None,
 
@@ -465,8 +464,8 @@ impl<'a> SemAnalyzer<'a> {
                     BinaryOp::Sub => Operation::Sub,
                     BinaryOp::Mul => Operation::Mul,
                     BinaryOp::Div => Operation::Div,
-                    BinaryOp::Pow => Operation::Pow,
                     BinaryOp::Or => Operation::Or,
+                    BinaryOp::Xor => Operation::Xor,
                     BinaryOp::And => Operation::And,
                 };
 

@@ -222,26 +222,6 @@ impl<'a> CodeGen<'a> {
 
                         (Source::RegInter(dest), Type::Mod(modulus))
                     }
-                    (Type::Mod(modulus), BinaryOp::Pow) => {
-                        let (left_expr_bytecode, src1, _) = self.compile_expr(*binary.left)?;
-                        let (right_expr_bytecode, src2, right_sub_type) =
-                            self.compile_expr(*binary.right)?;
-
-                        bytecode.extend(left_expr_bytecode);
-                        bytecode.extend(right_expr_bytecode);
-
-                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
-
-                        let dest = self.get_binary_dest(src1, src2)?;
-
-                        bytecode.push(Instruction::IDIV {
-                            dest,
-                            src1,
-                            src2,
-                        });
-
-                        (Source::RegInter(dest), Type::Mod(modulus))
-                    }
 
                     (Type::Int, BinaryOp::Add) => {
                         let (left_expr_bytecode, src1, _) = self.compile_expr(*binary.left)?;
@@ -309,26 +289,6 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IDIV {
-                            dest,
-                            src1,
-                            src2,
-                        });
-
-                        (Source::RegInter(dest), Type::Int)
-                    }
-                    (Type::Int, BinaryOp::Pow) => {
-                        let (left_expr_bytecode, src1, _) = self.compile_expr(*binary.left)?;
-                        let (right_expr_bytecode, src2, right_sub_type) =
-                            self.compile_expr(*binary.right)?;
-
-                        bytecode.extend(left_expr_bytecode);
-                        bytecode.extend(right_expr_bytecode);
-
-                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
-
-                        let dest = self.get_binary_dest(src1, src2)?;
-
-                        bytecode.push(Instruction::IPOW {
                             dest,
                             src1,
                             src2,
@@ -418,28 +378,6 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::FDIV {
-                            dest,
-                            src1,
-                            src2,
-                        });
-
-                        (Source::RegInter(dest), Type::Float)
-                    }
-                    (Type::Float, BinaryOp::Pow) => {
-                        let (left_expr_bytecode, src1, left_sub_type) =
-                            self.compile_expr(*binary.left)?;
-                        let (right_expr_bytecode, src2, right_sub_type) =
-                            self.compile_expr(*binary.right)?;
-
-                        bytecode.extend(left_expr_bytecode);
-                        bytecode.extend(right_expr_bytecode);
-
-                        let src1 = self.coerce_float(&mut bytecode, src1, &left_sub_type, false)?;
-                        let src2 = self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
-
-                        let dest = self.get_binary_dest(src1, src2)?;
-
-                        bytecode.push(Instruction::FPOW {
                             dest,
                             src1,
                             src2,
@@ -639,6 +577,24 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::OR { dest, src1, src2 });
+
+                        (Source::RegInter(dest), Type::Bool)
+                    }
+                    (Type::Bool, BinaryOp::Xor) => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        let src1 = self.coerce_bool(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_bool(&mut bytecode, src2, &right_sub_type)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(Instruction::XOR { dest, src1, src2 });
 
                         (Source::RegInter(dest), Type::Bool)
                     }
@@ -1489,7 +1445,7 @@ mod tests {
 
     #[test]
     fn binary_div_1() {
-        //  3 ^ a  (a is a mod 10)
+        //  3 / a  (a is a mod 10)
         let mut diagnostics = Diagnostics::new();
         let symbol_table = vec![Symbol {
             name: "".to_string(),
@@ -1510,7 +1466,7 @@ mod tests {
         let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
             left: Box::new(Expr::Literal(Literal::Int(3))),
             right: Box::new(Expr::Ident(Ident::Symbol(0))),
-            op: BinaryOp::Pow,
+            op: BinaryOp::Div,
             op_span: Span { line: 0, col: 0 },
             expr_type: Type::Int,
         }));
@@ -1524,7 +1480,7 @@ mod tests {
                         src1: Source::RegVar(1),
                         src2: Source::Int(10),
                     },
-                    Instruction::IPOW {
+                    Instruction::IDIV {
                         dest: 2,
                         src1: Source::Int(3),
                         src2: Source::RegInter(2),
