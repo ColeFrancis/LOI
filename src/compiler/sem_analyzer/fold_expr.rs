@@ -592,6 +592,54 @@ mod tests {
 
         assert_eq!(result, Expr::Literal(Literal::Float(-1.0)));
     }
+    
+    #[test]
+    fn test_unary_3() {
+        // abs(floor(-2.5))
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Literal(Literal::Float(-2.5))),
+                    op: UnaryOp::Floor,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Int,
+                })),
+                op: UnaryOp::Abs,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Int,
+            }),
+            true,
+        );
+
+        assert_eq!(result, Expr::Literal(Literal::Int(3)));
+    }
+    
+    #[test]
+    fn test_unary_4() {
+        //  floor(abs(-2.5))
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Literal(Literal::Float(-2.5))),
+                    op: UnaryOp::Abs,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Float,
+                })),
+                op: UnaryOp::Floor,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Int,
+            }),
+            true,
+        );
+
+        assert_eq!(result, Expr::Literal(Literal::Int(2)));
+    }
 
     #[test]
     fn test_binary_1() {
@@ -711,6 +759,26 @@ mod tests {
         );
 
         assert_eq!(result, Expr::Literal(Literal::Bool(false)));
+    }
+    
+    #[test]
+    fn test_binary_5() {
+        // 5 % 2
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(5))),
+                right: Box::new(Expr::Literal(Literal::Int(2))),
+                op: BinaryOp::Mod,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Int,
+            }),
+            true,
+        );
+
+        assert_eq!(result, Expr::Literal(Literal::Int(1)));
     }
 
     #[test]
