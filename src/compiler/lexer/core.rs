@@ -174,6 +174,7 @@ impl<'a> Lexer<'a> {
                 b'+' => return Some(Token::new(TokenKind::Plus, line, col)),
                 b'*' => return Some(Token::new(TokenKind::Asterisk, line, col)),
                 b'^' => return Some(Token::new(TokenKind::Caret, line, col)),
+                b'%' => return Some(Token::new(TokenKind::Mod, line, col)),
                 b'~' => return Some(Token::new(TokenKind::BitNot, line, col)),
                 b'|' => return Some(Token::new(TokenKind::Pipe, line, col)),
                 b'&' => return Some(Token::new(TokenKind::Ampersand, line, col)),
@@ -268,6 +269,8 @@ impl<'a> Lexer<'a> {
             "Float" => TokenKind::Float,
             "Int" => TokenKind::Int,
             "Mod" => TokenKind::Mod,
+            "uniform" => TokenKind::Uniform,
+            "normal" => TokenKind::Normal,
             "true" => TokenKind::BoolLiteral(true),
             "false" => TokenKind::BoolLiteral(false),
             "exp" => TokenKind::Exp,
@@ -474,11 +477,12 @@ mod test {
             input output init let
             Bool Impulse Int Float Mod
             apple true 10 1.0
+            uniform normal
             : ; , .
             ( ) { }
             > < >= <=
             == !=
-            + - * / ^
+            + - * / ^ %
             ~ exp ln floor abs
             | _
             = -> :=
@@ -509,6 +513,8 @@ mod test {
                 BoolLiteral(true),
                 IntLiteral(10),
                 FloatLiteral(1.0),
+                Uniform,
+                Normal,
                 Colon,
                 Semicolon,
                 Comma,
@@ -528,6 +534,7 @@ mod test {
                 Asterisk,
                 Slash,
                 Caret,
+                Mod,
                 BitNot,
                 Exp,
                 Ln,

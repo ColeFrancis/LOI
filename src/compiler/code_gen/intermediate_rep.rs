@@ -260,4 +260,7 @@ pub enum Instruction {
     RND {
         dest: usize,
     },
+    RNDN {
+        dest: usize,
+    },
 }

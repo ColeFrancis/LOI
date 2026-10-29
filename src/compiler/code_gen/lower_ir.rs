@@ -664,6 +664,15 @@ impl<'a> CodeGen<'a> {
                     bytes.push(opcode);
                     bytes.push(dest as u8);
                 }
+                
+                Instruction::RNDN { dest } => {
+                    deterministic = false;
+
+                    let opcode = 0b11100100;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                }
             }
         }
 
@@ -995,6 +1004,7 @@ ERR b3
             },
             Instruction::ERR { code: 0, src: None },
             Instruction::RND { dest: 0 },
+            Instruction::RNDN { dest: 0 },
         ]);
 
         let test = assemble(
@@ -1056,6 +1066,7 @@ MOV r0 r0
 RET r0
 ERR b0
 RND r0
+RNDN r0
         ",
         )
         .unwrap();

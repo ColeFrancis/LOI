@@ -602,6 +602,17 @@ impl RelVM {
                             continue;
                         }
 
+                        0b00000100 => {
+                            use rand_distr::{Distribution, StandardNormal};
+
+                            let mut rng = rand::rng();
+                            let normal = StandardNormal;
+                            let random_val: f64 = normal.sample(&mut rng);
+
+                            registers[dest_reg] = random_val.to_bits();
+                            continue;
+                        }
+
                         _ => {}
                     }
 

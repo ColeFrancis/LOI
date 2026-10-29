@@ -466,6 +466,7 @@ impl<'a> CodeGen<'a> {
                     }
                 }
                 Instruction::RND { .. } => 2,
+                Instruction::RNDN { .. } => 2,
             }
         }
 

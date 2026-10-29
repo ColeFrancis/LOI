@@ -454,7 +454,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
-        "RND" => {
+        "RND" | "RNDN" => {
             if operands.len() != 1 {
                 return None;
             }
@@ -464,7 +464,11 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let opcode = 0b11100000;
+            let opcode = match mnemonic {
+                "RND" => 0b11100000,
+                "RNDN" => 0b11100100,
+                _ => unreachable!(),
+            };
 
             output.push(opcode);
             output.push(dest);

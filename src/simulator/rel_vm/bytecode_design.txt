@@ -59,7 +59,8 @@ Instructions:
 
     all encodings are little-endian
 
-    RND dest // generates a random number in range [0,1)
+    RND dest // samples a uniformly distributed random variable in range [0,1)
+    RNDN dest // samples a normally distributed random variable with mean 0 sd 1
 
 	sources can be literal or a virtual register
 
@@ -168,6 +169,7 @@ bits:
 
     1 1 1 d d d:   
         0 0 0: RND
+        0 0 1: RNDN
 
 
 

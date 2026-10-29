@@ -57,6 +57,28 @@ impl<'a> CodeGen<'a> {
                 _ => return None,
             },
 
+            Expr::Rand(rand) => match rand {
+                Rand::Uniform => {
+                    let dest = self.get_next_reg()?;
+
+                    bytecode.push(Instruction::RND {
+                        dest,
+                    });
+
+                    (Source::RegInter(dest), Type::Float)
+                }
+
+                Rand::Normal => {
+                    let dest = self.get_next_reg()?;
+
+                    bytecode.push(Instruction::RNDN {
+                        dest,
+                    });
+
+                    (Source::RegInter(dest), Type::Float)
+                }
+            }
+
             Expr::Unary(unary) => {
                 match (unary.expr_type, unary.op) {
                     // a mod n == (-a) mod n
@@ -326,6 +348,28 @@ impl<'a> CodeGen<'a> {
 
                         (Source::RegInter(dest), Type::Mod(modulus))
                     }
+                    (Type::Mod(modulus), BinaryOp::Mod) => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(Instruction::IMOD {
+                            dest,
+                            src1,
+                            src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Mod(modulus))
+                    }
 
                     (Type::Int, BinaryOp::Add) => {
                         let (left_expr_bytecode, src1, _) = self.compile_expr(*binary.left)?;
@@ -393,6 +437,28 @@ impl<'a> CodeGen<'a> {
                         let dest = self.get_binary_dest(src1, src2)?;
 
                         bytecode.push(Instruction::IDIV {
+                            dest,
+                            src1,
+                            src2,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+                    (Type::Int, BinaryOp::Mod)  => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                        let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(Instruction::IMOD {
                             dest,
                             src1,
                             src2,
@@ -1593,6 +1659,66 @@ mod tests {
                 Type::Int
             ))
         );
+    }
+
+    #[test]
+    fn binary_rand_1() {
+        // 2 * (uniform + normal)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(2))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Rand(Rand::Uniform)),
+                right: Box::new(Expr::Rand(Rand::Normal)),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0},
+                expr_type: Type::Float,
+            })),
+            op: BinaryOp::Mul,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Float,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::RND {
+                        dest: 0,
+                    },
+                    Instruction::RNDN {
+                        dest: 1,
+                    },
+                    Instruction::FADD {
+                        dest: 0,
+                        src1: Source::RegInter(0),
+                        src2: Source::RegInter(1),
+                    },
+                    Instruction::I2F {
+                        dest: 1,
+                        src: Source::Int(2),
+                    },
+                    Instruction::FMUL {
+                        dest: 1,
+                        src1: Source::RegInter(1),
+                        src2: Source::RegInter(0),
+                    }
+                ],
+                Source::RegInter(1),
+                Type::Float
+            ))
+        );
+        assert_eq!(compiler.reg_used[0], false);
+        assert_eq!(compiler.reg_used[1], true);
     }
 
     #[test]

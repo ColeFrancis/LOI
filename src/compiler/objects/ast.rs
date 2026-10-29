@@ -54,6 +54,7 @@ pub enum Ident {
 pub enum Expr {
     Literal(Literal),
     Ident(Ident),
+    Rand(Rand),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
@@ -68,6 +69,12 @@ pub enum Literal {
     Bool(bool),
     Int(i64),
     Float(f64),
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub enum Rand {
+    Normal,
+    Uniform,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -109,6 +116,7 @@ pub enum BinaryOp {
     Sub, // -
     Mul, // *
     Div, // /
+    Mod, // %
     Or,  // |
     And, // &
     Xor, // ^

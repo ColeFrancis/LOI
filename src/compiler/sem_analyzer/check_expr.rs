@@ -39,6 +39,8 @@ impl<'a> SemAnalyzer<'a> {
 
             Expr::Ident(ident) => Some(Expr::Ident(ident)),
 
+            Expr::Rand(rand) => Some(Expr::Rand(rand)),
+
             Expr::Unary(mut unary_expr) => {
                 unary_expr.expr =
                     Box::new(self.add_types_expr(*unary_expr.expr).unwrap_or(Expr::Error));
@@ -234,6 +236,8 @@ impl<'a> SemAnalyzer<'a> {
 
                 Ident::Str { .. } => Type::Error, // Should not be reachable
             },
+
+            Expr::Rand(_) => Type::Float,
 
             Expr::Unary(unary_expr) => unary_expr.expr_type.clone(),
 
@@ -448,6 +452,7 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Div) => Some(Type::Mod(*val)),
+            (Type::Mod(val), BinaryOp::Mod) => Some(Type::Mod(*val)),
             (Type::Int, BinaryOp::Eq) => Some(Type::Bool),
             (Type::Int, BinaryOp::Ne) => Some(Type::Bool),
             (Type::Int, BinaryOp::Lt) => Some(Type::Bool),
@@ -458,6 +463,7 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Int, BinaryOp::Sub) => Some(Type::Int),
             (Type::Int, BinaryOp::Mul) => Some(Type::Int),
             (Type::Int, BinaryOp::Div) => Some(Type::Int),
+            (Type::Int, BinaryOp::Mod) => Some(Type::Int),
             (Type::Float, BinaryOp::Eq) => Some(Type::Bool),
             (Type::Float, BinaryOp::Ne) => Some(Type::Bool),
             (Type::Float, BinaryOp::Gt) => Some(Type::Bool),
@@ -483,6 +489,7 @@ impl<'a> SemAnalyzer<'a> {
                     BinaryOp::Sub => Operation::Sub,
                     BinaryOp::Mul => Operation::Mul,
                     BinaryOp::Div => Operation::Div,
+                    BinaryOp::Mod => Operation::Mod,
                     BinaryOp::Or => Operation::Or,
                     BinaryOp::Xor => Operation::Xor,
                     BinaryOp::And => Operation::And,

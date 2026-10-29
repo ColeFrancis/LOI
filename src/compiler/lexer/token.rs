@@ -66,6 +66,9 @@ pub enum TokenKind {
     IntLiteral(i64),
     FloatLiteral(f64),
 
+    Uniform, // uniform
+    Normal,  // normal
+
     // Punctuation
     Colon,     // :
     Semicolon, // ;
@@ -88,6 +91,7 @@ pub enum TokenKind {
     Asterisk, // *
     Slash,    // /
     Caret,    // ^
+    Percent,      // %
 
     BitNot, // ~
     Exp,    // exp
@@ -133,6 +137,9 @@ impl std::fmt::Display for TokenKind {
             TokenKind::IntLiteral(_) => write!(f, "Int Literal"),
             TokenKind::FloatLiteral(_) => write!(f, "Float Literal"),
 
+            TokenKind::Uniform => write!(f, "\"uniform\""),
+            TokenKind::Normal => write!(f, "\"normal\""),
+
             TokenKind::Colon => write!(f, "\":\""),
             TokenKind::Semicolon => write!(f, "\";\""),
             TokenKind::Comma => write!(f, "\",\""),
@@ -154,6 +161,7 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Minus => write!(f, "\"-\""),
             TokenKind::Asterisk => write!(f, "\"*\""),
             TokenKind::Slash => write!(f, "\"/\""),
+            TokenKind::Percent => write!(f, "\"%\""),
             TokenKind::Caret => write!(f, "\"^\""),
             TokenKind::BitNot => write!(f, "\"~\""),
             TokenKind::Exp => write!(f, "\"exp(...)\""),

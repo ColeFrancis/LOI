@@ -103,6 +103,16 @@ impl<'a> Parser<'a> {
                 }))
             }
 
+            TokenKind::Normal => {
+                self.next();
+                Some(Expr::Rand(Rand::Normal))
+            }
+            
+            TokenKind::Uniform => {
+                self.next();
+                Some(Expr::Rand(Rand::Uniform))
+            }
+
             TokenKind::Minus => {
                 self.next();
                 let rhs = self.parse_expr(25)?;
@@ -289,6 +299,7 @@ impl<'a> Parser<'a> {
             TokenKind::Minus => Some((BinaryOp::Sub, token.span.clone(), 10, 11)),
             TokenKind::Asterisk => Some((BinaryOp::Mul, token.span.clone(), 20, 21)),
             TokenKind::Slash => Some((BinaryOp::Div, token.span.clone(), 20, 21)),
+            TokenKind::Percent => Some((BinaryOp::Mod, token.span.clone(), 20, 21)),
             TokenKind::Pipe => Some((BinaryOp::Or, token.span.clone(), 10, 11)),
             TokenKind::Caret => Some((BinaryOp::Xor, token.span.clone(), 15, 16)),
             TokenKind::Ampersand => Some((BinaryOp::And, token.span.clone(), 20, 21)),
@@ -532,6 +543,9 @@ mod tests {
                 ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
             },
 
+            Expr::Rand(Rand::Uniform) => "uniform".to_string(),
+            Expr::Rand(Rand::Normal) => "normal".to_string(),
+
             Expr::Unary(unary) => {
                 format!(
                     "({} {})",
@@ -698,6 +712,7 @@ mod tests {
             BinaryOp::Sub => "-",
             BinaryOp::Mul => "*",
             BinaryOp::Div => "/",
+            BinaryOp::Mod => "%",
             BinaryOp::Or => "|",
             BinaryOp::Xor => "^",
             BinaryOp::And => "&",
@@ -818,7 +833,7 @@ mod tests {
 
     #[test]
     fn binary_expr_1() {
-        // -5 + 2 * exp(a) + b
+        // -5 + 2 * exp(a) + normal
         let kinds: Vec<TokenKind> = vec![
             Minus,
             IntLiteral(5),
@@ -830,7 +845,7 @@ mod tests {
             Ident("a".to_string()),
             RParen,
             Plus,
-            Ident("b".to_string()),
+            Normal,
             Eof,
         ];
         let tokens: Vec<Token> = build_token_vec(kinds);
@@ -842,7 +857,7 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(+ (+ (- 5) (* 2 (exp a))) b)".to_string());
+        assert_eq!(result_str, "(+ (+ (- 5) (* 2 (exp a))) normal)".to_string());
     }
 
     #[test]
