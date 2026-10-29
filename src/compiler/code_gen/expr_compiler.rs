@@ -114,6 +114,40 @@ impl<'a> CodeGen<'a> {
                         (Source::RegInter(dest), Type::Float)
                     }
 
+                    (Type::Float, UnaryOp::Exp) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let src = self.coerce_float(&mut bytecode, src, &sub_type, true)?;
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(Instruction::FEXP {
+                            dest,
+                            src,
+                        });
+                    }
+
+                    (Type::Float, UnaryOp::Ln) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let src = self.coerce_float(&mut bytecode, src, &sub_type, true)?;
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(Instruction::FLN {
+                            dest,
+                            src,
+                        });
+                    }
+
                     (Type::Bool, UnaryOp::BitNot) => {
                         let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(expr_bytecode);
