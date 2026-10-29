@@ -4,13 +4,15 @@ Instructions:
     IMUL dest src1 src2
     IDIV dest src1 src2 // src1/src2
     IABS dest src       // |src|
-    MOD  dest src1 src2 // src1 % src2
+    IMOD  dest src1 src2 // src1 % src2
 
     FADD dest src1 src2
     FSUB dest src1 src2
     FMUL dest src1 src2
     FDIV dest src1 src2
     FABS dest src       // |src|
+    FEXP dest src       // e^src
+    FLN  dest src       // ln(src)
 
     AND dest src1, src2
     OR dest src1, src2
@@ -98,13 +100,17 @@ bits:
         0 0 1: SUB
         0 1 0: MUL
         0 1 1: DIV
-        1 0 0: 
-        1 0 1: ABS
+        1 0 0: ABS
+        1 0 1: 
         1 1 0: 
         1 1 1:
 
     0 0 0 d d d:
-        1 1 0: IMOD
+        1 0 1: IMOD
+
+    0 0 1 d d d:
+        1 0 1: FEXP
+        1 1 0: FLN
 
     0 1 0 0 d d:
         0 0: AND
@@ -124,10 +130,10 @@ bits:
         0 0 1: CSUB         // not implemented yet
         0 1 0: CMUL         // not implemented yet
         0 1 1: CDIV         // not implemented yet
-        1 0 0:
-        1 0 1: CABS         // not implemented yet
-        1 1 0: CONJ         // not implemented yet
-        1 1 1:
+        1 0 0: CABS         // not implemented yet
+        1 0 1: 
+        1 1 0:
+        1 1 1: CONJ
 
     1 0 f d d d:
         0 0 0:

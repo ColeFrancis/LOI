@@ -82,6 +82,8 @@ pub struct UnaryExpr {
 pub enum UnaryOp {
     Neg,    // -
     BitNot, // ~
+    Exp,    // exp()
+    Ln,     // ln()
 }
 
 #[derive(PartialEq, Debug, Clone)]

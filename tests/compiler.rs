@@ -820,7 +820,7 @@ fn coin_flip() {
                 MOV r4 f0.5
                 MOV r5 f1.0
                 FJEQ o3 r5 f1.0
-                ERR b4 r5
+                ERR b1 r5
                 FJGE o13 r3 r4
                 MOV r6 i0
                 JMP o15

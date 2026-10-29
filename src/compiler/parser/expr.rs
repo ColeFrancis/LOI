@@ -125,6 +125,34 @@ impl<'a> Parser<'a> {
                 }))
             }
 
+            TokenKind::Exp => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(25)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Exp,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Ln => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(25)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Ln,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
             TokenKind::LParen => {
                 self.next();
                 let first = self.parse_expr(0);
@@ -627,6 +655,8 @@ mod tests {
         match op {
             UnaryOp::Neg => "-",
             UnaryOp::BitNot => "~",
+            UnaryOp::Exp => "exp",
+            UnaryOp::Ln => "ln",
         }
     }
 
@@ -721,7 +751,7 @@ mod tests {
     }
 
     #[test]
-    fn unary_expr() {
+    fn unary_expr_1() {
         // ---6
         let kinds: Vec<TokenKind> = vec![Minus, Minus, Minus, IntLiteral(6), Eof];
         let tokens: Vec<Token> = build_token_vec(kinds);
@@ -737,15 +767,34 @@ mod tests {
     }
 
     #[test]
+    fn unary_expr_2() {
+        // -exp(-6)
+        let kinds: Vec<TokenKind> = vec![Minus, Exp, LParen, Minus, IntLiteral(6), RParen, Eof];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_prefix().unwrap();
+
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(- (exp (- 6)))".to_string());
+    }
+
+    #[test]
     fn binary_expr() {
-        // -5 + 2 * a + b
+        // -5 + 2 * exp(a) + b
         let kinds: Vec<TokenKind> = vec![
             Minus,
             IntLiteral(5),
             Plus,
             IntLiteral(2),
             Asterisk,
+            Exp,
+            LParen,
             Ident("a".to_string()),
+            RParen,
             Plus,
             Ident("b".to_string()),
             Eof,
@@ -759,7 +808,7 @@ mod tests {
 
         let result_str: String = build_s_expr(&result);
 
-        assert_eq!(result_str, "(+ (+ (- 5) (* 2 a)) b)".to_string());
+        assert_eq!(result_str, "(+ (+ (- 5) (* 2 (exp a))) b)".to_string());
 
         // (9 + 10) | 5
         let kinds: Vec<TokenKind> = vec![

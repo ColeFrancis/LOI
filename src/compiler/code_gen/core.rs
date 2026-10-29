@@ -370,6 +370,8 @@ impl<'a> CodeGen<'a> {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::FABS { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::FEXP { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::FLN  { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::AND { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
@@ -918,7 +920,7 @@ mod tests {
             MOV r5 f0.5
             MOV r6 f1.0
             FJEQ o3 r6 f1.0
-            ERR b4 r6
+            ERR b1 r6
             FJGE o13 r4 r5
             MOV r7 i3
             JMP o15

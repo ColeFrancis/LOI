@@ -838,7 +838,7 @@ impl<'a> CodeGen<'a> {
                     src2: Source::Float(1.0),
                 });
                 bytecode.push(Instruction::ERR {
-                    code: 4,
+                    code: 1,
                     src: Some(Source::RegInter(last_prob_reg)),
                 });
 
@@ -1815,7 +1815,7 @@ mod tests {
                         src2: Source::Float(1.0),
                     },
                     Instruction::ERR {
-                        code: 4,
+                        code: 1,
                         src: Some(Source::RegInter(5)),
                     },
                     Instruction::FJGE {
@@ -2525,7 +2525,7 @@ mod tests {
                         src2: Source::Float(1.0),
                     },
                     Instruction::ERR {
-                        code: 4,
+                        code: 1,
                         src: Some(Source::RegInter(5)),
                     },
                     Instruction::FJGE {
@@ -2587,7 +2587,7 @@ mod tests {
                         src2: Source::Float(1.0),
                     },
                     Instruction::ERR {
-                        code: 4,
+                        code: 1,
                         src: Some(Source::RegInter(5)),
                     },
                     Instruction::FJGE {
@@ -2649,7 +2649,7 @@ mod tests {
                         src2: Source::Float(1.0),
                     },
                     Instruction::ERR {
-                        code: 4,
+                        code: 1,
                         src: Some(Source::RegInter(5)),
                     },
                     Instruction::FJGE {

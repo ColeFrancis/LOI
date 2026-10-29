@@ -88,7 +88,7 @@ impl<'a> CodeGen<'a> {
 
                     let ss = (src_immediate as u8) << 1;
 
-                    let opcode = (0b000101 << 2) | ss;
+                    let opcode = (0b000100 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);
@@ -100,7 +100,7 @@ impl<'a> CodeGen<'a> {
 
                     let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
-                    let opcode = (0b000110 << 2) | ss;
+                    let opcode = (0b000101 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);
@@ -165,7 +165,29 @@ impl<'a> CodeGen<'a> {
 
                     let ss = (src_immediate as u8) << 1;
 
+                    let opcode = (0b001100 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::FEXP { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
                     let opcode = (0b001101 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::FLN { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b001110 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);
@@ -797,6 +819,14 @@ ERR b3
                 dest: 0,
                 src: Source::RegInter(0),
             },
+            Instruction::FEXP {
+                dest: 0,
+                src: Source::RegInter(0),
+            },
+            Instruction::FLN {
+                dest: 0,
+                src: Source::RegInter(0),
+            },
             Instruction::AND {
                 dest: 0,
                 src1: Source::RegInter(0),
@@ -967,6 +997,8 @@ FSUB r0 r0 r0
 FMUL r0 r0 r0
 FDIV r0 r0 r0
 FABS r0 r0
+FEXP r0 r0
+FLN  r0 r0
 
 AND r0 r0 r0
 OR r0 r0 r0

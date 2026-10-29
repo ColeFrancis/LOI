@@ -195,6 +195,10 @@ pub enum Diagnostic {
         op_span: Span,
     },
 
+    NegativeLog {
+        op_span: Span,
+    },
+
     // Checked when folding expressions
     NoReturnArm {
         span: Span,
@@ -260,6 +264,8 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
+    Exp,
+    Ln,
     Or,
     Xor,
     And,
@@ -511,7 +517,15 @@ impl std::fmt::Display for Diagnostic {
                 write!(
                     f,
                     "Divide by zero while folding expression.\nat line {}:{}",
-                    op_span.line, op_span.line
+                    op_span.line, op_span.col
+                )
+            }
+
+            Diagnostic::NegativeLog { op_span } => {
+                write!(
+                    f,
+                    "Taking natural log of a negative value.\n at line {}:{}",
+                    op_span.line, op_span.col
                 )
             }
 
@@ -620,7 +634,9 @@ impl std::fmt::Display for Operation {
             Operation::Sub => write!(f, "Subtract"),
             Operation::Mul => write!(f, "Multiply"),
             Operation::Div => write!(f, "Divide"),
-            Operation::Or => write!(f, "Boolean Or"),
+            Operation::Exp => write!(f, "Exp"),
+            Operation::Ln  => write!(f, "Natural Log"),
+            Operation::Or  => write!(f, "Boolean Or"),
             Operation::Xor => write!(f, "Boolean Xor"),
             Operation::And => write!(f, "Boolean And"),
             Operation::Not => write!(f, "Boolean Not"),

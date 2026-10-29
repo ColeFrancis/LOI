@@ -88,6 +88,14 @@ pub enum Instruction {
         dest: usize,
         src: Source,
     },
+    FEXP {
+        dest: usize,
+        src: Source,
+    },
+    FLN {
+        dest: usize,
+        src: Source,
+    },
     AND {
         dest: usize,
         src1: Source,

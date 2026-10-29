@@ -93,7 +93,7 @@ impl RelVM {
                     // Single source ABS inst
                     match op {
                         // ABS
-                        0b00010100 => {
+                        0b00010000 => {
                             registers[dest_reg] = src1_val
                                 .checked_abs()
                                 .ok_or(VMError::IntegerOverflow)?
@@ -142,20 +142,8 @@ impl RelVM {
                                 as u64;
                         }
 
-                        // POW
-                        0b00010000 => {
-                            if src2_val < 0 {
-                                return Err(VMError::IntNegativeExponent);
-                            }
-
-                            registers[dest_reg] = src1_val
-                                .checked_pow(src2_val as u32)
-                                .ok_or(VMError::IntegerOverflow)?
-                                as u64;
-                        }
-
                         // IMOD
-                        0b00011000 => {
+                        0b00010100 => {
                             registers[dest_reg] = src1_val
                                 .checked_rem(src2_val)
                                 .ok_or(VMError::DivisionByZero)?
@@ -183,8 +171,20 @@ impl RelVM {
                     // Single source ABS inst
                     match op {
                         // ABS
-                        0b00010100 => {
+                        0b00010000 => {
                             registers[dest_reg] = src1_val.abs().to_bits();
+                            continue;
+                        }
+
+                        // EXP
+                        0b00010100 => {
+                            registers[dest_reg] = src1_val.exp().to_bits();
+                            continue;
+                        }
+
+                        // LN
+                        0b00011000 => {
+                            registers[dest_reg] = src1_val.ln().to_bits();
                             continue;
                         }
 
@@ -218,11 +218,6 @@ impl RelVM {
                         // DIV
                         0b00001100 => {
                             registers[dest_reg] = (src1_val / src2_val).to_bits();
-                        }
-
-                        // POW
-                        0b00010000 => {
-                            registers[dest_reg] = src1_val.powf(src2_val).to_bits();
                         }
 
                         _ => return Err(VMError::InvalidOpcode(inst)),
@@ -670,16 +665,15 @@ mod tests {
 
     #[test]
     fn int_arith() {
-        // ((((((23-20) * 2) + 1) / 2) ^ 2) % 10)
+        // (((((23-26) * 2) + 1) / 2) % 10)
         let bytecode = assemble(
             "
             MOV r0 i23
             ISUB r1 r0 i26
             IABS r1 r1
-            IMUL r1 r1 r2
+            IMUL r1 r1 i2
             IADD r1 r1 i1
             IDIV r1 r1 i2
-            IPOW r1 r1 i2
             IMOD r1 r1 i10
             RET r1
         ",
@@ -691,11 +685,11 @@ mod tests {
 
         let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Ok(5 as u64));
+        assert_eq!(result, Ok(3 as u64));
     }
 
     #[test]
-    fn float_arith() {
+    fn float_arith_1() {
         let bytecode = assemble(
             "
             FADD r0 f1.0 f1.0
@@ -704,7 +698,6 @@ mod tests {
             FDIV r0 r0 r1 
             FSUB r0 r0 f1.0  
             FABS r0 r0       
-            FPOW r0 r0 f0.0
             RET r0
         ",
         )
@@ -714,7 +707,24 @@ mod tests {
 
         let result = RelVM::execute(&mut registers, &bytecode);
 
-        assert_eq!(result, Ok((1.0_f64).to_bits() as u64));
+        assert_eq!(result, Ok((0.5_f64).to_bits() as u64));
+    }
+
+    #[test]
+    fn float_arith_2() {
+        let bytecode = assemble(
+            "
+            FEXP r0 f1.0    
+            RET r0
+        ",
+        )
+        .unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelVM::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok((1.0_f64).exp().to_bits() as u64));
     }
 
     #[test]
@@ -915,22 +925,6 @@ mod tests {
     }
 
     #[test]
-    fn int_neg_exponent() {
-        let bytecode = assemble(
-            "
-            IPOW r0 i1 i-1
-        ",
-        )
-        .unwrap();
-
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
-
-        assert_eq!(result, Err(VMError::IntNegativeExponent));
-    }
-
-    #[test]
     fn int_overflow() {
         // Add 1 to max int value
         let bytecode: Vec<u8> = vec![
@@ -951,7 +945,7 @@ mod tests {
             "
             MOV r0 f1.1
             FJLE o3 r0 f1.0
-            ERR b4 r0
+            ERR b1 r0
             RET i1
         ",
         )

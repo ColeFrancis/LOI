@@ -66,7 +66,7 @@ impl<'a> SemAnalyzer<'a> {
                 ));
 
                 if let Expr::Literal(literal) = &*unary.expr {
-                    if let Some(result) = Self::eval_unary(&unary.op, literal) {
+                    if let Some(result) = Self::eval_unary(&unary.op, literal, &unary.op_span, diagnostics) {
                         return Expr::Literal(result);
                     }
                 }
@@ -320,13 +320,32 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
-    fn eval_unary(op: &UnaryOp, literal: &Literal) -> Option<Literal> {
+    fn eval_unary(op: &UnaryOp, literal: &Literal, op_span: &Span, diagnostics: &mut Diagnostics) -> Option<Literal> {
         match (op, literal) {
             (UnaryOp::BitNot, Literal::Bool(x)) => Some(Literal::Bool(!x)),
 
             (UnaryOp::Neg, Literal::Int(x)) => Some(Literal::Int(-x)),
-
             (UnaryOp::Neg, Literal::Float(x)) => Some(Literal::Float(-x)),
+
+            (UnaryOp::Exp, Literal::Int(x)) => Some(Literal::Float((*x as f64).exp())),
+            (UnaryOp::Exp, Literal::Float(x)) => Some(Literal::Float(x.exp())),
+
+            (UnaryOp::Ln, Literal::Int(x)) => {
+                if *x > 0 {
+                    Some(Literal::Float((*x as f64).ln()))
+                } else {
+                    diagnostics.error(Diagnostic::NegativeLog {op_span: op_span.clone() });
+                    None
+                }
+            }
+            (UnaryOp::Ln, Literal::Float(x)) => {
+                if *x > 0.0 {
+                    Some(Literal::Float(x.ln()))
+                } else {
+                    diagnostics.error(Diagnostic::NegativeLog {op_span: op_span.clone()});
+                    None
+                }
+            }
 
             _ => None,
         }

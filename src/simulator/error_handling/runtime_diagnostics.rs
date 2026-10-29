@@ -49,7 +49,6 @@ pub enum VMError {
     InvalidOpcode(u8),
     IntegerOverflow,
     DivisionByZero,
-    IntNegativeExponent, // For integers
     InvalidProb(f64),
 }
 
@@ -57,10 +56,9 @@ impl VMError {
     pub fn from_index(index: usize, info: Option<u64>) -> Self {
         match index {
             0 => Self::InvalidOpcode(info.expect("InvalidOpcode requires info") as u8),
-            1 => Self::IntegerOverflow,
-            2 => Self::DivisionByZero,
-            3 => Self::IntNegativeExponent,
-            4 => Self::InvalidProb(f64::from_bits(info.expect("InvalidProb reqires info"))),
+            1 => Self::InvalidProb(f64::from_bits(info.expect("InvalidProb reqires info"))),
+            2 => Self::IntegerOverflow,
+            3 => Self::DivisionByZero,
             _ => panic!("Invalid runtime error code: {index}"),
         }
     }
@@ -135,10 +133,6 @@ impl std::fmt::Display for VMError {
 
             VMError::DivisionByZero => {
                 write!(f, "Division by zero")
-            }
-
-            VMError::IntNegativeExponent => {
-                write!(f, "Integer raised to negative power")
             }
 
             VMError::InvalidProb(prob) => {

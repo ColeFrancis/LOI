@@ -256,6 +256,8 @@ impl<'a> Lexer<'a> {
             "Mod" => TokenKind::Mod,
             "true" => TokenKind::BoolLiteral(true),
             "false" => TokenKind::BoolLiteral(false),
+            "exp" => TokenKind::Exp,
+            "ln" => TokenKind::Ln,
             "_" => TokenKind::Underscore,
             _ => TokenKind::Ident(buf),
         }
@@ -460,7 +462,7 @@ mod test {
             ( ) { }
             > < >= <=
             + - * / ^
-            ~
+            ~ exp ln
             | _
             = -> :=
             @
@@ -508,6 +510,8 @@ mod test {
                 Slash,
                 Caret,
                 BitNot,
+                Exp,
+                Ln,
                 Pipe,
                 Underscore,
                 Equals,

@@ -90,6 +90,8 @@ pub enum TokenKind {
     Caret,    // ^
 
     BitNot, // ~
+    Exp,    // exp
+    Ln,     // ln
 
     Pipe,       // |
     Ampersand,  // &
@@ -150,6 +152,8 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Slash => write!(f, "\"/\""),
             TokenKind::Caret => write!(f, "\"^\""),
             TokenKind::BitNot => write!(f, "\"~\""),
+            TokenKind::Exp => write!(f, "\"exp(...)\""),
+            TokenKind::Ln => write!(f, "\"ln(...)\""),
             TokenKind::Pipe => write!(f, "\"|\""),
             TokenKind::Ampersand => write!(f, "\"&\""),
 

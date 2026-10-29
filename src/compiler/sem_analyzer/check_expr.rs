@@ -44,12 +44,8 @@ impl<'a> SemAnalyzer<'a> {
                     Box::new(self.add_types_expr(*unary_expr.expr).unwrap_or(Expr::Error));
 
                 unary_expr.expr_type = self.get_expr_type(&unary_expr.expr);
-                // Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
-                if unary_expr.expr_type == Type::Impulse {
-                    unary_expr.expr_type = Type::Bool;
-                }
 
-                self.verify_unary_op_type_match(
+                unary_expr.expr_type = self.verify_unary_op_type_match(
                     &unary_expr.expr_type,
                     &unary_expr.op,
                     &unary_expr.op_span,
@@ -76,10 +72,6 @@ impl<'a> SemAnalyzer<'a> {
                     &right_expr_type,
                     &binary_expr.op_span,
                 )?;
-                // Note: Performing any boolean operation on an Impulse type variable converts it automatically to a Bool.
-                if binary_expr.expr_type == Type::Impulse {
-                    binary_expr.expr_type = Type::Bool;
-                }
 
                 binary_expr.expr_type = self.verify_binary_op_type_match(
                     &binary_expr.expr_type,
@@ -312,14 +304,22 @@ impl<'a> SemAnalyzer<'a> {
         expr_type: &Type,
         op: &UnaryOp,
         op_span: &Span,
-    ) -> Option<()> {
+    ) -> Option<Type> {
         match (expr_type, op) {
-            (Type::Bool, UnaryOp::BitNot) => Some(()),
-            (Type::Impulse, UnaryOp::BitNot) => Some(()),
+            (Type::Bool, UnaryOp::BitNot) => Some(Type::Bool),
+            (Type::Impulse, UnaryOp::BitNot) => Some(Type::Bool),
 
-            (Type::Int, UnaryOp::Neg) => Some(()),
-            (Type::Float, UnaryOp::Neg) => Some(()),
-            (Type::Mod(_), UnaryOp::Neg) => Some(()),
+            (Type::Int, UnaryOp::Neg) => Some(Type::Int),
+            (Type::Float, UnaryOp::Neg) => Some(Type::Float),
+            (Type::Mod(n), UnaryOp::Neg) => Some(Type::Mod(*n)),
+
+            (Type::Int, UnaryOp::Exp) => Some(Type::Float),
+            (Type::Float, UnaryOp::Exp) => Some(Type::Float),
+            (Type::Mod(_), UnaryOp::Exp) => Some(Type::Float),
+
+            (Type::Int, UnaryOp::Ln) => Some(Type::Float),
+            (Type::Float, UnaryOp::Ln) => Some(Type::Float),
+            (Type::Mod(_), UnaryOp::Ln) => Some(Type::Float),
 
             (Type::Error, _) => None,
 
@@ -327,6 +327,8 @@ impl<'a> SemAnalyzer<'a> {
                 let diagnostics_op = match op {
                     UnaryOp::BitNot => Operation::Not,
                     UnaryOp::Neg => Operation::Sub,
+                    UnaryOp::Exp => Operation::Exp,
+                    UnaryOp::Ln => Operation::Ln,
                 };
 
                 self.diagnostics.error(Diagnostic::IncompatibleOp {
@@ -419,9 +421,9 @@ impl<'a> SemAnalyzer<'a> {
         op_span: &Span,
     ) -> Option<Type> {
         match (expr_type, op) {
-            (Type::Impulse, BinaryOp::Or) => Some(Type::Impulse),
-            (Type::Impulse, BinaryOp::Xor) => Some(Type::Impulse),
-            (Type::Impulse, BinaryOp::And) => Some(Type::Impulse),
+            (Type::Impulse, BinaryOp::Or) => Some(Type::Bool),
+            (Type::Impulse, BinaryOp::Xor) => Some(Type::Bool),
+            (Type::Impulse, BinaryOp::And) => Some(Type::Bool),
 
             (Type::Bool, BinaryOp::Or) => Some(Type::Bool),
             (Type::Bool, BinaryOp::Xor) => Some(Type::Bool),

@@ -63,8 +63,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // -----------------
         // Arithmetic
         // -----------------
-        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IPOW" | "IMOD" | "FADD" | "FSUB" | "FMUL" | "FDIV"
-        | "FPOW" => {
+        "IADD" | "ISUB" | "IMUL" | "IDIV" | "IMOD" | "FADD" | "FSUB" | "FMUL" | "FDIV"  => {
             if operands.len() != 3 {
                 return None;
             }
@@ -74,8 +73,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 "ISUB" | "FSUB" => 0b001,
                 "IMUL" | "FMUL" => 0b010,
                 "IDIV" | "FDIV" => 0b011,
-                "IPOW" | "FPOW" => 0b100,
-                "IMOD" => 0b110,
+                "IMOD"  => 0b101,
                 _ => unreachable!(),
             };
 
@@ -111,10 +109,17 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
-        "IABS" | "FABS" => {
+        "IABS" | "FABS" | "FEXP" | "FLN" => {
             if operands.len() != 2 {
                 return None;
             }
+
+            let operation = match mnemonic {
+                "IABS" | "FABS" => 0b100,
+                "FEXP" => 0b101,
+                "FLN" => 0b110,
+                _ => unreachable!(),
+            };
 
             let float = mnemonic.starts_with('F');
 
@@ -127,7 +132,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = ((float as u8) << 5) | (0b101 << 2) | ss;
+            let opcode = ((float as u8) << 5) | (operation << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -522,9 +527,9 @@ ERR b3
             result,
             Ok(vec![
                 0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b00101001,
-                0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0, 0b00010100, 0x00, 0x01,
+                0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0, 0b00010000, 0x00, 0x01,
                 0b01000000, 0x00, 0x01, 0x02, 0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0b01011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00011001, 0x00, 0x01,
+                0x00, 0x00, 0b01011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00010101, 0x00, 0x01,
                 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b11001000, 0x00, 0x01, 0x02,
                 0b10111100, 0x30, 0x00, 0x00, 0x01, 0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x08, 0x40, 0b10100000, 0x00, 0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
