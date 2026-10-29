@@ -346,6 +346,13 @@ impl<'a> SemAnalyzer<'a> {
                     None
                 }
             }
+            
+            (UnaryOp::Floor, Literal::Int(x)) => Some(Literal::Int(x)),
+            (UnaryOp::Floor, Literal::Float(x)) => Some(Literal::Int(x.floor() as i64)),
+            
+            (UnaryOp::Abs, Literal::Int(x)) => Some(Literal::Int(x.abs())),
+            (UnaryOp::Abs, Literal::Float(x)) => Some(Literal::Float(x.abs())),
+            
 
             _ => None,
         }
@@ -363,6 +370,8 @@ impl<'a> SemAnalyzer<'a> {
             (BinaryOp::Xor, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool((*a || *b) && !(*a && *b))),
             (BinaryOp::And, Literal::Bool(a), Literal::Bool(b)) => Some(Literal::Bool(*a && *b)),
 
+            (BinaryOp::Eq, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a == b)),
+            (BinaryOp::Ne, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a != b)),
             (BinaryOp::Lt, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a < b)),
             (BinaryOp::Gt, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a > b)),
             (BinaryOp::Le, Literal::Int(a), Literal::Int(b)) => Some(Literal::Bool(a <= b)),
@@ -379,7 +388,10 @@ impl<'a> SemAnalyzer<'a> {
                     None
                 }
             }
+            (BinaryOp::Mod, Literal::Int(a), Literal::Int(b)) => Some(Literal::Int(a % b)),
 
+            (BinaryOp::Eq, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a == b)),
+            (BinaryOp::Ne, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a != b)),
             (BinaryOp::Lt, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a < b)),
             (BinaryOp::Gt, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a > b)),
             (BinaryOp::Le, Literal::Float(a), Literal::Float(b)) => Some(Literal::Bool(a <= b)),
