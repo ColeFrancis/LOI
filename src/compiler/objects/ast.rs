@@ -84,6 +84,8 @@ pub enum UnaryOp {
     BitNot, // ~
     Exp,    // exp()
     Ln,     // ln()
+    Floor,  // floor()
+    Abs,    // | |
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -97,6 +99,8 @@ pub struct BinaryExpr {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum BinaryOp {
+    Eq,  // ==
+    Ne,  // !=
     Lt,  // <
     Gt,  // >
     Le,  // <=

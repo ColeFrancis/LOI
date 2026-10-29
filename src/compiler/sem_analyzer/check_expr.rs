@@ -321,6 +321,13 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Float, UnaryOp::Ln) => Some(Type::Float),
             (Type::Mod(_), UnaryOp::Ln) => Some(Type::Float),
 
+            (Type::Int, UnaryOp::Floor) => Some(Type::Int),
+            (Type::Float, UnaryOp::Floor) => Some(Type::Int),
+            (Type::Mod(n), UnaryOp::Floor) => Some(Type::Mod(*n)),
+
+            (Type::Int, UnaryOp::Abs) => Some(Type::Int),
+            (Type::Float, UnaryOp::Abs) => Some(Type::Float),
+
             (Type::Error, _) => None,
 
             _ => {
@@ -329,6 +336,8 @@ impl<'a> SemAnalyzer<'a> {
                     UnaryOp::Neg => Operation::Sub,
                     UnaryOp::Exp => Operation::Exp,
                     UnaryOp::Ln => Operation::Ln,
+                    UnaryOp::Floor => Operation::Floor,
+                    UnaryOp::Abs => Operation::Abs,
                 };
 
                 self.diagnostics.error(Diagnostic::IncompatibleOp {
@@ -429,6 +438,8 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Bool, BinaryOp::Xor) => Some(Type::Bool),
             (Type::Bool, BinaryOp::And) => Some(Type::Bool),
 
+            (Type::Mod(_), BinaryOp::Eq) => Some(Type::Bool),
+            (Type::Mod(_), BinaryOp::Ne) => Some(Type::Bool),
             (Type::Mod(_), BinaryOp::Lt) => Some(Type::Bool),
             (Type::Mod(_), BinaryOp::Gt) => Some(Type::Bool),
             (Type::Mod(_), BinaryOp::Le) => Some(Type::Bool),
@@ -437,6 +448,8 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Mod(val), BinaryOp::Sub) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Mul) => Some(Type::Mod(*val)),
             (Type::Mod(val), BinaryOp::Div) => Some(Type::Mod(*val)),
+            (Type::Int, BinaryOp::Eq) => Some(Type::Bool),
+            (Type::Int, BinaryOp::Ne) => Some(Type::Bool),
             (Type::Int, BinaryOp::Lt) => Some(Type::Bool),
             (Type::Int, BinaryOp::Gt) => Some(Type::Bool),
             (Type::Int, BinaryOp::Le) => Some(Type::Bool),
@@ -445,6 +458,8 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Int, BinaryOp::Sub) => Some(Type::Int),
             (Type::Int, BinaryOp::Mul) => Some(Type::Int),
             (Type::Int, BinaryOp::Div) => Some(Type::Int),
+            (Type::Float, BinaryOp::Eq) => Some(Type::Bool),
+            (Type::Float, BinaryOp::Ne) => Some(Type::Bool),
             (Type::Float, BinaryOp::Gt) => Some(Type::Bool),
             (Type::Float, BinaryOp::Lt) => Some(Type::Bool),
             (Type::Float, BinaryOp::Le) => Some(Type::Bool),
@@ -458,6 +473,8 @@ impl<'a> SemAnalyzer<'a> {
 
             _ => {
                 let diagnostics_op = match op {
+                    BinaryOp::Eq => Operation::Cmp,
+                    BinaryOp::Ne => Operation::Cmp,
                     BinaryOp::Lt => Operation::Cmp,
                     BinaryOp::Gt => Operation::Cmp,
                     BinaryOp::Le => Operation::Cmp,

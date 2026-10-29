@@ -156,7 +156,21 @@ impl<'a> Lexer<'a> {
                         return Some(Token::new(TokenKind::Minus, line, col));
                     }
                 }
-                b'=' => return Some(Token::new(TokenKind::Equals, line, col)),
+                b'=' => {
+                    if self.peek() == Some(b'=') {
+                        self.next();
+                        return Some(Token::new(TokenKind::Eq, line, col));
+                    } else {
+                        return Some(Token::new(TokenKind::Equals, line, col));
+                    }
+                }
+                b'!' => {
+                    if self.next() == Some(b'=') {
+                        return Some(Token::new(TokenKind::Ne, line, col,));
+                    } else {
+                        return None;
+                    }
+                }
                 b'+' => return Some(Token::new(TokenKind::Plus, line, col)),
                 b'*' => return Some(Token::new(TokenKind::Asterisk, line, col)),
                 b'^' => return Some(Token::new(TokenKind::Caret, line, col)),
@@ -258,6 +272,8 @@ impl<'a> Lexer<'a> {
             "false" => TokenKind::BoolLiteral(false),
             "exp" => TokenKind::Exp,
             "ln" => TokenKind::Ln,
+            "floor" => TokenKind::Floor,
+            "abs" => TokenKind::Abs,
             "_" => TokenKind::Underscore,
             _ => TokenKind::Ident(buf),
         }
@@ -461,8 +477,9 @@ mod test {
             : ; , .
             ( ) { }
             > < >= <=
+            == !=
             + - * / ^
-            ~ exp ln
+            ~ exp ln floor abs
             | _
             = -> :=
             @
@@ -504,6 +521,8 @@ mod test {
                 Lt,
                 Ge,
                 Le,
+                Eq,
+                Ne,
                 Plus,
                 Minus,
                 Asterisk,
@@ -512,6 +531,8 @@ mod test {
                 BitNot,
                 Exp,
                 Ln,
+                Floor,
+                Abs,
                 Pipe,
                 Underscore,
                 Equals,

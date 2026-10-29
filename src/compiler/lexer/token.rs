@@ -81,8 +81,8 @@ pub enum TokenKind {
     Lt, // <
     Ge, // >=
     Le, // <=
-    // Eq, // ==
-    // Ne, // !=
+    Eq, // ==
+    Ne, // !=
     Plus,     // +
     Minus,    // -
     Asterisk, // *
@@ -92,6 +92,8 @@ pub enum TokenKind {
     BitNot, // ~
     Exp,    // exp
     Ln,     // ln
+    Floor,  // floor
+    Abs,    // abs
 
     Pipe,       // |
     Ampersand,  // &
@@ -141,6 +143,8 @@ impl std::fmt::Display for TokenKind {
             TokenKind::LBrace => write!(f, "\"{{\""),
             TokenKind::RBrace => write!(f, "\"}}\""),
 
+            TokenKind::Eq => write!(f, "\"==\""),
+            TokenKind::Ne => write!(f, "\"!=\""),
             TokenKind::Gt => write!(f, "\">\""),
             TokenKind::Lt => write!(f, "\"<\""),
             TokenKind::Ge => write!(f, "\">=\""),
@@ -154,6 +158,8 @@ impl std::fmt::Display for TokenKind {
             TokenKind::BitNot => write!(f, "\"~\""),
             TokenKind::Exp => write!(f, "\"exp(...)\""),
             TokenKind::Ln => write!(f, "\"ln(...)\""),
+            TokenKind::Floor => write!(f, "\"floor(...)\""),
+            TokenKind::Abs => write!(f, "\"abs(...)\""),
             TokenKind::Pipe => write!(f, "\"|\""),
             TokenKind::Ampersand => write!(f, "\"&\""),
 

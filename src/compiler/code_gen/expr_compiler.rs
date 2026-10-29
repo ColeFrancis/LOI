@@ -129,6 +129,8 @@ impl<'a> CodeGen<'a> {
                             dest,
                             src,
                         });
+
+                        (Source::RegInter(dest), Type::Float)
                     }
 
                     (Type::Float, UnaryOp::Ln) => {
@@ -146,6 +148,74 @@ impl<'a> CodeGen<'a> {
                             dest,
                             src,
                         });
+
+                        (Source::RegInter(dest), Type::Float)
+                    }
+
+                    (Type::Mod(modulus), UnaryOp::Floor) => {
+                        let (expr_bytecode, src, _) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+                        
+                        // Floor operation does nothing to int and mod types
+                        (src, Type::Mod(modulus))
+                    }
+
+                    (Type::Int, UnaryOp::Floor) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+
+
+                        // Floor operation does nothing to int and mod types
+                        if sub_type == Type::Int {
+                            (src, Type::Int)
+                        } else {
+                            let dest = match src {
+                                Source::RegInter(reg) => reg,
+                                _ => self.get_next_reg()?,
+                            };
+                            
+                            bytecode.push(Instruction::FLR {
+                                dest,
+                                src,
+                            });
+
+                            (Source::RegInter(dest), Type::Int)
+                        }
+                    }
+
+                    (Type::Int, UnaryOp::Abs) => {
+                        let (expr_bytecode, src, _) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(Instruction::IABS {
+                            dest,
+                            src,
+                        });
+
+                        (Source::RegInter(dest), Type::Int)
+                    }
+
+                    (Type::Float, UnaryOp::Abs) => {
+                        let (expr_bytecode, src, _) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(Instruction::FABS {
+                            dest,
+                            src,
+                        });
+
+                        (Source::RegInter(dest), Type::Float)
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
@@ -420,6 +490,94 @@ impl<'a> CodeGen<'a> {
                         (Source::RegInter(dest), Type::Float)
                     }
 
+                    (Type::Bool, BinaryOp::Eq) => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
+                                let src1 =
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 =
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FEQ {
+                                    dest,
+                                    src1,
+                                    src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::IEQ {
+                                    dest,
+                                    src1,
+                                    src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
+                    (Type::Bool, BinaryOp::Ne) => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        match (&left_sub_type, &right_sub_type) {
+                            // if one is float, make both float
+                            (&Type::Float, _) | (_, &Type::Float) => {
+                                let src1 =
+                                    self.coerce_float(&mut bytecode, src1, &left_sub_type, true)?;
+                                let src2 =
+                                    self.coerce_float(&mut bytecode, src2, &right_sub_type, true)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::FNE {
+                                    dest,
+                                    src1,
+                                    src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+
+                            _ => {
+                                let src1 = self.coerce_int(&mut bytecode, src1, &left_sub_type)?;
+                                let src2 = self.coerce_int(&mut bytecode, src2, &right_sub_type)?;
+
+                                let dest = self.get_binary_dest(src1, src2)?;
+
+                                bytecode.push(Instruction::INE {
+                                    dest,
+                                    src1,
+                                    src2,
+                                });
+
+                                (Source::RegInter(dest), Type::Bool)
+                            }
+                        }
+                    }
                     (Type::Bool, BinaryOp::Lt) => {
                         let (left_expr_bytecode, src1, left_sub_type) =
                             self.compile_expr(*binary.left)?;
@@ -1408,6 +1566,36 @@ mod tests {
     }
 
     #[test]
+    fn unary_expr_4() {
+        // floor(1)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = Vec::new();
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Unary(UnaryExpr {
+            expr: Box::new(Expr::Literal(Literal::Int(1))),
+            op: UnaryOp::Floor,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![],
+                Source::Int(1),
+                Type::Int
+            ))
+        );
+    }
+
+    #[test]
     fn binary_add_1() {
         // -(3.0) + -(a)
         let mut diagnostics = Diagnostics::new();
@@ -1672,6 +1860,100 @@ mod tests {
                     },
                 ],
                 Source::RegInter(2),
+                Type::Bool
+            ))
+        );
+    }
+
+    #[test]
+    fn binary_cmp_3() {
+        //  true ^ (floor(abs(ln(5) - 1)) != 3)
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Bool(true))),
+            right: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Unary(UnaryExpr {
+                                expr: Box::new(Expr::Literal(Literal::Int(5))),
+                                op: UnaryOp::Ln,
+                                op_span: Span{line: 0, col: 0},
+                                expr_type: Type::Float,
+                            })),
+                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                            op: BinaryOp::Sub,
+                            op_span: Span {line: 0, col: 0},
+                            expr_type: Type::Float,
+                        })),
+                        op: UnaryOp::Abs,
+                        op_span: Span {line: 0, col: 0},
+                        expr_type: Type::Float,
+                    })),
+                    op: UnaryOp::Floor,
+                    op_span: Span {line: 0, col: 0},
+                    expr_type: Type::Int,
+                })),
+                right: Box::new(Expr::Literal(Literal::Int(3))),
+                op: BinaryOp::Ne,
+                op_span: Span {line: 0, col: 0},
+                expr_type: Type::Bool,
+            })),
+            op: BinaryOp::Xor,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Bool,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::I2F {
+                        dest: 0,
+                        src: Source::Int(5),
+                    },
+                    Instruction::FLN {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::I2F {
+                        dest: 1,
+                        src: Source::Int(1),
+                    },
+                    Instruction::FSUB {
+                        dest: 0,
+                        src1: Source::RegInter(0),
+                        src2: Source::RegInter(1),
+                    },
+                    Instruction::FABS {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::FLR {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::INE {
+                        dest: 0,
+                        src1: Source::RegInter(0),
+                        src2: Source::Int(3),
+                    },
+                    Instruction::XOR {
+                        dest: 0,
+                        src1: Source::Bool(true),
+                        src2: Source::RegInter(0),
+                    }
+                ],
+                Source::RegInter(0),
                 Type::Bool
             ))
         );

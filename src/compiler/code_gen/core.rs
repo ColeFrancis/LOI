@@ -382,6 +382,7 @@ impl<'a> CodeGen<'a> {
                 Instruction::XOR { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
+                Instruction::FLR { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::I2F { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::JMP { .. } => 3,
                 Instruction::IJEQ { src1, src2, .. } => {

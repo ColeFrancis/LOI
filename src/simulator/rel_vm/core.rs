@@ -300,6 +300,18 @@ impl RelVM {
                             registers[dest_reg] = (src1_val ^ src2_val) as u64;
                         }
 
+                        // FLR
+                        0b00010000 => {
+                            let src_val = f64::from_bits(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            ));
+
+                            registers[dest_reg] = ((src_val as f64).floor() as i64) as u64;
+                        }
+
                         // I2F
                         0b00011000 => {
                             let src_val = Self::read_source(
@@ -725,6 +737,23 @@ mod tests {
         let result = RelVM::execute(&mut registers, &bytecode);
 
         assert_eq!(result, Ok((1.0_f64).exp().to_bits() as u64));
+    }
+
+    #[test]
+    fn float_arith_3() {
+        let bytecode = assemble(
+            "
+            FLR r0 f-1.2    
+            RET r0
+        ",
+        )
+        .unwrap();
+
+        let mut registers = [0; 64];
+
+        let result = RelVM::execute(&mut registers, &bytecode);
+
+        assert_eq!(result, Ok((-2 as i64) as u64));
     }
 
     #[test]

@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
             TokenKind::Exp => {
                 self.next();
                 self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
-                let rhs = self.parse_expr(25)?;
+                let rhs = self.parse_expr(0)?;
                 self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
 
                 Some(Expr::Unary(UnaryExpr {
@@ -142,11 +142,39 @@ impl<'a> Parser<'a> {
             TokenKind::Ln => {
                 self.next();
                 self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
-                let rhs = self.parse_expr(25)?;
+                let rhs = self.parse_expr(0)?;
                 self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
 
                 Some(Expr::Unary(UnaryExpr {
                     op: UnaryOp::Ln,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Floor => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Floor,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Abs => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Abs,
                     expr: Box::new(rhs),
                     op_span: token.span,
                     expr_type: Type::Unknown,
@@ -251,10 +279,12 @@ impl<'a> Parser<'a> {
 
     fn infix_into(&mut self, token: &Token) -> Option<(BinaryOp, Span, u8, u8)> {
         match &token.kind {
-            TokenKind::Gt => Some((BinaryOp::Gt, token.span.clone(), 1, 2)),
-            TokenKind::Lt => Some((BinaryOp::Lt, token.span.clone(), 1, 2)),
-            TokenKind::Ge => Some((BinaryOp::Ge, token.span.clone(), 1, 2)),
-            TokenKind::Le => Some((BinaryOp::Le, token.span.clone(), 1, 2)),
+            TokenKind::Eq => Some((BinaryOp::Eq, token.span.clone(), 5, 6)),
+            TokenKind::Ne => Some((BinaryOp::Ne, token.span.clone(), 5, 6)),
+            TokenKind::Gt => Some((BinaryOp::Gt, token.span.clone(), 5, 6)),
+            TokenKind::Lt => Some((BinaryOp::Lt, token.span.clone(), 5, 6)),
+            TokenKind::Ge => Some((BinaryOp::Ge, token.span.clone(), 5, 6)),
+            TokenKind::Le => Some((BinaryOp::Le, token.span.clone(), 5, 6)),
             TokenKind::Plus => Some((BinaryOp::Add, token.span.clone(), 10, 11)),
             TokenKind::Minus => Some((BinaryOp::Sub, token.span.clone(), 10, 11)),
             TokenKind::Asterisk => Some((BinaryOp::Mul, token.span.clone(), 20, 21)),
@@ -657,6 +687,8 @@ mod tests {
             UnaryOp::BitNot => "~",
             UnaryOp::Exp => "exp",
             UnaryOp::Ln => "ln",
+            UnaryOp::Floor => "floor",
+            UnaryOp::Abs => "abs",
         }
     }
 
@@ -669,6 +701,8 @@ mod tests {
             BinaryOp::Or => "|",
             BinaryOp::Xor => "^",
             BinaryOp::And => "&",
+            BinaryOp::Eq => "==",
+            BinaryOp::Ne => "!=",
             BinaryOp::Gt => ">",
             BinaryOp::Lt => "<",
             BinaryOp::Ge => ">=",
@@ -783,7 +817,7 @@ mod tests {
     }
 
     #[test]
-    fn binary_expr() {
+    fn binary_expr_1() {
         // -5 + 2 * exp(a) + b
         let kinds: Vec<TokenKind> = vec![
             Minus,
@@ -809,7 +843,10 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(+ (+ (- 5) (* 2 (exp a))) b)".to_string());
+    }
 
+    #[test]
+    fn binary_expr_2() {
         // (9 + 10) | 5
         let kinds: Vec<TokenKind> = vec![
             LParen,
@@ -831,6 +868,42 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(| (+ 9 10) 5)".to_string());
+    }
+
+    #[test]
+    fn binary_expr_3() {
+        // true ^ (floor(abs(ln(5) -1)) != 3)
+        let kinds: Vec<TokenKind> = vec![
+            BoolLiteral(true),
+            Caret,
+            LParen,
+            Floor,
+            LParen,
+            Abs,
+            LParen,
+            Ln,
+            LParen,
+            IntLiteral(5),
+            RParen,
+            Minus,
+            IntLiteral(1),
+            RParen,
+            RParen,
+            Ne,
+            IntLiteral(3),
+            RParen,
+            Eof,
+        ];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_expr(0).unwrap();
+
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(^ true (!= (floor (abs (- (ln 5) 1))) 3))".to_string());
     }
 
     #[test]

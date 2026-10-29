@@ -264,12 +264,14 @@ pub enum Operation {
     Sub,
     Mul,
     Div,
+    Abs,
     Exp,
     Ln,
     Or,
     Xor,
     And,
     Not,
+    Floor,
 }
 
 #[derive(Debug, PartialEq)]
@@ -634,12 +636,14 @@ impl std::fmt::Display for Operation {
             Operation::Sub => write!(f, "Subtract"),
             Operation::Mul => write!(f, "Multiply"),
             Operation::Div => write!(f, "Divide"),
+            Operation::Abs => write!(f, "Absolute Value or Magnitude"),
             Operation::Exp => write!(f, "Exp"),
             Operation::Ln  => write!(f, "Natural Log"),
             Operation::Or  => write!(f, "Boolean Or"),
             Operation::Xor => write!(f, "Boolean Xor"),
             Operation::And => write!(f, "Boolean And"),
             Operation::Not => write!(f, "Boolean Not"),
+            Operation::Floor => write!(f, "Floor"),
         }
     }
 }

@@ -215,12 +215,18 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         }
 
         // ------------------------------------------------------------
-        // ITOF
+        // Type converting operations
         // ------------------------------------------------------------
-        "I2F" => {
+        "FLR" | "I2F" => {
             if operands.len() != 2 {
                 return None;
             }
+
+            let operation = match mnemonic {
+                "FLR" => 0b00,
+                "I2F" => 0b10,
+                _ => unreachable!(),
+            };
 
             let dest = match operands[0] {
                 Operand::Register(r) => r,
@@ -231,7 +237,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = (0b010110) << 2 | ss;
+            let opcode = (0b0101 << 4) | (operation << 2) | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -239,6 +245,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
                 _ => return None,
             }
         }

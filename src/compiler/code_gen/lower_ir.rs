@@ -245,6 +245,17 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
+                Instruction::FLR { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b010100 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
                 Instruction::I2F { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
@@ -846,6 +857,10 @@ ERR b3
                 src1: Source::RegInter(0),
                 src2: Source::RegInter(0),
             },
+            Instruction::FLR {
+                dest: 0,
+                src: Source::RegInter(0),
+            },
             Instruction::I2F {
                 dest: 0,
                 src: Source::RegInter(0),
@@ -1005,6 +1020,7 @@ OR r0 r0 r0
 NOT r0 r0
 XOR r0 r0 r0
 
+FLR r0 r0
 I2F r0 r0
 JMP o0
 

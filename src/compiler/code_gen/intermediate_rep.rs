@@ -115,6 +115,10 @@ pub enum Instruction {
         src1: Source,
         src2: Source,
     },
+    FLR {
+        dest: usize,
+        src: Source,
+    },
     I2F {
         dest: usize,
         src: Source,
