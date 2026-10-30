@@ -24,12 +24,58 @@
 
 use super::Parser;
 use super::sync::SyncRule;
-use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
+use crate::compiler::{lexer::token::TokenKind, objects::ast::*, error_handling::diagnostics::{Diagnostic, Expected}};
 
 impl<'a> Parser<'a> {
     // Let token already consumed
     pub(super) fn parse_stmt(&mut self) -> Option<Statement> {
         let name = self.expect_ident(&SyncRule::Statement)?;
+
+        let token = self.next();
+        let stmt = match token.kind {
+            TokenKind::Equals => Statement::Var(self.parse_variable(name)?),
+            TokenKind::LParen => Statement::Inline(self.parse_inline(name)?),
+
+            _ => {
+                self.diagnostics.error(Diagnostic::UnexpectedToken {
+                    expected: vec![Expected::Token(TokenKind::Equals), Expected::Token(TokenKind::LParen)],
+                    found: token.kind,
+                    span: token.span.clone(),
+                });
+                return None;
+            }
+        };
+
+        Some(stmt)
+    }
+
+    // "=" already consumed
+    fn parse_variable(&mut self, name: Ident) -> Option<Variable> {
+        let expr = match self.parse_expr(0) {
+            Some(expr) => expr,
+            None => Expr::Error,
+        };
+
+        self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
+
+        Some(Variable { name, expr })
+    }
+
+    // "("" already consumed
+    fn parse_inline(&mut self, name: Ident) -> Option<Inline> {
+        let mut args = Vec::new();
+
+        while self.peek().kind != TokenKind::RParen {
+            args.push(self.expect_ident(&SyncRule::Statement)?);
+
+            if self.peek().kind == TokenKind::Comma {
+                self.next();
+            } else {
+                break;
+            }
+        }
+
+        self.expect(TokenKind::RParen, &SyncRule::Statement)?;
 
         self.expect(TokenKind::Equals, &SyncRule::Statement)?;
 
@@ -40,7 +86,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
 
-        Some(Statement::Var(Variable { name, expr }))
+        Some(Inline { name, args, expr})
     }
 }
 
@@ -137,5 +183,49 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 2); // invalid num, unexpected token
+    }
+
+    #[test]
+    fn inline() {
+        // let add(a, b) = a+b;
+        let kinds: Vec<TokenKind> = vec![
+            Ident("add".to_string()),
+            LParen,
+            Ident("a".to_string()),
+            Comma,
+            Ident("b".to_string()),
+            RParen,
+            Equals,
+            Ident("a".to_string()),
+            Plus,
+            Ident("b".to_string()),
+            Semicolon,
+            Eof,
+        ];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_stmt();
+
+        assert_eq!(
+            result,
+            Some(Statement::Inline(Inline {
+                name: build_ident_str("add"),
+                args: vec![
+                    build_ident_str("a"),
+                    build_ident_str("b"),
+                ],
+                expr: Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(build_ident_str("a"))),
+                    op: BinaryOp::Add,
+                    right: Box::new(Expr::Ident(build_ident_str("b"))),
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Unknown,
+                })
+            }))
+        );
+        assert!(!diagnostics.has_errors());
     }
 }

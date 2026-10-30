@@ -81,6 +81,9 @@ impl<'a> SemAnalyzer<'a> {
                             Some(resolved_let) => Statement::Var(resolved_let),
                             None => Statement::Error,
                         },
+
+                        // TODO: Fix
+                        Statement::Inline(_) => unreachable!(),
                         Statement::Error => Statement::Error,
                     }
                 }

@@ -103,6 +103,7 @@ impl<'a> SemAnalyzer<'a> {
                             Statement::Var(self.check_variable(variable))
                         }
 
+                        Statement::Inline(_) => unreachable!(),
                         Statement::Error => Statement::Error,
                     };
                 }

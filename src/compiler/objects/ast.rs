@@ -205,7 +205,7 @@ pub struct Param {
 #[derive(PartialEq, Debug, Clone)]
 pub enum Statement {
     Var(Variable),
-    // Inline(Inline),
+    Inline(Inline),
     Error,
 }
 
@@ -215,12 +215,12 @@ pub struct Variable {
     pub expr: Expr,
 }
 
-// #[derive(PartialEq, Debug, Clone)]
-// pub struct Inline {
-//     pub name: Ident,
-//     pub args: Vec<Ident>,
-//     pub expr: Expr,
-// }
+#[derive(PartialEq, Debug, Clone)]
+pub struct Inline {
+    pub name: Ident,
+    pub args: Vec<Ident>,
+    pub expr: Expr,
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Entities

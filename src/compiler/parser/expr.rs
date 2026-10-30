@@ -620,13 +620,29 @@ mod tests {
 
     fn build_statement(stmt: &Statement) -> String {
         match stmt {
-            Statement::Var(let_stmt) => {
-                let name = match &let_stmt.name {
+            Statement::Var(var) => {
+                let name = match &var.name {
                     ast::Ident::Str { val, .. } => val.clone(),
                     ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
                 };
 
-                format!("(let {} {})", name, build_s_expr(&let_stmt.expr))
+                format!("(let {} {})", name, build_s_expr(&var.expr))
+            }
+            Statement::Inline(inline) => {
+                let name = match &inline.name {
+                    ast::Ident::Str { val, .. } => val.clone(),
+                    ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
+                };
+
+                let args = inline.args.iter()
+                    .map(|arg| match arg {
+                        ast::Ident::Str { val, .. } => val.clone(),
+                        ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
+
+                format!("(let {}({}) {})", name, args, build_s_expr(&inline.expr))
             }
             Statement::Error => {
                 format!("(error)")
