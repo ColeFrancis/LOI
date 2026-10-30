@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Users can now set the seed of the random number generator through a seed statement
 - Added == and != comparison operators in cases patterns
 
+### Changed
+
+- Only rel_t that are instantiated by some net are compiled
+
 ## [1.2.0] - 2026-10-19
 
 ### Added
