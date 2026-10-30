@@ -35,7 +35,7 @@ pub struct Program {
 #[derive(PartialEq, Debug)]
 pub enum Item {
     Seed { val: u64, span: Span },
-    Let(LetStatement),
+    Let(Variable),
     Ent(EntType),
     Rel(RelType),
     Net(Net),
@@ -204,15 +204,23 @@ pub struct Param {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum Statement {
-    Let(LetStatement),
+    Variable(Variable),
+    // Inline(Inline),
     Error,
 }
 
 #[derive(PartialEq, Debug, Clone)]
-pub struct LetStatement {
+pub struct Variable {
     pub name: Ident,
     pub expr: Expr,
 }
+
+// #[derive(PartialEq, Debug, Clone)]
+// pub struct Inline {
+//     pub name: Ident,
+//     pub args: Vec<Ident>,
+//     pub expr: Expr,
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Entities

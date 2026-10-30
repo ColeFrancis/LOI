@@ -63,9 +63,9 @@ impl<'a> SemAnalyzer<'a> {
     // returning None means the statement was sucessfully folded
     pub(super) fn fold_let(
         &mut self,
-        stmt: LetStatement,
+        stmt: Variable,
         fold_sample: bool,
-    ) -> Option<LetStatement> {
+    ) -> Option<Variable> {
         let mut rng = match self.ast.seed {
             Some(seed) => ChaCha8Rng::seed_from_u64(seed),
             None => ChaCha8Rng::from_rng(&mut rand::rng()),
@@ -75,12 +75,12 @@ impl<'a> SemAnalyzer<'a> {
     }
 
     pub(super) fn fold_let_inner(
-        mut stmt: LetStatement,
+        mut stmt: Variable,
         fold_sample: bool,
         symbols: &mut [Symbol],
         rng: &mut ChaCha8Rng,
         diagnostics: &mut Diagnostics,
-    ) -> Option<LetStatement> {
+    ) -> Option<Variable> {
         
 
         stmt.expr = Self::fold_expr_inner(stmt.expr, fold_sample, symbols, rng, diagnostics);
@@ -146,7 +146,7 @@ mod tests {
         };
 
         let result = sem_analyzer.fold_let(
-            LetStatement {
+            Variable {
                 name: Ident::Symbol(0),
                 expr: Expr::Literal(Literal::Int(1)),
             },
@@ -183,7 +183,7 @@ mod tests {
             ast: Program {
                 seed: None, 
                 items: vec![
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: Ident::Symbol(0),
                         expr: Expr::Literal(Literal::Int(1)),
                     }),

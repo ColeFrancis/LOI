@@ -99,8 +99,8 @@ impl<'a> SemAnalyzer<'a> {
                     let owned_statement = std::mem::replace(statement, Statement::Error);
 
                     *statement = match owned_statement {
-                        Statement::Let(let_statement) => {
-                            Statement::Let(self.check_let(let_statement))
+                        Statement::Variable(variable) => {
+                            Statement::Variable(self.check_let(variable))
                         }
 
                         Statement::Error => Statement::Error,
@@ -1066,7 +1066,7 @@ mod tests {
         };
 
         let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
-            statements: vec![Statement::Let(LetStatement {
+            statements: vec![Statement::Variable(Variable {
                 name: Ident::Symbol(0),
                 expr: Expr::Literal(Literal::Int(1)),
             })],
@@ -1077,7 +1077,7 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(1)),
                 }),],
@@ -1113,7 +1113,7 @@ mod tests {
         };
 
         let result = sem_analyzer.add_types_expr(Expr::Block(BlockExpr {
-            statements: vec![Statement::Let(LetStatement {
+            statements: vec![Statement::Variable(Variable {
                 name: Ident::Symbol(0),
                 expr: Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(1))),
@@ -1130,7 +1130,7 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Error,
                 }),],

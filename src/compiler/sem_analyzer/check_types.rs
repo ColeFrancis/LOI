@@ -58,8 +58,8 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
-    // There is no way checking types on LetStatement results in an error item.
-    pub(super) fn check_let(&mut self, mut stmt: LetStatement) -> LetStatement {
+    // There is no way checking types on Variable results in an error item.
+    pub(super) fn check_let(&mut self, mut stmt: Variable) -> Variable {
         stmt.expr = self.add_types_expr(stmt.expr).unwrap_or(Expr::Error);
 
         let expr_type = self.get_expr_type(&stmt.expr);
@@ -444,7 +444,7 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let _result = sem_analyzer.check_let(LetStatement {
+        let _result = sem_analyzer.check_let(Variable {
             name: Ident::Symbol(0),
             expr: Expr::Literal(Literal::Int(1)),
         });

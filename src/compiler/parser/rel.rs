@@ -203,7 +203,7 @@ mod tests {
                 params: vec![],
                 return_type: Type::Bool,
                 body: Expr::Block(BlockExpr {
-                    statements: vec![Statement::Let(LetStatement {
+                    statements: vec![Statement::Variable(Variable {
                         name: build_ident_str("p"),
                         expr: Expr::Literal(Literal::Float(0.5)),
                     })],
@@ -314,7 +314,7 @@ mod tests {
                 body: Expr::Block(BlockExpr {
                     statements: vec![
                         Statement::Error,
-                        Statement::Let(LetStatement {
+                        Statement::Variable(Variable {
                             name: build_ident_str("q"),
                             expr: Expr::Literal(Literal::Float(0.4)),
                         })
@@ -378,11 +378,11 @@ mod tests {
                 return_type: Type::Float,
                 body: Expr::Block(BlockExpr {
                     statements: vec![
-                        Statement::Let(LetStatement {
+                        Statement::Variable(Variable {
                             name: build_ident_str("p"),
                             expr: Expr::Literal(Literal::Float(0.5)),
                         }),
-                        Statement::Let(LetStatement {
+                        Statement::Variable(Variable {
                             name: build_ident_str("q"),
                             expr: Expr::Literal(Literal::Float(0.4)),
                         }),

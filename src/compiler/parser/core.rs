@@ -334,7 +334,7 @@ mod tests {
                         name: build_ident_str("COIN"),
                         members: vec![build_ident_str("H"), build_ident_str("T")],
                     }),
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: build_ident_str("a"),
                         expr: Expr::Literal(Literal::Int(1)),
                     }),
@@ -416,7 +416,7 @@ net EMPTY {}",
                             },
                         ],
                     }),
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "a".to_string(),
                             span: Span { line: 3, col: 5 },
@@ -469,7 +469,7 @@ let n = @;
             Program {
                 seed: None,
                 items: vec![
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 1, col: 5 },
@@ -477,7 +477,7 @@ let n = @;
                         expr: Expr::Literal(Literal::Int(1)),
                     }),
                     Item::Error,
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 3, col: 5 },
@@ -485,7 +485,7 @@ let n = @;
                         expr: Expr::Literal(Literal::Int(3)),
                     }),
                     Item::Error,
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 5, col: 5 },
@@ -493,14 +493,14 @@ let n = @;
                         expr: Expr::Literal(Literal::Int(5)),
                     }),
                     Item::Error,
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 7, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(7)),
                     }),
-                    Item::Let(LetStatement {
+                    Item::Let(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 8, col: 5 },

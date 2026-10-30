@@ -28,7 +28,7 @@ use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
 
 impl<'a> Parser<'a> {
     // Let token already consumed
-    pub(super) fn parse_let_stmt(&mut self) -> Option<LetStatement> {
+    pub(super) fn parse_let_stmt(&mut self) -> Option<Variable> {
         let name = self.expect_ident(&SyncRule::Statement)?;
 
         self.expect(TokenKind::Equals, &SyncRule::Statement)?;
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
 
-        Some(LetStatement { name, expr })
+        Some(Variable { name, expr })
     }
 }
 
@@ -74,7 +74,7 @@ mod tests {
     }
 
     #[test]
-    fn let_statement() {
+    fn variable() {
         // let n = 1 + 2;
         let kinds: Vec<TokenKind> = vec![
             Ident("n".to_string()),
@@ -94,7 +94,7 @@ mod tests {
 
         assert_eq!(
             result,
-            Some(LetStatement {
+            Some(Variable {
                 name: build_ident_str("n"),
                 expr: Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(1))),
@@ -109,7 +109,7 @@ mod tests {
     }
 
     #[test]
-    fn bad_let_statement() {
+    fn bad_variable() {
         // let n = 1 + 2
         let kinds: Vec<TokenKind> = vec![
             Ident("n".to_string()),

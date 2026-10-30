@@ -315,7 +315,7 @@ impl<'a> Parser<'a> {
             self.next();
 
             statements.push(match self.parse_let_stmt() {
-                Some(stmt) => Statement::Let(stmt),
+                Some(stmt) => Statement::Variable(stmt),
                 None => Statement::Error,
             });
         }
@@ -620,7 +620,7 @@ mod tests {
 
     fn build_statement(stmt: &Statement) -> String {
         match stmt {
-            Statement::Let(let_stmt) => {
+            Statement::Variable(let_stmt) => {
                 let name = match &let_stmt.name {
                     ast::Ident::Str { val, .. } => val.clone(),
                     ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
@@ -1360,7 +1360,7 @@ mod tests {
             result,
             Some(Expr::Block(BlockExpr {
                 statements: vec![
-                    Statement::Let(LetStatement {
+                    Statement::Variable(Variable {
                         name: ast::Ident::Str {
                             val: "m".to_string(),
                             span: Span { line: 0, col: 0 },
@@ -1403,7 +1403,7 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: ast::Ident::Str {
                         val: "n".to_string(),
                         span: Span { line: 0, col: 0 },

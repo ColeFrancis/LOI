@@ -881,14 +881,14 @@ impl<'a> CodeGen<'a> {
 
             Expr::Block(block) => {
                 for statement in block.statements {
-                    let Statement::Let(let_statement) = statement else {
+                    let Statement::Variable(variable) = statement else {
                         return None;
                     };
-                    let Ident::Symbol(id) = let_statement.name else {
+                    let Ident::Symbol(id) = variable.name else {
                         return None;
                     };
 
-                    let (expr_bytecode, src, _sub_type) = self.compile_expr(let_statement.expr)?;
+                    let (expr_bytecode, src, _sub_type) = self.compile_expr(variable.expr)?;
 
                     bytecode.extend(expr_bytecode);
 
@@ -2147,11 +2147,11 @@ mod tests {
 
         let ir = compiler.compile_expr(Expr::Block(BlockExpr {
             statements: vec![
-                Statement::Let(LetStatement {
+                Statement::Variable(Variable {
                     name: Ident::Symbol(1),
                     expr: Expr::Ident(Ident::Symbol(0)),
                 }),
-                Statement::Let(LetStatement {
+                Statement::Variable(Variable {
                     name: Ident::Symbol(2),
                     expr: Expr::Literal(Literal::Int(1)),
                 }),

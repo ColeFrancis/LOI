@@ -152,13 +152,13 @@ impl<'a> SemAnalyzer<'a> {
                 let owned_statements = std::mem::take(&mut block_expr.statements);
 
                 for statement in owned_statements {
-                    if let Statement::Let(let_statement) = statement {
-                        if let Some(folded_let_statement) =
-                            Self::fold_let_inner(let_statement, only_deterministic, symbols, rng, diagnostics)
+                    if let Statement::Variable(variable) = statement {
+                        if let Some(folded_variable) =
+                            Self::fold_let_inner(variable, only_deterministic, symbols, rng, diagnostics)
                         {
                             block_expr
                                 .statements
-                                .push(Statement::Let(folded_let_statement));
+                                .push(Statement::Variable(folded_variable));
                         }
                     }
                 }
@@ -890,7 +890,7 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(2)),
                 })],
@@ -933,7 +933,7 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Error,
                 })],
@@ -952,7 +952,7 @@ mod tests {
         assert_eq!(
             result,
             Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Error,
                 }),],
@@ -992,7 +992,7 @@ mod tests {
 
         let result = sem_analyzer.fold_expr(
             Expr::Block(BlockExpr {
-                statements: vec![Statement::Let(LetStatement {
+                statements: vec![Statement::Variable(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Bool(true)),
                 })],
