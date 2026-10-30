@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed pow op
 - Added exp(), ln(), xor, abs(), floor(), ==, !=, % ops
 - Added expressions to sample standard uniform and normal rvs
+- Users can now set the seed of the random number generator through a seed statement
+- Added == and != comparison operators in cases patterns
 
 ## [1.2.0] - 2026-10-19
 

@@ -28,11 +28,13 @@ use crate::compiler::error_handling::span::Span;
 
 #[derive(PartialEq, Debug)]
 pub struct Program {
+    pub seed: Option<u64>, // seed for random number generators
     pub items: Vec<Item>,
 }
 
 #[derive(PartialEq, Debug)]
 pub enum Item {
+    Seed { val: u64, span: Span },
     Let(LetStatement),
     Ent(EntType),
     Rel(RelType),
@@ -124,6 +126,8 @@ pub enum BinaryOp {
 
 #[derive(PartialEq, Debug, Clone)]
 pub enum CompOp {
+    Eq, // ==
+    Ne, // !=
     Lt, // <
     Gt, // >
     Le, // <=

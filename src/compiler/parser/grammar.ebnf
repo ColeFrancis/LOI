@@ -106,9 +106,12 @@ sample_arm =
 
 ////////////////////////////////////////////////////////////////////////////////
 
-program = (let_stmt | ent_decl | rel_decl | net_decl)* ;
+program = (seed | let_stmt | ent_decl | rel_decl | net_decl)* ;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+seed = 
+    "seed" literal ;
 
 ent_decl =
     "ent_t" IDENT "=" ent_expr ";" ;

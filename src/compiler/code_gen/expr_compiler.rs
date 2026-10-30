@@ -1316,6 +1316,18 @@ impl<'a> CodeGen<'a> {
 
                 match scrutinee_types[0] {
                     Type::Float => match comp_pattern.op {
+                        CompOp::Eq => bytecode.push(Instruction::FJNE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Ne => bytecode.push(Instruction::FJEQ {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
                         CompOp::Lt => bytecode.push(Instruction::FJGE {
                             offset: 3, // Jump to right past the jmp inst
                             src1: scrutinee_sources[0],
@@ -1342,6 +1354,18 @@ impl<'a> CodeGen<'a> {
                     },
 
                     _ => match comp_pattern.op {
+                        CompOp::Eq => bytecode.push(Instruction::IJNE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Ne => bytecode.push(Instruction::IJEQ {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
                         CompOp::Lt => bytecode.push(Instruction::IJGE {
                             offset: 3, // Jump to right past the jmp inst
                             src1: scrutinee_sources[0],

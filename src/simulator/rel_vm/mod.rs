@@ -15,10 +15,13 @@
 mod core;
 pub mod test_assembler;
 
+use rand_chacha::ChaCha8Rng;
+
 use crate::compiler::objects::compiled_rel::CompiledRel;
 
 pub struct RelVM {
     // relation id refers to index of outer vector
     relations: Vec<CompiledRel>,
     registers: [u64; 64],
+    rng: ChaCha8Rng,
 }

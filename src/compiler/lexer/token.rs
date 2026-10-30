@@ -44,6 +44,7 @@ impl Token {
 #[allow(non_camel_case_types)]
 pub enum TokenKind {
     // Keywords
+    Seed,     // seed
     Ent_t,    // ent_t
     Rel_t,    // rel_t
     NetToken, // net
@@ -115,6 +116,7 @@ pub enum TokenKind {
 impl std::fmt::Display for TokenKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            TokenKind::Seed => write!(f, "\"seed\""),
             TokenKind::Ent_t => write!(f, "\"ent_t\""),
             TokenKind::Rel_t => write!(f, "\"rel_t\""),
             TokenKind::NetToken => write!(f, "\"net\""),

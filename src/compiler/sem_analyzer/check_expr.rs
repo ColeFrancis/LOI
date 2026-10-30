@@ -685,7 +685,7 @@ mod tests {
         // (1+1, true, 2.0, a, H) // a already in symbol table as an Int, H as member of COIN
         let mut diagnostics = Diagnostics::new();
         let sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -755,7 +755,7 @@ mod tests {
     #[test]
     fn unary_expr_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.add_types_expr(Expr::Unary(UnaryExpr {
             op: UnaryOp::Neg,
@@ -788,7 +788,7 @@ mod tests {
     #[test]
     fn unary_expr_2() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.add_types_expr(Expr::Unary(UnaryExpr {
             op: UnaryOp::Neg,
@@ -812,7 +812,7 @@ mod tests {
         // 1 + r // r is a Float
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "r".to_string(),
                 kind: SymbolKind::Variable(Type::Float),
@@ -849,7 +849,7 @@ mod tests {
         // 1 + b // b is a bool
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Bool),
@@ -878,7 +878,7 @@ mod tests {
         // true + b // b is a bool
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "b".to_string(),
                 kind: SymbolKind::Variable(Type::Bool),
@@ -907,7 +907,7 @@ mod tests {
         // 1 < r // r is a Float
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "r".to_string(),
                 kind: SymbolKind::Variable(Type::Float),
@@ -944,7 +944,7 @@ mod tests {
         // z2 + z3 // mod variables incompatible
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "z2".to_string(),
@@ -980,7 +980,7 @@ mod tests {
         // z3 + z3
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "z2".to_string(),
@@ -1022,7 +1022,7 @@ mod tests {
     #[test]
     fn tuple_expr_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.add_types_expr(Expr::Tuple(vec![
             Expr::Unary(UnaryExpr {
@@ -1053,7 +1053,7 @@ mod tests {
         // {let n = 1; n}
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
@@ -1100,7 +1100,7 @@ mod tests {
         // {let n = 1+true; n} // 1 and true are incompatible types
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
@@ -1157,7 +1157,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1248,7 +1248,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1303,7 +1303,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1362,7 +1362,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1424,7 +1424,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1487,7 +1487,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1543,7 +1543,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
@@ -1631,7 +1631,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
@@ -1716,7 +1716,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "r".to_string(),
@@ -1807,7 +1807,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
             diagnostics: &mut diagnostics,
@@ -1859,7 +1859,7 @@ mod tests {
         //     _ : 0,
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
             arms: vec![
@@ -1897,7 +1897,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
@@ -1979,7 +1979,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
             diagnostics: &mut diagnostics,
@@ -2014,7 +2014,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
             diagnostics: &mut diagnostics,

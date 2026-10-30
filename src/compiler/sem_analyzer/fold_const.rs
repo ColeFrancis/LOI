@@ -22,6 +22,9 @@
 //!
 //! Author: Cole Francis
 
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
 use super::SemAnalyzer;
 
 use crate::compiler::{
@@ -47,7 +50,7 @@ impl<'a> SemAnalyzer<'a> {
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Let(stmt) => {
-                self.fold_let(stmt, true);
+                self.fold_let(stmt, false);
                 None
             }
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
@@ -63,16 +66,24 @@ impl<'a> SemAnalyzer<'a> {
         stmt: LetStatement,
         fold_sample: bool,
     ) -> Option<LetStatement> {
-        Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, self.diagnostics)
+        let mut rng = match self.ast.seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::from_rng(&mut rand::rng()),
+        };
+
+        Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, &mut rng, self.diagnostics)
     }
 
     pub(super) fn fold_let_inner(
         mut stmt: LetStatement,
         fold_sample: bool,
         symbols: &mut [Symbol],
+        rng: &mut ChaCha8Rng,
         diagnostics: &mut Diagnostics,
     ) -> Option<LetStatement> {
-        stmt.expr = Self::fold_expr_inner(stmt.expr, fold_sample, symbols, diagnostics);
+        
+
+        stmt.expr = Self::fold_expr_inner(stmt.expr, fold_sample, symbols, rng, diagnostics);
 
         if let Expr::Literal(literal) = stmt.expr {
             if let Ident::Symbol(id) = stmt.name {
@@ -87,7 +98,7 @@ impl<'a> SemAnalyzer<'a> {
 
     fn fold_rel(&mut self, mut rel_t: RelType) -> RelType {
         // Do not fold samples as these are evaluated compile-time
-        rel_t.body = self.fold_expr(rel_t.body, false);
+        rel_t.body = self.fold_expr(rel_t.body, true);
 
         rel_t
     }
@@ -98,7 +109,7 @@ impl<'a> SemAnalyzer<'a> {
                 let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
 
                 // Do not fold samples as these are evaluated upon the instantiation of a net
-                ent_init.val = self.fold_expr(owned_expr, false);
+                ent_init.val = self.fold_expr(owned_expr, true);
             }
         }
         net_t
@@ -121,7 +132,7 @@ mod tests {
         // let n = 1;
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
@@ -170,6 +181,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
             ast: Program {
+                seed: None, 
                 items: vec![
                     Item::Let(LetStatement {
                         name: Ident::Symbol(0),
@@ -298,6 +310,7 @@ mod tests {
         assert_eq!(
             sem_analyzer.ast,
             Program {
+                seed: None, 
                 items: vec![
                     Item::Rel(RelType {
                         name: Ident::Symbol(1),

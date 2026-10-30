@@ -177,9 +177,9 @@ fn simulate_full(
     output_file_path: &str,
     steps: usize,
 ) -> Result<(), CliError> {
-    let (netlist, interface, relations, inits) = Compiler::compile(file_path, top_net)?;
+    let (netlist, interface, relations, seed, inits) = Compiler::compile(file_path, top_net)?;
 
-    let mut sim = Simulator::new(netlist, interface, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, seed, inits);
 
     let inputs = IoFile::read(input_file_path)?;
 

@@ -217,6 +217,7 @@ net SECOND {
         assert_eq!(
             validated_program,
             Program {
+                seed: None, 
                 items: vec![
                     Item::Rel(RelType {
                         name: Ident::Symbol(4),

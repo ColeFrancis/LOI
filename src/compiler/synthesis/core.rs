@@ -22,6 +22,9 @@
 
 use std::collections::HashMap;
 
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+
 use super::Synthesis;
 use crate::compiler::{
     error_handling::diagnostics::Diagnostics,
@@ -43,6 +46,7 @@ impl Synthesis {
         top_net_idx: usize,
         obj_map: HashMap<SymbolId, usize>,
         symbols: &mut [Symbol],
+        seed: Option<u64>,
         diagnostics: &mut Diagnostics,
     ) -> (Netlist, Interface, Vec<Event>) {
         let mut inputs = HashMap::<String, (EntId, Type)>::new();
@@ -129,6 +133,7 @@ impl Synthesis {
             &mut ents,
             &mut relations,
             symbols,
+            seed,
             diagnostics,
         );
 
@@ -164,6 +169,7 @@ impl Synthesis {
         ents: &mut Vec<Entity>,
         relations: &mut Vec<Relation>,
         symbols: &mut [Symbol],
+        seed: Option<u64>,
         diagnostics: &mut Diagnostics,
     ) {
         // make obj_map an immutable reference that honly maps for nets and rels
@@ -260,6 +266,7 @@ impl Synthesis {
                         ents,
                         relations,
                         symbols,
+                        seed,
                         diagnostics,
                     );
                 }
@@ -278,8 +285,12 @@ impl Synthesis {
                 let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
 
                 // fold expression, deep clone necessary
-                let result_expr =
-                    SemAnalyzer::fold_expr_inner(init.val.clone(), true, symbols, diagnostics);
+                let mut rng = match seed {
+                    Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+                    None => ChaCha8Rng::from_rng(&mut rand::rng()),
+                };
+                let result_expr = SemAnalyzer::fold_expr_inner(init.val.clone(), false, symbols, &mut rng, diagnostics);
+
                 let folded_val = match result_expr {
                     Expr::Literal(literal) => match (literal, &init.param.param_type) {
                         (Literal::Bool(b), &Type::Bool) => b as u64,
@@ -473,6 +484,7 @@ mod tests {
             &mut ents,
             &mut relations,
             &mut symbol_table,
+            None,
             &mut diagnostics,
         );
 
@@ -723,6 +735,7 @@ mod tests {
             &mut ents,
             &mut relations,
             &mut symbol_table,
+            None,
             &mut diagnostics,
         );
 
@@ -1115,6 +1128,7 @@ mod tests {
             &mut ents,
             &mut relations,
             &mut symbol_table,
+            None,
             &mut diagnostics,
         );
 
@@ -1356,6 +1370,7 @@ mod tests {
             &mut ents,
             &mut relations,
             &mut symbol_table,
+            None,
             &mut diagnostics,
         );
 
@@ -1499,7 +1514,7 @@ mod tests {
         let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
         let (netlist, interface, inits) =
-            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, None, &mut diagnostics);
 
         assert_eq!(
             netlist,
@@ -1598,7 +1613,7 @@ mod tests {
         let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
         let (_netlist, _interface, inits) =
-            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, None, &mut diagnostics);
 
         assert_eq!(
             inits,
@@ -1661,7 +1676,7 @@ mod tests {
         let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
         let (_netlist, _interface, inits) =
-            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, None, &mut diagnostics);
 
         assert_eq!(
             inits,
@@ -1724,7 +1739,7 @@ mod tests {
         let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
         let (_netlist, _interface, inits) =
-            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, None, &mut diagnostics);
 
         assert_eq!(
             inits,
@@ -1809,7 +1824,7 @@ mod tests {
         let obj_map = HashMap::from([(0, 0), (1, 0)]);
 
         let (_netlist, interface, inits) =
-            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, &mut diagnostics);
+            Synthesis::synthesize(vec![net], 0, obj_map, &mut symbol_table, None, &mut diagnostics);
 
         assert_eq!(
             inits,

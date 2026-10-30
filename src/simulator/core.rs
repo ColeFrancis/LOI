@@ -47,6 +47,7 @@ impl Simulator {
         netlist: Netlist,
         interface: Interface,
         compiled_relations: Vec<CompiledRel>,
+        seed: Option<u64>,
         inits: Vec<Event>,
     ) -> Self {
         let mut watcher = HashMap::<EntId, Vec<(usize, u64)>>::new();
@@ -74,7 +75,7 @@ impl Simulator {
             netlist,
             interface,
             scheduler: Scheduler::new(inits),
-            vm: RelVM::new(compiled_relations),
+            vm: RelVM::new(compiled_relations, seed),
             watcher,
             nondeterministic_rel_ids,
             impulse_input_rel_ids,
@@ -397,7 +398,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![(1, IoVal::Int(1))]),
@@ -441,7 +442,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("b".to_string(), vec![(2, IoVal::Int(1))])];
 
@@ -476,7 +477,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("a".to_string(), vec![(2, IoVal::Int(1))])];
 
@@ -517,7 +518,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("a".to_string(), vec![(2, IoVal::Float(1.0))])];
 
@@ -575,7 +576,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![(
             "a".to_string(),
@@ -613,7 +614,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![(
             "a".to_string(),
@@ -693,7 +694,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             ("a".to_string(), vec![(1, IoVal::Int(1))]),
@@ -740,7 +741,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("a".to_string(), vec![(5, IoVal::Int(1))])];
 
@@ -776,7 +777,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("a".to_string(), vec![(50, IoVal::Int(1))])];
 
@@ -840,7 +841,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![("a".to_string(), vec![(5, IoVal::Int(1))])];
 
@@ -915,7 +916,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             (
@@ -1020,7 +1021,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             (
@@ -1151,7 +1152,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             (
@@ -1242,7 +1243,7 @@ mod tests {
             new_val: 0,
         }];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let _steps = sim.run(5, false);
 
@@ -1372,7 +1373,7 @@ mod tests {
             new_val: 0,
         }];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let _steps = sim.run(5, false);
 
@@ -1521,7 +1522,7 @@ mod tests {
             new_val: 0,
         }];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let _steps = sim.run(10, false);
 
@@ -1623,7 +1624,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let inputs = vec![
             (
@@ -1759,7 +1760,7 @@ mod tests {
             },
         ];
 
-        let mut sim = Simulator::new(net, interface, relations, inits);
+        let mut sim = Simulator::new(net, interface, relations, None, inits);
 
         let steps = sim.run(5, false);
 
@@ -1823,7 +1824,7 @@ mod tests {
 
         let inits = vec![];
 
-        let mut sim = Simulator::new(netlist, interface, relations, inits);
+        let mut sim = Simulator::new(netlist, interface, relations, None, inits);
 
         let _steps = sim.run(5, false);
 

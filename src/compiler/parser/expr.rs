@@ -409,6 +409,8 @@ impl<'a> Parser<'a> {
 
             TokenKind::LParen => self.parse_tuple_pattern(),
 
+            TokenKind::Eq => self.parse_comparison_pattern(CompOp::Eq),
+            TokenKind::Ne => self.parse_comparison_pattern(CompOp::Ne),
             TokenKind::Gt => self.parse_comparison_pattern(CompOp::Gt),
             TokenKind::Lt => self.parse_comparison_pattern(CompOp::Lt),
             TokenKind::Ge => self.parse_comparison_pattern(CompOp::Ge),
@@ -727,6 +729,8 @@ mod tests {
 
     fn comp_op_to_str(op: &CompOp) -> &'static str {
         match op {
+            CompOp::Eq => "==",
+            CompOp::Ne => "!=",
             CompOp::Gt => ">",
             CompOp::Lt => "<",
             CompOp::Ge => ">=",

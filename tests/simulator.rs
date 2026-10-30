@@ -34,11 +34,11 @@ fn flip_flop() {
 
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
 
-    let Ok((netlist, interface, relations, inits)) = result else {
+    let Ok((netlist, interface, relations, seed, inits)) = result else {
         unreachable!();
     };
 
-    let mut sim = Simulator::new(netlist, interface, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, seed, inits);
 
     let inputs = vec![
         (
@@ -107,11 +107,11 @@ fn adder() {
 
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
 
-    let Ok((netlist, interface, relations, inits)) = result else {
+    let Ok((netlist, interface, relations, seed, inits)) = result else {
         unreachable!();
     };
 
-    let mut sim = Simulator::new(netlist, interface, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, seed, inits);
 
     let inputs = vec![
         (
@@ -179,11 +179,11 @@ fn impulse_and_custom() {
 
     let result = Compiler::compile(&loi_path, "LATCH");
     assert!(result.is_ok(), "Compilation failed: {:?}", result);
-    let Ok((netlist, interface, relations, inits)) = result else {
+    let Ok((netlist, interface, relations, seed, inits)) = result else {
         unreachable!();
     };
 
-    let mut sim = Simulator::new(netlist, interface, relations, inits);
+    let mut sim = Simulator::new(netlist, interface, relations, seed, inits);
 
     let inputs = IoFile::read(&input_path).unwrap();
     let success = sim.load_inputs(inputs);

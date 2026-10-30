@@ -51,7 +51,7 @@ impl Compiler {
     pub fn compile(
         file_path: &str,
         top_net: &str,
-    ) -> Result<(Netlist, Interface, Vec<CompiledRel>, Vec<Event>), CompileError> {
+    ) -> Result<(Netlist, Interface, Vec<CompiledRel>, Option<u64>, Vec<Event>), CompileError> {
         let path = PathBuf::from(file_path);
 
         if path.extension().and_then(|ext| ext.to_str()) != Some("loi") {
@@ -71,14 +71,14 @@ impl Compiler {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        let (netlist, interface, compiled_relations, inits) =
+        let (netlist, interface, compiled_relations, seed, inits) =
             Self::back_end(ast, top_net, &mut symbols, &mut diagnostics);
 
         if diagnostics.has_errors() {
             return Err(CompileError::Diagnostics(diagnostics));
         }
 
-        Ok((netlist, interface, compiled_relations, inits))
+        Ok((netlist, interface, compiled_relations, seed, inits))
     }
 
     fn front_end(code: &str, diagnostics: &mut Diagnostics) -> (Program, Vec<Symbol>) {
@@ -93,10 +93,11 @@ impl Compiler {
         top_net: &str,
         symbols: &mut [Symbol],
         diagnostics: &mut Diagnostics,
-    ) -> (Netlist, Interface, Vec<CompiledRel>, Vec<Event>) {
+    ) -> (Netlist, Interface, Vec<CompiledRel>, Option<u64>, Vec<Event>) {
         let mut compiled_relations = Vec::new();
         let mut obj_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
+        let seed = ast.seed;
 
         let mut top_net_idx_option: Option<usize> = None;
         for item in ast.items {
@@ -145,14 +146,15 @@ impl Compiler {
                 Netlist::new(),
                 Interface::new(),
                 compiled_relations,
+                seed,
                 Vec::new(),
             );
         };
 
         let (netlist, interface, inits) =
-            Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, diagnostics);
+            Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, seed, diagnostics);
 
-        (netlist, interface, compiled_relations, inits)
+        (netlist, interface, compiled_relations, seed, inits)
     }
 }
 

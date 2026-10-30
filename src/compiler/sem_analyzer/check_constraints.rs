@@ -165,7 +165,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "REL".to_string(),
@@ -258,7 +258,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "REL".to_string(),
@@ -356,7 +356,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "REL".to_string(),

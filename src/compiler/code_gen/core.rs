@@ -994,7 +994,7 @@ mod tests {
         }
 
         // VM
-        let mut vm = RelVM::new(compiled_relations);
+        let mut vm = RelVM::new(compiled_relations, None);
 
         // ROTATE args
         let args_1 = vec![0];

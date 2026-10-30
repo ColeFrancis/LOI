@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn test_find() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -490,7 +490,7 @@ mod tests {
     #[test]
     fn test_define_1() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -558,7 +558,7 @@ mod tests {
     #[test]
     fn test_define_2() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -612,7 +612,7 @@ mod tests {
     #[test]
     fn enter_exit_scope() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         sem_analyzer.create_scope();
 
@@ -642,7 +642,7 @@ mod tests {
     fn resolve_type_tuple() {
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::EntType,
@@ -677,7 +677,7 @@ mod tests {
     #[test]
     fn resolve_let_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_let(LetStatement {
             name: Ident::Str {
@@ -713,7 +713,7 @@ mod tests {
         // };
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Unknown),
@@ -782,7 +782,7 @@ mod tests {
     fn resolve_ent_2() {
         // ent_t COIN = {H, T};
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         sem_analyzer.resolve_ent(EntType {
             name: Ident::Str {
@@ -837,7 +837,7 @@ mod tests {
         // };
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "COIN".to_string(),
@@ -1009,7 +1009,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "REL".to_string(),
@@ -1314,7 +1314,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "NET".to_string(),
@@ -1465,7 +1465,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "B".to_string(),
@@ -1728,6 +1728,7 @@ net SECOND {
         assert_eq!(
             sem_analyzer.ast,
             Program {
+                seed: None, 
                 items: vec![
                     Item::Let(LetStatement {
                         name: Ident::Symbol(1),

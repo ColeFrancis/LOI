@@ -745,6 +745,7 @@ fn calculator() {
                 )
                 .unwrap(),
             }],
+            None,
             vec![
                 Event {
                     timestep: 0,
@@ -804,7 +805,7 @@ fn coin_flip() {
     );
     println!("path: {}", path);
 
-    let (_, _, compiled_rel, _) = Compiler::compile(&path, "FLIP_COIN").expect("should return some");
+    let (_, _, compiled_rel, _, _) = Compiler::compile(&path, "FLIP_COIN").expect("should return some");
 
 
     assert_eq!(

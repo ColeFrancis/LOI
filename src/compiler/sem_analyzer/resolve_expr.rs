@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn expr_literal() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::new(),
@@ -220,7 +220,7 @@ mod tests {
     #[test]
     fn expr_ident_fail() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::new(),
@@ -240,7 +240,7 @@ mod tests {
     #[test]
     fn expr_ident() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([("a".to_string(), 1)]),
@@ -262,7 +262,7 @@ mod tests {
         // a + 1  // a undefined
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([]),
@@ -298,7 +298,7 @@ mod tests {
     #[test]
     fn expr_tuple() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([("a".to_string(), 1)]),
@@ -334,7 +334,7 @@ mod tests {
         //     n
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
             statements: vec![Statement::Let(LetStatement {
@@ -394,7 +394,7 @@ mod tests {
         //     n
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
             statements: vec![Statement::Let(LetStatement {
@@ -497,7 +497,7 @@ mod tests {
         //     m   // undefined
         // }
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: vec![] }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
             statements: vec![Statement::Let(LetStatement {
@@ -536,7 +536,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([("a".to_string(), 1)]),
@@ -606,7 +606,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([("b".to_string(), 10)]),
@@ -676,7 +676,7 @@ mod tests {
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![Scope {
                 symbols: HashMap::from([]),

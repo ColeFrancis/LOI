@@ -255,6 +255,7 @@ impl<'a> Lexer<'a> {
         }
 
         match buf.as_str() {
+            "seed" => TokenKind::Seed,
             "ent_t" => TokenKind::Ent_t,
             "rel_t" => TokenKind::Rel_t,
             "net" => TokenKind::NetToken,

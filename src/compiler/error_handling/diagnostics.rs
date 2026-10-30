@@ -93,6 +93,10 @@ pub enum Diagnostic {
         span: Span,
     },
 
+    MultipleSeeds {
+        new_span: Span,
+    },
+
     // No nesting tuples in cases
     NestedTupleExpr {
         span: Span,
@@ -339,6 +343,14 @@ impl std::fmt::Display for Diagnostic {
                     f,
                     "Unexpected token: {}. Expected one of: {}\nat line {}:{}",
                     found, expected, span.line, span.col
+                )
+            }
+
+            Diagnostic::MultipleSeeds { new_span } => {
+                write!(
+                    f, 
+                    "Multiple seeds found\nat line {}:{}",
+                    new_span.line, new_span.col
                 )
             }
 

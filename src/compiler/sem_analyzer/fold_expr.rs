@@ -25,7 +25,8 @@
 //!
 //! Author: Cole Francis
 
-use rand::Rng;
+use rand::{SeedableRng, Rng};
+use rand_chacha::ChaCha8Rng;
 
 use super::SemAnalyzer;
 use crate::compiler::{
@@ -39,14 +40,20 @@ use crate::compiler::{
 };
 
 impl<'a> SemAnalyzer<'a> {
-    pub(super) fn fold_expr(&mut self, expr: Expr, fold_sample: bool) -> Expr {
-        Self::fold_expr_inner(expr, fold_sample, &mut self.symbols, self.diagnostics)
+    pub(super) fn fold_expr(&mut self, expr: Expr, only_deterministic: bool) -> Expr {
+        let mut rng = match self.ast.seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::from_rng(&mut rand::rng()),
+        };
+
+        Self::fold_expr_inner(expr, only_deterministic, &mut self.symbols, &mut rng, self.diagnostics)
     }
 
     pub fn fold_expr_inner(
         expr: Expr,
-        fold_sample: bool,
+        only_deterministic: bool,
         symbols: &mut [Symbol],
+        rng: &mut ChaCha8Rng,
         diagnostics: &mut Diagnostics,
     ) -> Expr {
         match expr {
@@ -57,11 +64,36 @@ impl<'a> SemAnalyzer<'a> {
                 _ => Expr::Ident(Ident::Symbol(id)),
             },
 
+            Expr::Rand(rand) => {
+                if only_deterministic {
+                    Expr::Rand(rand)
+                } else {
+                    let val = match rand {
+                        Rand::Normal => {
+                            let random_val: f64 = rng.random();
+
+                            random_val
+                        }
+
+                        Rand::Uniform => {
+                            use rand_distr::{Distribution, StandardNormal};
+
+                            let random_val: f64 = StandardNormal.sample(rng);
+
+                            random_val
+                        }
+                    };
+
+                    Expr::Literal(Literal::Float(val))
+                }
+            }
+
             Expr::Unary(mut unary) => {
                 unary.expr = Box::new(Self::fold_expr_inner(
                     *unary.expr,
-                    fold_sample,
+                    only_deterministic,
                     symbols,
+                    rng,
                     diagnostics,
                 ));
 
@@ -76,9 +108,9 @@ impl<'a> SemAnalyzer<'a> {
 
             Expr::Binary(mut binary) => {
                 let mut expr_left =
-                    Self::fold_expr_inner(*binary.left, fold_sample, symbols, diagnostics);
+                    Self::fold_expr_inner(*binary.left, only_deterministic, symbols, rng, diagnostics);
                 let mut expr_right =
-                    Self::fold_expr_inner(*binary.right, fold_sample, symbols, diagnostics);
+                    Self::fold_expr_inner(*binary.right, only_deterministic, symbols, rng, diagnostics);
 
                 // if you have int + float convert to float + float to simplify eval_binary
                 if binary.expr_type == Type::Float {
@@ -110,7 +142,7 @@ impl<'a> SemAnalyzer<'a> {
                 for expr in &mut exprs {
                     let owned_expr = std::mem::replace(expr, Expr::Error);
 
-                    *expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
+                    *expr = Self::fold_expr_inner(owned_expr, only_deterministic, symbols, rng, diagnostics);
                 }
 
                 Expr::Tuple(exprs)
@@ -122,7 +154,7 @@ impl<'a> SemAnalyzer<'a> {
                 for statement in owned_statements {
                     if let Statement::Let(let_statement) = statement {
                         if let Some(folded_let_statement) =
-                            Self::fold_let_inner(let_statement, fold_sample, symbols, diagnostics)
+                            Self::fold_let_inner(let_statement, only_deterministic, symbols, rng, diagnostics)
                         {
                             block_expr
                                 .statements
@@ -131,7 +163,7 @@ impl<'a> SemAnalyzer<'a> {
                     }
                 }
 
-                match Self::fold_expr_inner(*block_expr.expr, fold_sample, symbols, diagnostics) {
+                match Self::fold_expr_inner(*block_expr.expr, only_deterministic, symbols, rng, diagnostics) {
                     Expr::Literal(literal) => Expr::Literal(literal),
 
                     other => {
@@ -158,7 +190,7 @@ impl<'a> SemAnalyzer<'a> {
                     for pattern in &mut arm.pattern {
                         let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
                         *pattern =
-                            Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
+                            Self::fold_pattern(owned_pattern, only_deterministic, symbols, rng, diagnostics);
 
                         if let Some((_, old_span)) =
                             seen_patterns.iter().find(|(p, _)| *p == pattern)
@@ -191,15 +223,16 @@ impl<'a> SemAnalyzer<'a> {
 
                 cases_expr.scrutinee = Box::new(Self::fold_expr_inner(
                     *cases_expr.scrutinee,
-                    fold_sample,
+                    only_deterministic,
                     symbols,
+                    rng,
                     diagnostics,
                 ));
 
                 let mut foldable = true;
                 for arm in &mut cases_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                    arm.expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
+                    arm.expr = Self::fold_expr_inner(owned_expr, only_deterministic, symbols, rng, diagnostics);
 
                     let matches = arm.pattern.iter_mut().any(|pattern| {
                         match Self::expr_matches_pattern(&cases_expr.scrutinee, pattern) {
@@ -234,15 +267,16 @@ impl<'a> SemAnalyzer<'a> {
                 }
                 for arm in &mut sample_expr.arms {
                     let owned_expr = std::mem::replace(&mut arm.expr, Expr::Error);
-                    arm.expr = Self::fold_expr_inner(owned_expr, fold_sample, symbols, diagnostics);
+                    arm.expr = Self::fold_expr_inner(owned_expr, only_deterministic, symbols, rng, diagnostics);
 
                     match &mut arm.prob {
                         Prob::Expr(expr) => {
                             let owned_expr = std::mem::replace(expr, Expr::Error);
                             let mut folded_expr = Self::fold_expr_inner(
                                 owned_expr,
-                                fold_sample,
+                                only_deterministic,
                                 symbols,
+                                rng,
                                 diagnostics,
                             );
                             // Convert prob to float number
@@ -294,11 +328,10 @@ impl<'a> SemAnalyzer<'a> {
                 if has_errors {
                     return Expr::Error;
                 }
-                if !foldable || !fold_sample {
+                if !foldable || only_deterministic {
                     return Expr::Sample(sample_expr);
                 }
 
-                let mut rng = rand::rng();
                 let random_val: f64 = rng.random();
                 running_prob = 0.0;
                 for arm in sample_expr.arms {
@@ -347,7 +380,7 @@ impl<'a> SemAnalyzer<'a> {
                 }
             }
             
-            (UnaryOp::Floor, Literal::Int(x)) => Some(Literal::Int(x)),
+            (UnaryOp::Floor, Literal::Int(x)) => Some(Literal::Int(*x)),
             (UnaryOp::Floor, Literal::Float(x)) => Some(Literal::Int(x.floor() as i64)),
             
             (UnaryOp::Abs, Literal::Int(x)) => Some(Literal::Int(x.abs())),
@@ -415,8 +448,9 @@ impl<'a> SemAnalyzer<'a> {
 
     fn fold_pattern(
         pattern: SimplePattern,
-        fold_sample: bool,
+        only_deterministic: bool,
         symbols: &mut [Symbol],
+        rng: &mut ChaCha8Rng,
         diagnostics: &mut Diagnostics,
     ) -> SimplePattern {
         match pattern {
@@ -433,7 +467,7 @@ impl<'a> SemAnalyzer<'a> {
                 for pattern in &mut patterns {
                     let owned_pattern = std::mem::replace(pattern, SimplePattern::Error);
 
-                    *pattern = Self::fold_pattern(owned_pattern, fold_sample, symbols, diagnostics);
+                    *pattern = Self::fold_pattern(owned_pattern, only_deterministic, symbols, rng, diagnostics);
                 }
 
                 SimplePattern::Tuple(patterns)
@@ -442,8 +476,9 @@ impl<'a> SemAnalyzer<'a> {
             SimplePattern::Comparison(mut comp_pattern) => {
                 comp_pattern.expr = Box::new(Self::fold_expr_inner(
                     *comp_pattern.expr,
-                    fold_sample,
+                    only_deterministic,
                     symbols,
+                    rng,
                     diagnostics,
                 ));
 
@@ -467,6 +502,10 @@ impl<'a> SemAnalyzer<'a> {
                 SimplePattern::Comparison(comp_pattern) => {
                     if let Expr::Literal(pattern_literal) = *comp_pattern.expr {
                         match comp_pattern.op {
+                            CompOp::Eq => Some(*expr_literal == pattern_literal),
+
+                            CompOp::Ne => Some(*expr_literal != pattern_literal),
+
                             CompOp::Lt => Some(*expr_literal < pattern_literal),
 
                             CompOp::Gt => Some(*expr_literal > pattern_literal),
@@ -527,7 +566,7 @@ mod tests {
     #[test]
     fn test_const() {
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Const(Literal::Int(1)),
@@ -548,7 +587,7 @@ mod tests {
     #[test]
     fn test_unary_1() {
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Unary(UnaryExpr {
@@ -567,7 +606,7 @@ mod tests {
     fn test_unary_2() {
         // -a
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "a".to_string(),
                 kind: SymbolKind::Const(Literal::Float(1.0)),
@@ -597,7 +636,7 @@ mod tests {
     fn test_unary_3() {
         // abs(floor(-2.5))
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Unary(UnaryExpr {
@@ -621,7 +660,7 @@ mod tests {
     fn test_unary_4() {
         //  floor(abs(-2.5))
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Unary(UnaryExpr {
@@ -645,7 +684,7 @@ mod tests {
     fn test_binary_1() {
         // 1.0 + 2*3
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
@@ -672,7 +711,7 @@ mod tests {
         // n + (a + 1) where n is an unknown variable and a is a folded constant
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "n".to_string(),
@@ -725,7 +764,7 @@ mod tests {
     fn test_binary_3() {
         // 1 < 2
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
@@ -745,7 +784,7 @@ mod tests {
     fn test_binary_4() {
         // true ^ true
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
@@ -765,7 +804,7 @@ mod tests {
     fn test_binary_5() {
         // 5 % 2
         let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer::new(Program { items: Vec::new() }, &mut diagnostics);
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
 
         let result = sem_analyzer.fold_expr(
             Expr::Binary(BinaryExpr {
@@ -782,6 +821,52 @@ mod tests {
     }
 
     #[test]
+    fn test_binary_6() {
+        // uniform + normal
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: Some(1), items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Rand(Rand::Uniform)),
+                right: Box::new(Expr::Rand(Rand::Normal)),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Float,
+            }),
+            false,
+        );
+
+        assert_eq!(result, Expr::Literal(Literal::Float(-0.154463349626139)));
+    }
+
+    #[test]
+    fn test_binary_7() {
+        // uniform + normal // only deterministic is true
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: Vec::new() }, &mut diagnostics);
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Rand(Rand::Uniform)),
+                right: Box::new(Expr::Rand(Rand::Normal)),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Float,
+            }),
+            true,
+        );
+
+        assert_eq!(result, Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Rand(Rand::Uniform)),
+                right: Box::new(Expr::Rand(Rand::Normal)),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Float,
+            }));
+    }
+
+    #[test]
     fn test_block_1() {
         // {
         //     let n = 2;
@@ -790,7 +875,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
@@ -833,7 +918,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Int),
@@ -892,7 +977,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![Symbol {
                 name: "n".to_string(),
                 kind: SymbolKind::Variable(Type::Bool),
@@ -944,7 +1029,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1024,7 +1109,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1104,7 +1189,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1215,7 +1300,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1326,7 +1411,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1412,7 +1497,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![
                 Symbol {
                     name: "a".to_string(),
@@ -1498,7 +1583,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
@@ -1541,7 +1626,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
@@ -1582,54 +1667,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
-            symbols: vec![],
-            scopes: vec![],
-
-            diagnostics: &mut diagnostics,
-        };
-
-        let result = sem_analyzer.fold_expr(
-            Expr::Sample(SampleExpr {
-                arms: vec![
-                    SampleArm {
-                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
-                            left: Box::new(Expr::Literal(Literal::Int(0))),
-                            right: Box::new(Expr::Literal(Literal::Int(2))),
-                            op: BinaryOp::Mul,
-                            op_span: Span { line: 0, col: 0 },
-                            expr_type: Type::Int,
-                        })),
-                        expr: Expr::Literal(Literal::Bool(true)),
-                        arm_span: Span { line: 0, col: 0 },
-                    },
-                    SampleArm {
-                        prob: Prob::Default,
-                        expr: Expr::Literal(Literal::Bool(false)),
-                        arm_span: Span { line: 0, col: 0 },
-                    },
-                ],
-                expr_type: Type::Bool,
-                span: Span { line: 0, col: 0 },
-            }),
-            true,
-        );
-
-        diagnostics.debug_print();
-
-        assert_eq!(result, Expr::Literal(Literal::Bool(false)));
-    }
-
-    #[test]
-    fn test_sample_2() {
-        // sample {    // fold_sample set to false
-        //     0+0 => true,
-        //     _ => false,
-        // }
-
-        let mut diagnostics = Diagnostics::new();
-        let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
@@ -1660,6 +1698,53 @@ mod tests {
                 span: Span { line: 0, col: 0 },
             }),
             false,
+        );
+
+        diagnostics.debug_print();
+
+        assert_eq!(result, Expr::Literal(Literal::Bool(false)));
+    }
+
+    #[test]
+    fn test_sample_2() {
+        // sample {    // only_deterministic set to true
+        //     0+0 => true,
+        //     _ => false,
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(0))),
+                            right: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: BinaryOp::Mul,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        })),
+                        expr: Expr::Literal(Literal::Bool(true)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Literal(Literal::Bool(false)),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Bool,
+                span: Span { line: 0, col: 0 },
+            }),
+            true,
         );
 
         assert_eq!(
@@ -1693,7 +1778,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 
@@ -1741,7 +1826,7 @@ mod tests {
 
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
-            ast: Program { items: Vec::new() },
+            ast: Program { seed: None, items: Vec::new() },
             symbols: vec![],
             scopes: vec![],
 

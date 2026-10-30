@@ -41,12 +41,41 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(mut self) -> Program {
+        let mut seed = None;
         let mut items = Vec::new();
 
         while self.peek().kind != TokenKind::Eof {
             let token = self.next();
 
             let item = match token.kind {
+                TokenKind::Seed => {
+                    if seed.is_some() {
+                        self.diagnostics.error(Diagnostic::MultipleSeeds {
+                            new_span: token.span.clone(),
+                        });
+                    }
+                    seed = match self.next().kind {
+                        TokenKind::IntLiteral(n) => Some(n as u64),
+                        other => {
+                            self.diagnostics.error(Diagnostic::UnexpectedToken {
+                                expected: vec![Expected::IntLiteral],
+                                found: other,
+                                span: token.span.clone(),
+                            });
+                            self.sync(&SyncRule::Item);
+
+                            None
+                        }
+                    };
+
+                    // After setting the seed, we can discard the item
+                    if seed.is_some() {
+                        continue;
+                    }
+
+                    Item::Error
+                },
+
                 TokenKind::Let => match self.parse_let_stmt() {
                     Some(stmt) => Item::Let(stmt),
                     None => Item::Error,
@@ -88,7 +117,7 @@ impl<'a> Parser<'a> {
             items.push(item);
         }
 
-        Program { items }
+        Program { seed, items }
     }
 
     pub(super) fn peek(&self) -> &Token {
@@ -250,6 +279,8 @@ mod tests {
 
     #[test]
     fn test_parse() {
+        // seed 10
+
         // ent_t COIN = {H, T};
 
         // let a = 1;
@@ -258,6 +289,8 @@ mod tests {
 
         // net EMPTY {}
         let kinds: Vec<TokenKind> = vec![
+            Seed,
+            IntLiteral(10),
             Ent_t,
             Ident("COIN".to_string()),
             Equals,
@@ -295,6 +328,7 @@ mod tests {
         assert_eq!(
             result,
             Program {
+                seed: Some(10),
                 items: vec![
                     Item::Ent(EntType {
                         name: build_ident_str("COIN"),
@@ -321,6 +355,30 @@ mod tests {
     }
 
     #[test]
+    fn multiple_seeds() {
+        let kinds: Vec<TokenKind> = vec![
+            Seed,
+            IntLiteral(10),
+            Seed,
+            IntLiteral(20),
+            Eof,
+        ];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let result = Parser::new(tokens, &mut diagnostics).parse();
+
+        assert_eq!(
+            result,
+            Program {
+                seed: Some(20),
+                items: vec![],
+            }
+        );
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
     fn integrate_lexer_parser() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
@@ -340,6 +398,7 @@ net EMPTY {}",
         assert_eq!(
             result,
             Program {
+                seed: None,
                 items: vec![
                     Item::Ent(EntType {
                         name: ast::Ident::Str {
@@ -408,6 +467,7 @@ let n = @;
         assert_eq!(
             result,
             Program {
+                seed: None,
                 items: vec![
                     Item::Let(LetStatement {
                         name: ast::Ident::Str {
@@ -475,6 +535,7 @@ net A {
         assert_eq!(
             result,
             Program {
+                seed: None,
                 items: vec![
                     Item::Error,
                     Item::Error,

@@ -23,7 +23,8 @@
 //!
 //! Author: Cole Francis
 
-use rand::Rng;
+use rand::{SeedableRng, Rng};
+use rand_chacha::ChaCha8Rng;
 
 use super::RelVM;
 
@@ -32,11 +33,34 @@ use crate::simulator::error_handling::runtime_diagnostics::VMError;
 use crate::compiler::objects::compiled_rel::CompiledRel;
 
 impl RelVM {
-    pub fn new(relations: Vec<CompiledRel>) -> Self {
+    pub fn new(relations: Vec<CompiledRel>, seed: Option<u64>) -> Self {
+        let rng = match seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::from_rng(&mut rand::rng()),
+        };
+
         Self {
             relations,
             registers: [0; 64],
+            rng,
         }
+    }
+
+    #[cfg(test)]
+    pub fn new_test(
+        init_registers: Vec<u64>,
+        bytecode: &[u8],
+        seed: Option<u64>,
+    ) -> Result<u64, VMError> {
+        let mut rng = match seed {
+            Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+            None => ChaCha8Rng::from_rng(&mut rand::rng()),
+        };
+
+        let mut registers = [0u64; 64];
+        registers[..init_registers.len()].copy_from_slice(&init_registers);
+
+        Self::execute(&mut registers, bytecode, &mut rng)
     }
 
     pub fn get_rel_name(&self, relation_id: usize) -> String {
@@ -61,10 +85,10 @@ impl RelVM {
 
         let code = &self.relations[relation_id].bytecode;
 
-        Self::execute(&mut self.registers, code)
+        Self::execute(&mut self.registers, code, &mut self.rng)
     }
 
-    fn execute(registers: &mut [u64; 64], bytecode: &[u8]) -> Result<u64, VMError> {
+    fn execute(registers: &mut [u64; 64], bytecode: &[u8], rng: &mut ChaCha8Rng) -> Result<u64, VMError> {
         let mut inst_counter = 0;
 
         loop {
@@ -595,7 +619,6 @@ impl RelVM {
                     // No source RND op
                     match op {
                         0b00000000 => {
-                            let mut rng = rand::rng();
                             let random_val: f64 = rng.random();
 
                             registers[dest_reg] = random_val.to_bits();
@@ -605,9 +628,7 @@ impl RelVM {
                         0b00000100 => {
                             use rand_distr::{Distribution, StandardNormal};
 
-                            let mut rng = rand::rng();
-                            let normal = StandardNormal;
-                            let random_val: f64 = normal.sample(&mut rng);
+                            let random_val: f64 = StandardNormal.sample(rng);
 
                             registers[dest_reg] = random_val.to_bits();
                             continue;
@@ -680,6 +701,29 @@ impl RelVM {
     }
 }
 
+/*
+// No source RND op
+                    match op {
+                        0b00000000 => {
+                            let random_val: f64 = self.rng.random();
+
+                            registers[dest_reg] = random_val.to_bits();
+                            continue;
+                        }
+
+                        0b00000100 => {
+                            use rand_distr::{Distribution, StandardNormal};
+
+                            let random_val: f64 = StandardNormal.sample(&mut self.rng);
+
+                            registers[dest_reg] = random_val.to_bits();
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+*/
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -703,10 +747,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-        registers[2] = 3;
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(3 as u64));
     }
@@ -726,9 +767,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok((0.5_f64).to_bits() as u64));
     }
@@ -743,9 +782,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok((1.0_f64).exp().to_bits() as u64));
     }
@@ -760,9 +797,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok((-2 as i64) as u64));
     }
@@ -780,9 +815,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(0 as u64));
     }
@@ -809,9 +842,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(6 as u64));
     }
@@ -840,9 +871,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(7 as u64));
     }
@@ -880,9 +909,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -920,9 +947,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -941,9 +966,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok(1 as u64));
     }
@@ -957,9 +980,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Err(VMError::DivisionByZero));
     }
@@ -972,9 +993,7 @@ mod tests {
             0xff, 0xff, 0xff, 0xff, 0x7f,
         ];
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Err(VMError::IntegerOverflow));
     }
@@ -991,9 +1010,7 @@ mod tests {
         )
         .unwrap();
 
-        let mut registers = [0; 64];
-
-        let result = RelVM::execute(&mut registers, &bytecode);
+        let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Err(VMError::InvalidProb(1.1)));
     }
@@ -1016,7 +1033,7 @@ mod tests {
 
         let args = vec![(2.5_f64).to_bits() as u64, (3.0_f64).to_bits() as u64];
 
-        let result = RelVM::new(relations).evaluate(0, &args, 0, 0);
+        let result = RelVM::new(relations, None).evaluate(0, &args, 0, 0);
 
         assert_eq!(Ok(5.5_f64.to_bits() as u64), result);
     }
