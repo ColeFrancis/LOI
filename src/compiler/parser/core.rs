@@ -76,8 +76,8 @@ impl<'a> Parser<'a> {
                     Item::Error
                 },
 
-                TokenKind::Let => match self.parse_let_stmt() {
-                    Some(stmt) => Item::Let(stmt),
+                TokenKind::Let => match self.parse_stmt() {
+                    Some(stmt) => Item::Stmt(stmt),
                     None => Item::Error,
                 },
 
@@ -334,10 +334,10 @@ mod tests {
                         name: build_ident_str("COIN"),
                         members: vec![build_ident_str("H"), build_ident_str("T")],
                     }),
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: build_ident_str("a"),
                         expr: Expr::Literal(Literal::Int(1)),
-                    }),
+                    })),
                     Item::Rel(RelType {
                         name: build_ident_str("ONE"),
                         params: vec![],
@@ -416,13 +416,13 @@ net EMPTY {}",
                             },
                         ],
                     }),
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "a".to_string(),
                             span: Span { line: 3, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(1)),
-                    }),
+                    })),
                     Item::Rel(RelType {
                         name: ast::Ident::Str {
                             val: "ONE".to_string(),
@@ -469,44 +469,44 @@ let n = @;
             Program {
                 seed: None,
                 items: vec![
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 1, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(1)),
-                    }),
+                    })),
                     Item::Error,
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 3, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(3)),
-                    }),
+                    })),
                     Item::Error,
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 5, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(5)),
-                    }),
+                    })),
                     Item::Error,
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 7, col: 5 },
                         },
                         expr: Expr::Literal(Literal::Int(7)),
-                    }),
-                    Item::Let(Variable {
+                    })),
+                    Item::Stmt(Statement::Var(Variable {
                         name: ast::Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 8, col: 5 },
                         },
                         expr: Expr::Error,
-                    }),
+                    })),
                 ]
             }
         );

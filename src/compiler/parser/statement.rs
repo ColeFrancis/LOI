@@ -28,7 +28,7 @@ use crate::compiler::{lexer::token::TokenKind, objects::ast::*};
 
 impl<'a> Parser<'a> {
     // Let token already consumed
-    pub(super) fn parse_let_stmt(&mut self) -> Option<Variable> {
+    pub(super) fn parse_stmt(&mut self) -> Option<Statement> {
         let name = self.expect_ident(&SyncRule::Statement)?;
 
         self.expect(TokenKind::Equals, &SyncRule::Statement)?;
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
 
-        Some(Variable { name, expr })
+        Some(Statement::Var(Variable { name, expr }))
     }
 }
 
@@ -90,11 +90,11 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let mut parser = Parser::new(tokens, &mut diagnostics);
 
-        let result = parser.parse_let_stmt();
+        let result = parser.parse_stmt();
 
         assert_eq!(
             result,
-            Some(Variable {
+            Some(Statement::Var(Variable {
                 name: build_ident_str("n"),
                 expr: Expr::Binary(BinaryExpr {
                     left: Box::new(Expr::Literal(Literal::Int(1))),
@@ -103,7 +103,7 @@ mod tests {
                     op_span: Span { line: 0, col: 0 },
                     expr_type: Type::Unknown,
                 })
-            })
+            }))
         );
         assert!(!diagnostics.has_errors());
     }
@@ -124,7 +124,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let mut parser = Parser::new(tokens, &mut diagnostics);
 
-        let result = parser.parse_let_stmt();
+        let result = parser.parse_stmt();
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 1); // unexpected token
@@ -133,7 +133,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new("9a = 1;", &mut diagnostics).tokenize();
 
-        let result = Parser::new(tokens, &mut diagnostics).parse_let_stmt();
+        let result = Parser::new(tokens, &mut diagnostics).parse_stmt();
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 2); // invalid num, unexpected token

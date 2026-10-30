@@ -49,8 +49,8 @@ impl<'a> SemAnalyzer<'a> {
 
     fn fold_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt) => {
-                self.fold_let(stmt, false);
+            Item::Stmt(Statement::Var(var)) => {
+                self.fold_variable(var, false);
                 None
             }
             Item::Rel(rel_type) => Some(Item::Rel(self.fold_rel(rel_type))),
@@ -61,7 +61,7 @@ impl<'a> SemAnalyzer<'a> {
     }
 
     // returning None means the statement was sucessfully folded
-    pub(super) fn fold_let(
+    pub(super) fn fold_variable(
         &mut self,
         stmt: Variable,
         fold_sample: bool,
@@ -145,7 +145,7 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.fold_let(
+        let result = sem_analyzer.fold_variable(
             Variable {
                 name: Ident::Symbol(0),
                 expr: Expr::Literal(Literal::Int(1)),
@@ -183,10 +183,10 @@ mod tests {
             ast: Program {
                 seed: None, 
                 items: vec![
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: Ident::Symbol(0),
                         expr: Expr::Literal(Literal::Int(1)),
-                    }),
+                    })),
                     Item::Rel(RelType {
                         name: Ident::Symbol(1),
                         params: vec![Param {

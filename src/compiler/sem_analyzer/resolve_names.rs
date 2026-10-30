@@ -51,7 +51,7 @@ impl<'a> SemAnalyzer<'a> {
 
     fn resolve_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt) => self.resolve_let(stmt).map(Item::Let),
+            Item::Stmt(Statement::Var(var)) => self.resolve_variable(var).map(|var| Item::Stmt(Statement::Var(var))),
             Item::Ent(ent_type) => {
                 self.resolve_ent(ent_type);
                 None
@@ -62,15 +62,15 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
-    pub(super) fn resolve_let(&mut self, mut stmt: Variable) -> Option<Variable> {
-        stmt.expr = self.resolve_expr(stmt.expr).unwrap_or(Expr::Error);
+    pub(super) fn resolve_variable(&mut self, mut var: Variable) -> Option<Variable> {
+        var.expr = self.resolve_expr(var.expr).unwrap_or(Expr::Error);
 
-        let (name, span) = self.extract_ident_str(stmt.name)?; // Should not return None
+        let (name, span) = self.extract_ident_str(var.name)?; // Should not return None
 
-        stmt.name =
+        var.name =
             Ident::Symbol(self.define_symbol(name, SymbolKind::Variable(Type::Unknown), span)?);
 
-        Some(stmt)
+        Some(var)
     }
 
     fn resolve_ent(&mut self, mut ent_t: EntType) -> Option<()> {
@@ -685,7 +685,7 @@ mod tests {
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
-        let result = sem_analyzer.resolve_let(Variable {
+        let result = sem_analyzer.resolve_variable(Variable {
             name: Ident::Str {
                 val: "a".to_string(),
                 span: Span { line: 1, col: 2 },
@@ -732,13 +732,13 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let result = sem_analyzer.resolve_let(Variable {
+        let result = sem_analyzer.resolve_variable(Variable {
             name: Ident::Str {
                 val: "a".to_string(),
                 span: Span { line: 0, col: 0 },
             },
             expr: Expr::Block(BlockExpr {
-                statements: vec![Statement::Variable(Variable {
+                statements: vec![Statement::Var(Variable {
                     name: Ident::Str {
                         val: "n".to_string(),
                         span: Span { line: 0, col: 0 },
@@ -767,7 +767,7 @@ mod tests {
             Some(Variable {
                 name: Ident::Symbol(2),
                 expr: Expr::Block(BlockExpr {
-                    statements: vec![Statement::Variable(Variable {
+                    statements: vec![Statement::Var(Variable {
                         name: Ident::Symbol(1),
                         expr: Expr::Binary(BinaryExpr {
                             left: Box::new(Expr::Ident(Ident::Symbol(0))),
@@ -1740,10 +1740,10 @@ net SECOND {
             Program {
                 seed: None, 
                 items: vec![
-                    Item::Let(Variable {
+                    Item::Stmt(Statement::Var(Variable {
                         name: Ident::Symbol(1),
                         expr: Expr::Block(BlockExpr {
-                            statements: vec![Statement::Variable(Variable {
+                            statements: vec![Statement::Var(Variable {
                                 name: Ident::Symbol(0),
                                 expr: Expr::Literal(Literal::Int(1)),
                             })],
@@ -1756,7 +1756,7 @@ net SECOND {
                             })),
                             expr_type: Type::Unknown,
                         }),
-                    }),
+                    })),
                     Item::Rel(RelType {
                         name: Ident::Symbol(4),
                         params: vec![Param {

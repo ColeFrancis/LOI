@@ -77,8 +77,8 @@ impl<'a> SemAnalyzer<'a> {
                     let owned_stmt = std::mem::replace(stmt, Statement::Error);
 
                     *stmt = match owned_stmt {
-                        Statement::Variable(let_stmt) => match self.resolve_let(let_stmt) {
-                            Some(resolved_let) => Statement::Variable(resolved_let),
+                        Statement::Var(let_stmt) => match self.resolve_variable(let_stmt) {
+                            Some(resolved_let) => Statement::Var(resolved_let),
                             None => Statement::Error,
                         },
                         Statement::Error => Statement::Error,
@@ -337,7 +337,7 @@ mod tests {
         let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![Statement::Variable(Variable {
+            statements: vec![Statement::Var(Variable {
                 name: Ident::Str {
                     val: "n".to_string(),
                     span: Span { line: 2, col: 0 },
@@ -354,7 +354,7 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Variable(Variable {
+                statements: vec![Statement::Var(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(1)),
                 })],
@@ -397,25 +397,25 @@ mod tests {
         let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![Statement::Variable(Variable {
+            statements: vec![Statement::Var(Variable {
                 name: Ident::Str {
                     val: "n".to_string(),
                     span: Span { line: 0, col: 0 },
                 },
                 expr: Expr::Block(BlockExpr {
-                    statements: vec![Statement::Variable(Variable {
+                    statements: vec![Statement::Var(Variable {
                         name: Ident::Str {
                             val: "n".to_string(),
                             span: Span { line: 0, col: 0 },
                         },
                         expr: Expr::Block(BlockExpr {
-                            statements: vec![Statement::Variable(Variable {
+                            statements: vec![Statement::Var(Variable {
                                 name: Ident::Str {
                                     val: "n".to_string(),
                                     span: Span { line: 0, col: 0 },
                                 },
                                 expr: Expr::Block(BlockExpr {
-                                    statements: vec![Statement::Variable(Variable {
+                                    statements: vec![Statement::Var(Variable {
                                         name: Ident::Str {
                                             val: "n".to_string(),
                                             span: Span { line: 0, col: 0 },
@@ -453,16 +453,16 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Variable(Variable {
+                statements: vec![Statement::Var(Variable {
                     name: Ident::Symbol(3),
                     expr: Expr::Block(BlockExpr {
-                        statements: vec![Statement::Variable(Variable {
+                        statements: vec![Statement::Var(Variable {
                             name: Ident::Symbol(2),
                             expr: Expr::Block(BlockExpr {
-                                statements: vec![Statement::Variable(Variable {
+                                statements: vec![Statement::Var(Variable {
                                     name: Ident::Symbol(1),
                                     expr: Expr::Block(BlockExpr {
-                                        statements: vec![Statement::Variable(Variable {
+                                        statements: vec![Statement::Var(Variable {
                                             name: Ident::Symbol(0),
                                             expr: Expr::Literal(Literal::Int(1)),
                                         }),],
@@ -500,7 +500,7 @@ mod tests {
         let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
 
         let result = sem_analyzer.resolve_expr(Expr::Block(BlockExpr {
-            statements: vec![Statement::Variable(Variable {
+            statements: vec![Statement::Var(Variable {
                 name: Ident::Str {
                     val: "n".to_string(),
                     span: Span { line: 2, col: 0 },
@@ -517,7 +517,7 @@ mod tests {
         assert_eq!(
             result,
             Some(Expr::Block(BlockExpr {
-                statements: vec![Statement::Variable(Variable {
+                statements: vec![Statement::Var(Variable {
                     name: Ident::Symbol(0),
                     expr: Expr::Literal(Literal::Int(1)),
                 })],

@@ -881,7 +881,7 @@ impl<'a> CodeGen<'a> {
 
             Expr::Block(block) => {
                 for statement in block.statements {
-                    let Statement::Variable(variable) = statement else {
+                    let Statement::Var(variable) = statement else {
                         return None;
                     };
                     let Ident::Symbol(id) = variable.name else {
@@ -2147,11 +2147,11 @@ mod tests {
 
         let ir = compiler.compile_expr(Expr::Block(BlockExpr {
             statements: vec![
-                Statement::Variable(Variable {
+                Statement::Var(Variable {
                     name: Ident::Symbol(1),
                     expr: Expr::Ident(Ident::Symbol(0)),
                 }),
-                Statement::Variable(Variable {
+                Statement::Var(Variable {
                     name: Ident::Symbol(2),
                     expr: Expr::Literal(Literal::Int(1)),
                 }),

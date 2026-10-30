@@ -860,11 +860,11 @@ mod tests {
             return_type: Type::Float,
             body: Expr::Block(BlockExpr {
                 statements: vec![
-                    Statement::Variable(Variable {
+                    Statement::Var(Variable {
                         name: Ident::Symbol(2),
                         expr: Expr::Literal(Literal::Int(1)),
                     }),
-                    Statement::Variable(Variable {
+                    Statement::Var(Variable {
                         name: Ident::Symbol(3),
                         expr: Expr::Binary(BinaryExpr {
                             left: Box::new(Expr::Binary(BinaryExpr {

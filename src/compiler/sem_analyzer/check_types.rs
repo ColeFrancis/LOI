@@ -51,7 +51,7 @@ impl<'a> SemAnalyzer<'a> {
 
     fn check_item(&mut self, item: Item) -> Option<Item> {
         match item {
-            Item::Let(stmt) => Some(Item::Let(self.check_let(stmt))),
+            Item::Stmt(Statement::Var(var)) => Some(Item::Stmt(Statement::Var(self.check_variable(var)))),
             Item::Rel(rel_type) => self.check_rel(rel_type).map(Item::Rel),
             Item::Net(net) => self.check_net(net).map(Item::Net),
             _ => None,
@@ -59,7 +59,7 @@ impl<'a> SemAnalyzer<'a> {
     }
 
     // There is no way checking types on Variable results in an error item.
-    pub(super) fn check_let(&mut self, mut stmt: Variable) -> Variable {
+    pub(super) fn check_variable(&mut self, mut stmt: Variable) -> Variable {
         stmt.expr = self.add_types_expr(stmt.expr).unwrap_or(Expr::Error);
 
         let expr_type = self.get_expr_type(&stmt.expr);
@@ -446,7 +446,7 @@ mod tests {
             diagnostics: &mut diagnostics,
         };
 
-        let _result = sem_analyzer.check_let(Variable {
+        let _result = sem_analyzer.check_variable(Variable {
             name: Ident::Symbol(0),
             expr: Expr::Literal(Literal::Int(1)),
         });
