@@ -524,6 +524,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -595,6 +596,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Impulse],
                     return_type: Type::Impulse,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -649,6 +651,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Impulse, Type::Impulse],
                     return_type: Type::Impulse,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -747,6 +750,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Custom(Ident::Symbol(0))],
                     return_type: Type::Custom(Ident::Symbol(0)),
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -826,6 +830,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int],
                     return_type: Type::Float,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },

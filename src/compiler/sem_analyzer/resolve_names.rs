@@ -100,6 +100,7 @@ impl<'a> SemAnalyzer<'a> {
             SymbolKind::Rel_t {
                 input_types: Vec::new(),
                 return_type: Type::Unknown,
+                instantiated: false,
             },
             span,
         )?);
@@ -236,7 +237,12 @@ impl<'a> SemAnalyzer<'a> {
                 ));
 
                 let (name, span) = self.extract_ident_str(rel_inst.rel)?;
-                rel_inst.rel = Ident::Symbol(self.find_symbol(&name, span)?);
+                let rel_symbol_id = self.find_symbol(&name, span)?;
+                if let SymbolKind::Rel_t { instantiated, ..} = &mut self.symbols[rel_symbol_id].kind {
+                    *instantiated = true;
+                }
+                rel_inst.rel = Ident::Symbol(rel_symbol_id);
+                // rel_inst.rel = Ident::Symbol(self.find_symbol(&name, span)?);
 
                 for arg in &mut rel_inst.args {
                     let (name, span) = self.extract_ident_str(arg.clone())?;
@@ -970,6 +976,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![],
                         return_type: Type::Unknown,
+                        instantiated: false,
                     },
                     span: Span { line: 0, col: 3 },
                 },
@@ -1016,6 +1023,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![],
                         return_type: Type::Unknown,
+                        instantiated: true,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1207,6 +1215,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![],
                         return_type: Type::Unknown,
+                        instantiated: true,
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1651,6 +1660,7 @@ net SECOND {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![],
                         return_type: Type::Unknown,
+                        instantiated: true,
                     },
                     span: Span { line: 9, col: 7 },
                 },

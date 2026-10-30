@@ -52,6 +52,7 @@ pub enum SymbolKind {
     Rel_t {
         input_types: Vec<Type>,
         return_type: Type,
+        instantiated: bool,
     },
     Net {
         ports: HashMap<String, NetPort>,

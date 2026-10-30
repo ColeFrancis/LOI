@@ -252,6 +252,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Int],
                         return_type: Type::Int,
+                        instantiated: true,
                     },
                     span: Span { line: 0, col: 0 },
                 },

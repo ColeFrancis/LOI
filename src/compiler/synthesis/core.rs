@@ -353,7 +353,7 @@ mod tests {
     use crate::compiler::objects::symbol::NetPort;
 
     #[test]
-    fn rel_inst() {
+    fn rel_inst_1() {
         // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
 
         // net ADD_NET {
@@ -374,6 +374,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -521,6 +522,132 @@ mod tests {
     }
 
     #[test]
+    fn rel_inst_2() {
+        // rel_t Rel1 : () -> Int = 1;
+        // rel_t Rel2 : () -> Int = 2; // Rel2 never instantiated
+        // rel_t Rel3 : () -> Int = 3;
+
+        // net NET {
+
+        //     Rel1 := A;
+        //     Rel3 := B;
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut ents: Vec<Entity> = Vec::new();
+        let mut relations: Vec<Relation> = Vec::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "REL1".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![],
+                    return_type: Type::Int,
+                    instantiated: true,
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "REL2".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![],
+                    return_type: Type::Int,
+                    instantiated: false,
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "REL3".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![],
+                    return_type: Type::Int,
+                    instantiated: true,
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([]),
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "B".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(4),
+                    rel: Ident::Symbol(0),
+                    args: vec![],
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(5),
+                    rel: Ident::Symbol(2),
+                    args: vec![],
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        };
+        let obj_map = HashMap::from([(0, 0), (2, 1)]);
+        let ent_map: HashMap<SymbolId, usize> = HashMap::new();
+
+        Synthesis::synthesize_net(
+            &vec![net],
+            0,
+            &obj_map,
+            ent_map,
+            &mut ents,
+            &mut relations,
+            &mut symbol_table,
+            None,
+            &mut diagnostics,
+        );
+
+        assert_eq!(
+            ents,
+            vec![
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ]
+        );
+        assert_eq!(
+            relations,
+            vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![],
+                    output_ent: 0,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![],
+                    output_ent: 1,
+                },
+            ]
+        );
+    }
+
+    #[test]
     fn net_inst_1() {
         // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
 
@@ -553,6 +680,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -823,6 +951,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -831,6 +960,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -839,6 +969,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1259,6 +1390,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1424,6 +1556,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
+                    instantiated: true,
                 },
                 span: Span { line: 0, col: 0 },
             },

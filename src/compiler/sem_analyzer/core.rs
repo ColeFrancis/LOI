@@ -140,6 +140,7 @@ net SECOND {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Int],
                         return_type: Type::Int,
+                        instantiated: true,
                     },
                     span: Span { line: 11, col: 7 },
                 },
