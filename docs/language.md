@@ -8,6 +8,37 @@ Please note that this document only outlines the syntax of LOI. For a guide on t
 
 All files are of the .LOI file type
 
+# Identifiers and Keywords
+
+Identifiers are what we call variable/function/object names.Like with many programming lanuages, valid variable names are made up of letters, digits, and underscores and must begin with either a letter or underscore.
+
+There are several reserved keywords in the LOI language that may not be used as identifiers. These are:
+
+- "seed"
+- "ent_t"
+- "rel_t"
+- "net"
+- "cases"
+- "sample"
+- "input"
+- "output"
+- "init"
+- "let"
+- "Bool"
+- "Impulse"
+- "Float"
+- "Int"
+- "Mod"
+- "uniform"
+- "normal"
+- "true"
+- "false"
+- "exp"
+- "ln"
+- "floor"
+- "abs"
+- "_"
+
 # Structures
 
 ## Comments
@@ -147,6 +178,14 @@ Allow you to apply one of the following binary operations to two expressions:
 - "|": or for Bool and Impulse values
 - "&": and for Bool and Impulse values
 - "^": xor for Bool and Impulse values
+
+#### Operator Precedence
+
+1. -x, ~x (highest)
+2. *, /, %, &
+3. ^
+4. +, -, \|
+5. ==, !=, >, <, >=, <= (lowest)
 
 **Tuple**
 
