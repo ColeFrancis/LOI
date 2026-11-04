@@ -660,10 +660,7 @@ impl<'a> CodeGen<'a> {
 
                 (Source::RegInter(dest), sample.expr_type)
             }
-
-            Expr::Error => return None,
-            Expr::Tuple(_) => return None, // Only appear in cases where they're handled specially
-
+            
             _ => return None, // Temporary
         };
 
