@@ -95,7 +95,7 @@ pub struct UnaryExpr {
     pub expr_type: Type,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum UnaryOp {
     Neg,    // -
     BitNot, // ~
@@ -114,7 +114,7 @@ pub struct BinaryExpr {
     pub expr_type: Type,
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum BinaryOp {
     Eq,  // ==
     Ne,  // !=
@@ -132,7 +132,7 @@ pub enum BinaryOp {
     Xor, // ^
 }
 
-#[derive(PartialEq, Debug, Clone)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum CompOp {
     Eq, // ==
     Ne, // !=

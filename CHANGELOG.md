@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- language.md updated with new language features
 - Only rel_t that are instantiated by some net are compiled
 
 ## [1.2.0] - 2026-10-19
