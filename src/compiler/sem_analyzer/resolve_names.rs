@@ -73,6 +73,25 @@ impl<'a> SemAnalyzer<'a> {
         Some(var)
     }
 
+    pub(super) fn resolve_inline(&mut self, inline: Inline) -> Option<()> {
+        let params: Vec<_> = inline.params
+            .into_iter()
+            .map(|arg| self.extract_ident_str(arg).map(|(name, _)| name))
+            .collect::<Option<Vec<_>>>()?;
+
+        // expr is resolved later, each time the inline function is called
+        let expr = Box::new(inline.expr);
+
+        let (name, span) = self.extract_ident_str(inline.name)?;
+
+        self.define_symbol(name, SymbolKind::Inline {
+            params,
+            expr,
+        }, span)?;
+
+        Some(())
+    }
+
     fn resolve_ent(&mut self, mut ent_t: EntType) -> Option<()> {
         let (name, span) = self.extract_ident_str(ent_t.name)?;
         let ent_t_symbol_id = self.define_symbol(name, SymbolKind::EntType, span)?;
@@ -781,6 +800,78 @@ mod tests {
                     expr_type: Type::Unknown,
                 }),
             })
+        );
+    }
+
+    #[test]
+    fn resolve_inline_1() {
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer::new(Program { seed: None, items: vec![] }, &mut diagnostics);
+
+        let result = sem_analyzer.resolve_inline(Inline {
+            name: Ident::Str {
+                val: "add".to_string(),
+                span: Span { line: 1, col: 2 },
+            },
+            params: vec![
+                Ident::Str {
+                    val: "a".to_string(),
+                    span: Span {line: 0, col: 0},
+                },
+                Ident::Str {
+                    val: "b".to_string(),
+                    span: Span {line: 0, col: 0},
+                },
+            ],
+            expr: Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Ident(
+                    Ident::Str {
+                        val: "a".to_string(),
+                        span: Span {line: 0, col: 0},
+                    },
+                )),
+                right: Box::new(Expr::Ident(
+                    Ident::Str {
+                        val: "b".to_string(),
+                        span: Span {line: 0, col: 0},
+                    },
+                )),
+                op: BinaryOp::Add,
+                op_span: Span { line: 0, col: 0},
+                expr_type: Type::Unknown,
+            }),
+        });
+
+        assert_eq!(
+            result,
+            Some(())
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![Symbol {
+                name: "add".to_string(),
+                kind: SymbolKind::Inline {
+                    params: vec!["a".to_string(), "b".to_string()],
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(
+                            Ident::Str {
+                                val: "a".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                        )),
+                        right: Box::new(Expr::Ident(
+                            Ident::Str {
+                                val: "b".to_string(),
+                                span: Span {line: 0, col: 0},
+                            },
+                        )),
+                        op: BinaryOp::Add,
+                        op_span: Span { line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    })),
+                },
+                span: Span { line: 1, col: 2 },
+            },]
         );
     }
 

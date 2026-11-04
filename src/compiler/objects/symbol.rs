@@ -24,7 +24,7 @@
 
 use std::collections::HashMap;
 
-use super::ast::Literal;
+use super::ast::{Literal, Expr};
 use super::types::Type;
 use crate::compiler::error_handling::span::Span;
 
@@ -43,6 +43,10 @@ pub struct Symbol {
 pub enum SymbolKind {
     Const(Literal),
     Variable(Type),
+    Inline {
+        params: Vec<String>,
+        expr: Box<Expr>,
+    },
     EntType,
     EntMember {
         parent: SymbolId,
@@ -64,6 +68,7 @@ impl std::fmt::Display for SymbolKind {
         match self {
             SymbolKind::Const(_) => write!(f, "Constant Variable"),
             SymbolKind::Variable(_) => write!(f, "Variable"),
+            SymbolKind::Inline{ .. } => write!(f, "Inline Function"),
             SymbolKind::EntType => write!(f, "Custom Ent Type"),
             SymbolKind::EntMember { .. } => write!(f, "Custom Ent Type Member"),
             SymbolKind::Ent(_) => write!(f, "Ent"),

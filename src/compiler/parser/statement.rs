@@ -63,10 +63,10 @@ impl<'a> Parser<'a> {
 
     // "("" already consumed
     fn parse_inline(&mut self, name: Ident) -> Option<Inline> {
-        let mut args = Vec::new();
+        let mut params = Vec::new();
 
         while self.peek().kind != TokenKind::RParen {
-            args.push(self.expect_ident(&SyncRule::Statement)?);
+            params.push(self.expect_ident(&SyncRule::Statement)?);
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -86,7 +86,7 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::Statement)?;
 
-        Some(Inline { name, args, expr})
+        Some(Inline { name, params, expr})
     }
 }
 
@@ -213,7 +213,7 @@ mod tests {
             result,
             Some(Statement::Inline(Inline {
                 name: build_ident_str("add"),
-                args: vec![
+                params: vec![
                     build_ident_str("a"),
                     build_ident_str("b"),
                 ],

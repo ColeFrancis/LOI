@@ -97,10 +97,41 @@ impl<'a> Parser<'a> {
 
             TokenKind::Ident(str) => {
                 self.next();
-                Some(Expr::Ident(Ident::Str {
-                    val: str,
-                    span: token.span,
-                }))
+
+                match self.peek().kind {
+                    TokenKind::LParen => {
+                        self.next();
+
+                        let mut args = Vec::new();
+
+                        while self.peek().kind != TokenKind::RParen {
+                            args.push(self.parse_expr(0)?);
+
+                            if self.peek().kind == TokenKind::Comma {
+                                self.next();
+                            } else {
+                                break;
+                            }
+                        }
+                        self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 });
+
+                        Some(Expr::Call(InlineCall {
+                            name: Ident::Str {
+                                val: str,
+                                span: token.span.clone(),
+                            },
+                            args,
+                            span: token.span,
+                        }))
+                    }
+
+                    _ => {
+                        Some(Expr::Ident(Ident::Str {
+                            val: str,
+                            span: token.span,
+                        }))
+                    }
+                }
             }
 
             TokenKind::Normal => {
@@ -548,6 +579,19 @@ mod tests {
             Expr::Rand(Rand::Uniform) => "uniform".to_string(),
             Expr::Rand(Rand::Normal) => "normal".to_string(),
 
+            Expr::Call(inline) => {
+                let args = inline.args
+                    .iter()
+                    .map(build_s_expr)
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                match &inline.name {
+                    ast::Ident::Str { val, ..} => format!("({} {})", val, args),
+                    ast::Ident::Symbol(id) => format!("(sym:{} {})", id, args),
+                }
+            }
+
             Expr::Unary(unary) => {
                 format!(
                     "({} {})",
@@ -634,7 +678,7 @@ mod tests {
                     ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
                 };
 
-                let args = inline.args.iter()
+                let args = inline.params.iter()
                     .map(|arg| match arg {
                         ast::Ident::Str { val, .. } => val.clone(),
                         ast::Ident::Symbol(id) => format!("sym:{}", id), // should be unreachable
@@ -939,6 +983,34 @@ mod tests {
         let result_str: String = build_s_expr(&result);
 
         assert_eq!(result_str, "(^ true (!= (floor (abs (- (ln 5) 1))) 3))".to_string());
+    }
+
+    #[test]
+    fn binary_expr_4() {
+        // 5 + add(2, 3 + 4)
+        let kinds: Vec<TokenKind> = vec![
+            IntLiteral(5),
+            Plus,
+            Ident("add".to_string()),
+            LParen,
+            IntLiteral(2),
+            Comma,
+            IntLiteral(3),
+            Plus,
+            IntLiteral(4),
+            LParen,
+            Eof,
+        ];
+        let tokens: Vec<Token> = build_token_vec(kinds);
+
+        let mut diagnostics = Diagnostics::new();
+        let mut parser = Parser::new(tokens, &mut diagnostics);
+
+        let result = parser.parse_expr(0).unwrap();
+
+        let result_str: String = build_s_expr(&result);
+
+        assert_eq!(result_str, "(+ 5 (add 2 (+ 3 4)))".to_string());
     }
 
     #[test]

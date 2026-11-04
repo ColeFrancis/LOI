@@ -57,6 +57,7 @@ pub enum Expr {
     Literal(Literal),
     Ident(Ident),
     Rand(Rand),
+    Call(InlineCall),
     Unary(UnaryExpr),
     Binary(BinaryExpr),
     Tuple(Vec<Expr>),
@@ -77,6 +78,13 @@ pub enum Literal {
 pub enum Rand {
     Normal,
     Uniform,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub struct InlineCall {
+    pub name: Ident,
+    pub args: Vec<Expr>,
+    pub span: Span,
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -218,7 +226,7 @@ pub struct Variable {
 #[derive(PartialEq, Debug, Clone)]
 pub struct Inline {
     pub name: Ident,
-    pub args: Vec<Ident>,
+    pub params: Vec<Ident>,
     pub expr: Expr,
 }
 

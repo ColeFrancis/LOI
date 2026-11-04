@@ -23,7 +23,17 @@
 //! Author: Cole Francis
 
 use super::SemAnalyzer;
-use crate::compiler::objects::ast::*;
+use crate::compiler::{
+    objects::{
+        ast::*,
+        types::Type,
+        symbol::SymbolKind,
+    },
+    error_handling::{
+        diagnostics::Diagnostic,
+        span::Span,
+    },
+};
 
 impl<'a> SemAnalyzer<'a> {
     // Unlike parsing expressions, if any part of an expression is an error (undefined ident),
@@ -42,6 +52,11 @@ impl<'a> SemAnalyzer<'a> {
             }
 
             Expr::Rand(rand) => Some(Expr::Rand(rand)),
+
+            Expr::Call(inline_call) => match self.resolve_call(inline_call) {
+                Some(expr) => Some(expr),
+                None => Some(Expr::Error),
+            }
 
             Expr::Unary(mut unary_expr) => {
                 unary_expr.expr =
@@ -73,20 +88,19 @@ impl<'a> SemAnalyzer<'a> {
             Expr::Block(mut block_expr) => {
                 self.create_scope();
 
-                for stmt in &mut block_expr.statements {
-                    let owned_stmt = std::mem::replace(stmt, Statement::Error);
+                block_expr.statements = block_expr.statements
+                    .into_iter()
+                    .filter_map(|stmt| match stmt {
+                        Statement::Var(var) => self.resolve_variable(var).map(Statement::Var),
 
-                    *stmt = match owned_stmt {
-                        Statement::Var(let_stmt) => match self.resolve_variable(let_stmt) {
-                            Some(resolved_let) => Statement::Var(resolved_let),
-                            None => Statement::Error,
-                        },
+                        Statement::Inline(inline) => {
+                            self.resolve_inline(inline);
+                            // inline statements dissappear after being resolved
+                            None
+                        }
 
-                        // TODO: Fix
-                        Statement::Inline(_) => unreachable!(),
-                        Statement::Error => Statement::Error,
-                    }
-                }
+                        Statement::Error => Some(Statement::Error),
+                    }).collect();
 
                 block_expr.expr =
                     Box::new(self.resolve_expr(*block_expr.expr).unwrap_or(Expr::Error));
@@ -96,7 +110,7 @@ impl<'a> SemAnalyzer<'a> {
                 Some(Expr::Block(block_expr))
             }
 
-            Expr::Cases(match_expr) => match self.resolve_match_expr(match_expr) {
+            Expr::Cases(match_expr) => match self.resolve_cases(match_expr) {
                 Some(expr) => Some(Expr::Cases(expr)),
                 None => Some(Expr::Error),
             },
@@ -110,13 +124,58 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
-    fn resolve_match_expr(&mut self, mut match_expr: CasesExpr) -> Option<CasesExpr> {
-        match_expr.scrutinee = Box::new(
-            self.resolve_expr(*match_expr.scrutinee)
+    fn resolve_call(&mut self, inline_call: InlineCall) -> Option<Expr> {
+        let (name, span) = self.extract_ident_str(inline_call.name)?;
+
+        let symbol_id = self.find_symbol(&name, span)?;
+
+        let SymbolKind::Inline {ref params, ref expr} = self.symbols[symbol_id].kind else {
+            unreachable!();
+        };
+
+        let mut statements = Vec::new();
+        let mut expr = expr.clone();
+
+        // Ensure the correct number of args is given
+        if params.len() != inline_call.args.len() {
+            self.diagnostics.error(Diagnostic::IncorrectNumberOfArgs {
+                expected_len: params.len(),
+                actual_len: inline_call.args.len(),
+                rel_span: self.symbols[symbol_id].span.clone(),
+            });
+
+            return None;
+        }
+
+        for (param, arg_expr) in params.iter().zip(inline_call.args.into_iter()) {
+            statements.push(Statement::Var(Variable {
+                name: Ident::Str {
+                    val: param.clone(),
+                    span: inline_call.span.clone(),
+                },
+                expr: arg_expr,
+            }));
+        }
+        
+        // Swapping all spans for the span of the inline call while not perfect will make error messages more useful because the user will know which call to investigate.
+        Self::swap_spans(&mut expr, &inline_call.span);
+
+        let expanded_call = Expr::Block(BlockExpr {
+            statements,
+            expr,
+            expr_type: Type::Unknown,
+        });
+
+        self.resolve_expr(expanded_call)
+    }
+
+    fn resolve_cases(&mut self, mut cases_expr: CasesExpr) -> Option<CasesExpr> {
+        cases_expr.scrutinee = Box::new(
+            self.resolve_expr(*cases_expr.scrutinee)
                 .unwrap_or(Expr::Error),
         );
 
-        for arm in &mut match_expr.arms {
+        for arm in &mut cases_expr.arms {
             for simple_pattern in &mut arm.pattern {
                 let owned_pattern = std::mem::replace(simple_pattern, SimplePattern::Error);
 
@@ -130,7 +189,7 @@ impl<'a> SemAnalyzer<'a> {
             arm.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
         }
 
-        Some(match_expr)
+        Some(cases_expr)
     }
 
     fn resolve_simple_pattern(&mut self, simple_pattern: SimplePattern) -> Option<SimplePattern> {
@@ -186,6 +245,131 @@ impl<'a> SemAnalyzer<'a> {
         }
 
         Some(sample_expr)
+    }
+
+    fn swap_spans(expr: &mut Expr, new_span: &Span) {
+        match expr {
+            Expr::Ident(ident) => {
+                Self::swap_ident(ident, new_span);
+            }
+
+            Expr::Call(call) => {
+                call.span = new_span.clone();
+                Self::swap_ident(&mut call.name, new_span);
+
+                for arg in &mut call.args {
+                    Self::swap_spans(arg, new_span);
+                }
+            }
+
+            Expr::Unary(unary) => {
+                unary.op_span = new_span.clone();
+                Self::swap_spans(&mut unary.expr, new_span);
+            }
+
+            Expr::Binary(binary) => {
+                binary.op_span = new_span.clone();
+
+                Self::swap_spans(&mut binary.left, new_span);
+                Self::swap_spans(&mut binary.right, new_span);
+            }
+
+            Expr::Tuple(tuple) => {
+                for expr in tuple {
+                    Self::swap_spans(expr, new_span);
+                }
+            }
+
+            Expr::Block(block) => {
+                for statement in &mut block.statements {
+                    match statement {
+                        Statement::Var(var) => {
+                            Self::swap_ident(&mut var.name, new_span);
+                            Self::swap_spans(&mut var.expr, new_span);
+                        }
+
+                        Statement::Inline(inline) => {
+                            Self::swap_ident(&mut inline.name, new_span);
+
+                            for param in &mut inline.params {
+                                Self::swap_ident(param, new_span);
+                            }
+
+                            Self::swap_spans(&mut inline.expr, new_span);
+                        }
+
+                        _ => {}
+                    }
+                }
+
+                Self::swap_spans(&mut block.expr, new_span);
+            }
+
+            Expr::Cases(cases) => {
+                cases.span = new_span.clone();
+
+                Self::swap_spans(&mut cases.scrutinee, new_span);
+
+                for arm in &mut cases.arms {
+                    arm.arm_span = new_span.clone();
+
+                    for pattern in &mut arm.pattern {
+                        Self::swap_pattern(pattern, new_span);
+                    }
+
+                    Self::swap_spans(&mut arm.expr, new_span);
+                }
+            }
+
+            Expr::Sample(sample) => {
+                sample.span = new_span.clone();
+
+                for arm in &mut sample.arms {
+                    arm.arm_span = new_span.clone();
+
+                    Self::swap_prob(&mut arm.prob, new_span);
+                    Self::swap_spans(&mut arm.expr, new_span);
+                }
+            }
+
+            Expr::Literal(_)
+            | Expr::Rand(_)
+            | Expr::Error => {}
+        }
+    }
+
+    fn swap_ident(ident: &mut Ident, new_span: &Span) {
+        if let Ident::Str { span, .. } = ident {
+            *span = new_span.clone();
+        }
+    }
+
+    fn swap_pattern(pattern: &mut SimplePattern, new_span: &Span) {
+        match pattern {
+            SimplePattern::Ident(ident) => {
+                Self::swap_ident(ident, new_span);
+            }
+
+            SimplePattern::Tuple(patterns) => {
+                for pattern in patterns {
+                    Self::swap_pattern(pattern, new_span);
+                }
+            }
+
+            SimplePattern::Comparison(comp) => {
+                Self::swap_spans(&mut comp.expr, new_span);
+            }
+
+            SimplePattern::Default
+            | SimplePattern::Literal(_)
+            | SimplePattern::Error => {}
+        }
+    }
+
+    fn swap_prob(prob: &mut Prob, new_span: &Span) {
+        if let Prob::Expr(expr) = prob {
+            Self::swap_spans(expr, new_span);
+        }
     }
 }
 
@@ -258,6 +442,155 @@ mod tests {
         }));
 
         assert_eq!(result, Some(Expr::Ident(Ident::Symbol(1))));
+    }
+
+    #[test]
+    fn inline_call_1() {
+        // let First(a, b) = a + b;
+
+        // ... First(1, 2+3) ...
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "First".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Str {
+                                val: "a".to_string(),
+                                span: Span{line: 0, col: 1},
+                            })),
+                            right: Box::new(Expr::Ident(Ident::Str {
+                                val: "b".to_string(),
+                                span: Span{line: 0, col: 3},
+                            })),
+                            op: BinaryOp::Add,
+                            op_span: Span{line: 0, col: 2},
+                            expr_type: Type::Unknown,
+                        })),
+                    },
+                    span: Span {line: 0, col: 0},
+                },
+                // None of the params are resolved
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("First".to_string(), 0)]),
+            }],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Call(InlineCall {
+            name: Ident::Str {
+                val: "First".to_string(),
+                span: Span{line: 2, col: 0},
+            },
+            args: vec![
+                Expr::Literal(Literal::Int(1)),
+                Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Int(2))),
+                    right: Box::new(Expr::Literal(Literal::Int(3))),
+                    op: BinaryOp::Add,
+                    op_span: Span{line: 2, col: 2},
+                    expr_type: Type::Unknown,
+                }),
+            ],
+            span: Span{line: 2, col: 0},
+        }));
+
+        assert_eq!(
+            result,
+            Some(Expr::Block(BlockExpr {
+                statements: vec![
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(1),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(2),
+                        expr: Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                            right: Box::new(Expr::Literal(Literal::Int(3))),
+                            op: BinaryOp::Add,
+                            op_span: Span{line: 2, col: 2},
+                            expr_type: Type::Unknown,
+                        }),
+                    }),
+                ],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(1))),
+                    right: Box::new(Expr::Ident(Ident::Symbol(2))),
+                    op: BinaryOp::Add,
+                    op_span: Span{line: 2, col: 0},
+                    expr_type: Type::Unknown,
+                })),
+                expr_type: Type::Unknown,
+            }))
+        );
+    }
+
+    #[test]
+    fn inline_call_2() {
+        // let First(a, b) = a + b;
+
+        // ... First(1) ... // incorrect number of args
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "First".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Str {
+                                val: "a".to_string(),
+                                span: Span{line: 0, col: 1},
+                            })),
+                            right: Box::new(Expr::Ident(Ident::Str {
+                                val: "b".to_string(),
+                                span: Span{line: 0, col: 3},
+                            })),
+                            op: BinaryOp::Add,
+                            op_span: Span{line: 0, col: 2},
+                            expr_type: Type::Unknown,
+                        })),
+                    },
+                    span: Span {line: 0, col: 0},
+                },
+                // None of the params are resolved
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("First".to_string(), 0)]),
+            }],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.resolve_expr(Expr::Call(InlineCall {
+            name: Ident::Str {
+                val: "First".to_string(),
+                span: Span{line: 2, col: 0},
+            },
+            args: vec![
+                Expr::Literal(Literal::Int(1)),
+            ],
+            span: Span{line: 2, col: 0},
+        }));
+
+        assert_eq!(
+            result,
+            Some(Expr::Error)
+        );
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 
     #[test]

@@ -212,6 +212,7 @@ impl<'a> SemAnalyzer<'a> {
                 }
             }
 
+            Expr::Call(_) => unreachable!(),
             Expr::Error => Some(Expr::Error),
         }
     }
@@ -239,6 +240,8 @@ impl<'a> SemAnalyzer<'a> {
             },
 
             Expr::Rand(_) => Type::Float,
+
+            Expr::Call(_) => unreachable!(),
 
             Expr::Unary(unary_expr) => unary_expr.expr_type.clone(),
 
