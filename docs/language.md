@@ -26,13 +26,23 @@ Or over multiple lines as follows:
    text */
 ```
 
+## Random seed
+
+The seed for the random number generator (ChaCha8) can be set in a LOI program as follows:
+
+```
+seed <unsigned 64-bit integer>
+```
+
+Only one seed may be present in a program. If no seed is declared, a random seed is used.
+
 ## Entity types
 
 Entities, when instantiated in a network, each have a type which defines what values they can hold. Some types are built in. LOI has the following built in types:
 
 - **Bool:** Represents a boolean value and takes either "true" or "false"
-- **Int:** Represents an integer value. ex: "10", "-25". Internally stored as 64-bit signed integers
-- **Float:** Represents an IEEE 64-bit floating point value. ex: "1.0", "-24.03"
+- **Int:** Represents an integer value. ex: "10". Internally stored as 64-bit signed integers
+- **Float:** Represents an IEEE 64-bit floating point value. Float literals must have either a decimal present, or use scientific notation. ex: "1.0", "-24.03", "2e-6"
 - **Mod(n):** Represents an integer (mod n). Internally stored as a 64-bit signed integer
 - **Impulse:** Represents a boolean that is true for a single timestep. Takes either "true" if the impulse is occuring this timestep and "false" otherwise. If set to true, will only remain true for one timestep. Represented internally as a 64-bit unsigned integer representing the simulation timestep that it will be "true"
 
@@ -96,12 +106,22 @@ Arguments or variables (see next section) can hold values like variables in any 
 rel_t RepeatInput (a: Impulse) -> Impulse = a;
 ```
 
+**Random Variable**
+
+"uniform" returns a sample from a standard uniform (0,1) rv
+
+"normal" returns a sample from a standard normal (0,1) rv
+
 **Unary**
 
 Allow you to apply one of the following unary operators to an expression:
 
 - "-": negation for Int, Float, and Mod values
 - "~": boolean not for Bool and Impulse
+- "exp()": e^x for Int, Float, and Mod values (returns Float)
+- "ln()": natural log for Int, Float, and Mod values (returns Float)
+- "abs()": magnitude/absolute value for Int, Float, and Mod values
+- "floor()": floor function for Int, Float, and Mod values (returns Int if Float is passed in)
 
 For example:
 
@@ -117,13 +137,16 @@ Allow you to apply one of the following binary operations to two expressions:
 - "-": subtraction for Int, Float, and Mod values
 - "*": multiplication for Int, Float, and Mod values 
 - "/": division for Int, Float, and Mod values
-- "^": exponentiation for Int, Float, and Mod values
+- "%": modulus for Int, Float, and Mod values
+- "==": equal for Int, Float, and Mod values (returns Bool)
+- "!=": not equal for Int, Float, and Mod values (returns Bool)
 - ">": greater than for Int, Float, and Mod values (returns Bool)
 - "<": less than for Int, Float, and Mod values (returns Bool)
 - ">=": greater than or equal for Int, Float, and Mod values (returns Bool)
 - "<=": less than or equal for Int, Float, and Mod values (returns Bool)
 - "|": or for Bool and Impulse values
 - "&": and for Bool and Impulse values
+- "^": xor for Bool and Impulse values
 
 **Tuple**
 
@@ -198,7 +221,7 @@ Patterns take one of the following forms:
 
 - Literal patterns match when the value of the scrutinee expression matches the literal
 - Identifier patterns match when the value of the scrutinee expression matches the value of the variable identifier
-- Comparison patterns match when the value of the scrutinee evaluates to true with the given comparison expression.
+- Comparison patterns match when the value of the scrutinee evaluates to true with the given comparison expression. (comparison operations are the same as the comparison binary expressions. Using the "==" comparison operator is the same as a standard literal/identifier pattern)
 
 For example:
 
@@ -305,6 +328,26 @@ let b = {
     a
 };
 ```
+
+### Inline functions
+
+LOI also allows users to define inline functions both globally and in relation types, for ease of programming. They are defined as follows:
+
+```
+let <name>(<parameter>,<parameter>,...) = <expression>;
+```
+
+For example:
+
+```
+let square(x) = x*x;
+
+rel_t SQUARE_INT(i: Int) -> Int = square(i);
+
+rel_t SQUARE_FLOAT(f: Float) -> Float = square(f);
+```
+
+The proper way to reason about inline functions is that whenever one is called, imagine replacing the call with the inline function itself.
 
 ## Networks
 

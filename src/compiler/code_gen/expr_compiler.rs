@@ -1171,12 +1171,7 @@ impl<'a> CodeGen<'a> {
 
     // series of comparison jumps, ending with an unconditional jmp, where their offsets point to right after the jmp
     // if scrutinee value is type converted, scrutinee_types is modified accordingly
-    fn compile_pattern_comp(
-        &mut self,
-        scrutinee_sources: &mut [Source],
-        scrutinee_types: &mut [Type],
-        pattern: SimplePattern,
-    ) -> Option<(Vec<Instruction>, Vec<usize>)> {
+    fn compile_pattern_comp(&mut self, scrutinee_sources: &mut [Source], scrutinee_types: &mut [Type], pattern: SimplePattern, ) -> Option<(Vec<Instruction>, Vec<usize>)> {
         let mut bytecode = Vec::new();
         let mut comp_jmp_incices = Vec::new();
 
