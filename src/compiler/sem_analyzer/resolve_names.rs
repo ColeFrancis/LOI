@@ -52,6 +52,10 @@ impl<'a> SemAnalyzer<'a> {
     fn resolve_item(&mut self, item: Item) -> Option<Item> {
         match item {
             Item::Stmt(Statement::Var(var)) => self.resolve_variable(var).map(|var| Item::Stmt(Statement::Var(var))),
+            Item::Stmt(Statement::Inline(inline)) => {
+                self.resolve_inline(inline);
+                None
+            },
             Item::Ent(ent_type) => {
                 self.resolve_ent(ent_type);
                 None
@@ -1924,5 +1928,133 @@ net SECOND {
                 ]
             }
         );
+    }
+
+    #[test]
+    fn test_program_2() {
+        let mut diagnostics = Diagnostics::new();
+
+        let tokens = Lexer::new(
+            "
+seed 10
+
+let First(a, b) = a*b;
+
+let Second(a, b, c) = {
+    let temp = First(a, b+1);
+
+    First(temp, c)
+};
+
+let n = First(1, Second(2, 3, 4));
+        ",
+            &mut diagnostics,
+        )
+        .tokenize();
+
+        let program = Parser::new(tokens, &mut diagnostics).parse();
+
+        let mut sem_analyzer = SemAnalyzer::new(program, &mut diagnostics);
+
+        sem_analyzer.resolve_names();
+
+        assert_eq!(sem_analyzer.ast, Program {
+            seed: Some(10),
+            items: vec![
+                Item::Stmt(Statement::Var(Variable {
+                    name: Ident::Symbol(12),
+                    expr: Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Var(Variable {
+                                name: Ident::Symbol(2),
+                                expr: Expr::Literal(Literal::Int(1)),
+                            }),
+                            Statement::Var(Variable {
+                                name: Ident::Symbol(11),
+                                expr: Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(3),
+                                            expr: Expr::Literal(Literal::Int(2)),
+                                        }),
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(4),
+                                            expr: Expr::Literal(Literal::Int(3)),
+                                        }),
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(5),
+                                            expr: Expr::Literal(Literal::Int(4)),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Block(BlockExpr {
+                                        statements: vec![
+                                            Statement::Var(Variable { // let temp = ...
+                                                name: Ident::Symbol(8),
+                                                expr: Expr::Block(BlockExpr {
+                                                    statements: vec![
+                                                        Statement::Var(Variable {
+                                                            name: Ident::Symbol(6),
+                                                            expr: Expr::Ident(Ident::Symbol(3)),
+                                                        }),
+                                                        Statement::Var(Variable {
+                                                            name: Ident::Symbol(7),
+                                                            expr: Expr::Binary(BinaryExpr {
+                                                                left: Box::new(Expr::Ident(Ident::Symbol(4))),
+                                                                right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                                op: BinaryOp::Add,
+                                                                op_span: Span{line: 12, col: 18},
+                                                                expr_type: Type::Unknown,
+                                                            }),
+                                                        }),
+                                                    ],
+                                                    expr: Box::new(Expr::Binary(BinaryExpr {
+                                                        left: Box::new(Expr::Ident(Ident::Symbol(6))),
+                                                        right: Box::new(Expr::Ident(Ident::Symbol(7))),
+                                                        op: BinaryOp::Mul,
+                                                        op_span: Span {line: 12, col: 18},
+                                                        expr_type: Type::Unknown,
+                                                    })),
+                                                    expr_type: Type::Unknown,
+                                                }),
+                                            }),
+                                        ],
+                                        expr: Box::new(Expr::Block(BlockExpr {
+                                            statements: vec![
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(9),
+                                                    expr: Expr::Ident(Ident::Symbol(8)),
+                                                }),
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(10),
+                                                    expr: Expr::Ident(Ident::Symbol(5)),
+                                                }),
+                                            ],
+                                            expr: Box::new(Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Symbol(9))),
+                                                right: Box::new(Expr::Ident(Ident::Symbol(10))),
+                                                op: BinaryOp::Mul,
+                                                op_span: Span {line: 12, col: 18},
+                                                expr_type: Type::Unknown,
+                                            })),
+                                            expr_type: Type::Unknown,
+                                        })),
+                                        expr_type: Type::Unknown,
+                                    })),
+                                    expr_type: Type::Unknown,
+                                }),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Symbol(2))),
+                            right: Box::new(Expr::Ident(Ident::Symbol(11))),
+                            op: BinaryOp::Mul,
+                            op_span: Span {line: 12, col: 9},
+                            expr_type: Type::Unknown,
+                        })),
+                        expr_type: Type::Unknown,
+                    })
+                })),
+            ],
+        });
     }
 }
