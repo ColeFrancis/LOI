@@ -152,7 +152,7 @@ impl Compiler {
         };
 
         let (netlist, interface, inits) =
-            Synthesis::synthesize(nets, top_net_idx, obj_map, symbols, seed, diagnostics);
+            Synthesis::new(nets, obj_map, symbols, seed, diagnostics).synthesize(top_net_idx);
 
         (netlist, interface, compiled_relations, seed, inits)
     }

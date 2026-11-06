@@ -14,25 +14,21 @@
 
 mod core;
 
-// use crate::compiler::{
-//     error_handling::diagnostics::Diagnostics,
-//     error_handling::span::Span,
-//     objects::{
-//         ast::{Expr, Ident, Literal, Net, NetItem},
-//         netlist::{EntId, Entity, Interface, Netlist, Relation},
-//         symbol::{Symbol, SymbolId, SymbolKind},
-//         types::Type,
-//     },
-//     sem_analyzer::SemAnalyzer,
-// };
+use std::collections::HashMap;
 
-// pub struct Synthesis {
-//     nets: Vec<Net>,
-//     obj_map: HashMap<SymbolId, usize>,
-//     symbols: &mut [Symbol],
-//     seed: Option<u64>,
-//     diagnostics: &mut Diagnostics,
-//     next_compiled_rel_id: usize,
-// }
+use crate::compiler::{
+    error_handling::diagnostics::Diagnostics,
+    objects::{
+        ast::Net,
+        symbol::{Symbol, SymbolId},
+    },
+};
 
-pub struct Synthesis;
+pub struct Synthesis<'a> {
+    nets: Vec<Net>,
+    obj_map: HashMap<SymbolId, usize>,
+    symbols: &'a mut [Symbol],
+    seed: Option<u64>,
+    diagnostics: &'a mut Diagnostics,
+    next_compiled_rel_id: usize,
+}
