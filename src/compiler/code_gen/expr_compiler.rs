@@ -381,12 +381,14 @@ impl<'a> CodeGen<'a> {
             }
 
             Expr::Block(block) => {
+                // let mut local_regs = Vec::new();
+
                 for statement in block.statements {
                     let Statement::Var(variable) = statement else {
-                        return None;
+                        unreachable!();
                     };
                     let Ident::Symbol(id) = variable.name else {
-                        return None;
+                        unreachable!();
                     };
 
                     let (expr_bytecode, src, _sub_type) = self.compile_expr(variable.expr)?;
@@ -397,8 +399,16 @@ impl<'a> CodeGen<'a> {
                         Source::RegVar(reg) | Source::RegInter(reg) => {
                             self.reg_map.insert(id, reg);
                         }
+                        // Source::RegInter(reg) => {
+                        //     self.reg_map.insert(id, reg);
+                        // }
+                        // Source::RegVar(reg) => {
+                        //     self.reg_map.insert(id, reg);
+                        //     local_regs.push(reg);
+                        // }
                         _ => {
                             let dest = self.get_next_reg()?;
+
                             self.reg_map.insert(id, dest);
 
                             bytecode.push(Instruction::MOV { dest, src });
@@ -409,6 +419,17 @@ impl<'a> CodeGen<'a> {
                 let (expr_bytecode, src, sub_type) = self.compile_expr(*block.expr)?;
 
                 bytecode.extend(expr_bytecode);
+
+                // let return_reg = match src {
+                //     Source::RegInter(reg) | Source::RegVar(reg) => Some(reg),
+                //     _ => None,
+                // };
+
+                // for reg in local_regs {
+                //     if Some(reg) != return_reg {
+                //         self.reg_used[reg] = false;
+                //     }
+                // }
 
                 (src, sub_type)
             }
@@ -1677,6 +1698,289 @@ mod tests {
                 Type::Int
             ))
         );
+    }
+
+    #[test]
+    fn block_2() {
+        // {
+        //     b = {
+        //         b = v1; // rel_t param
+        //         c = v2: // rel_t param
+
+        //         {
+        //             let temp = {
+        //                 b = b+1;
+
+        //                 2*b
+        //             };
+
+        //             {
+        //                 a = temp;
+        //                 b = c;
+
+        //                 a*b
+        //             }
+        //         }
+        //     };
+
+        //     1*b
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "v1".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "v2".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span{line: 0, col: 0},
+            },
+            Symbol {
+                name: "First".to_string(),
+                kind: SymbolKind::Inline {
+                    params: vec![
+                        "a".to_string(),
+                        "b".to_string(),
+                    ],
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 4, col: 19}})),
+                        right: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 4, col: 21}})),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 4, col: 20},
+                        expr_type: Type::Unknown,
+                    })),
+                },
+                span: Span{line: 4, col: 5},
+            },
+            Symbol {
+                name: "Second".to_string(),
+                kind: SymbolKind::Inline {
+                    params: vec![
+                        "a".to_string(),
+                        "b".to_string(),
+                        "c".to_string(),
+                    ],
+                    expr: Box::new(Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Var(Variable {
+                                name: Ident::Str {
+                                    val: "temp".to_string(),
+                                    span: Span{line: 7, col: 9},
+                                },
+                                expr: Expr::Call(InlineCall {
+                                    name: Ident::Str {
+                                        val: "First".to_string(),
+                                        span: Span{line: 7, col: 16},
+                                    },
+                                    args: vec![
+                                        Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 7, col: 22}}),
+                                        Expr::Binary(BinaryExpr {
+                                            left: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 7, col: 25}})),
+                                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                                            op: BinaryOp::Add,
+                                            op_span: Span{line: 7, col: 26},
+                                            expr_type: Type::Unknown,
+                                        }),
+                                    ],
+                                    span: Span {line: 7, col: 16}
+                                }),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Call(InlineCall {
+                            name: Ident::Str {
+                                val: "First".to_string(),
+                                span: Span {line: 9, col: 5}
+                            },
+                            args: vec![
+                                Expr::Ident(Ident::Str {val: "temp".to_string(), span: Span {line: 9, col: 11}}),
+                                Expr::Ident(Ident::Str {val: "c".to_string(), span: Span {line: 9, col: 17}})
+                            ],
+                            span: Span{line: 9, col: 5},
+                        })),
+                        expr_type: Type::Unknown
+                    })),
+                },
+                span: Span{line: 6, col: 5},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Const(Literal::Int(1)),
+                span: Span {line: 12, col: 9},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Const(Literal::Int(2)),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "c".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Const(Literal::Int(2)),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "temp".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span {line: 12, col: 9},
+            },
+        ];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 0);
+        compiler.reg_used[0] = true;
+        compiler.reg_map.insert(1, 1);
+        compiler.reg_used[1] = true;
+
+        let ir = compiler.compile_expr(Expr::Block(BlockExpr {
+            statements: vec![
+                Statement::Var(Variable {
+                    name: Ident::Symbol(13),
+                    expr: Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Var(Variable {
+                                name: Ident::Symbol(6),
+                                expr: Expr::Ident(Ident::Symbol(0)),
+                            }),
+                            Statement::Var(Variable {
+                                name: Ident::Symbol(7),
+                                expr: Expr::Ident(Ident::Symbol(1)),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable { // let temp = ...
+                                    name: Ident::Symbol(10),
+                                    expr: Expr::Block(BlockExpr {
+                                        statements: vec![
+                                            Statement::Var(Variable {
+                                                name: Ident::Symbol(9),
+                                                expr: Expr::Binary(BinaryExpr {
+                                                    left: Box::new(Expr::Ident(Ident::Symbol(6))),
+                                                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                    op: BinaryOp::Add,
+                                                    op_span: Span{line: 12, col: 18},
+                                                    expr_type: Type::Int,
+                                                }),
+                                            }),
+                                        ],
+                                        expr: Box::new(Expr::Binary(BinaryExpr {
+                                            left: Box::new(Expr::Literal(Literal::Int(2))),
+                                            right: Box::new(Expr::Ident(Ident::Symbol(9))),
+                                            op: BinaryOp::Mul,
+                                            op_span: Span {line: 12, col: 18},
+                                            expr_type: Type::Int,
+                                        })),
+                                        expr_type: Type::Int,
+                                    }),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Block(BlockExpr {
+                                statements: vec![
+                                    Statement::Var(Variable {
+                                        name: Ident::Symbol(11),
+                                        expr: Expr::Ident(Ident::Symbol(10)),
+                                    }),
+                                    Statement::Var(Variable {
+                                        name: Ident::Symbol(12),
+                                        expr: Expr::Ident(Ident::Symbol(7)),
+                                    }),
+                                ],
+                                expr: Box::new(Expr::Binary(BinaryExpr {
+                                    left: Box::new(Expr::Ident(Ident::Symbol(11))),
+                                    right: Box::new(Expr::Ident(Ident::Symbol(12))),
+                                    op: BinaryOp::Mul,
+                                    op_span: Span {line: 12, col: 18},
+                                    expr_type: Type::Int,
+                                })),
+                                expr_type: Type::Int,
+                            })),
+                            expr_type: Type::Int,
+                        })),
+                        expr_type: Type::Int,
+                    }),
+                }),
+            ],
+            expr: Box::new(Expr::Binary(BinaryExpr {
+                left: Box::new(Expr::Literal(Literal::Int(1))),
+                right: Box::new(Expr::Ident(Ident::Symbol(13))),
+                op: BinaryOp::Mul,
+                op_span: Span {line: 12, col: 9},
+                expr_type: Type::Int,
+            })),
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::IADD {
+                        dest: 2,
+                        src1: Source::RegVar(0),
+                        src2: Source::Int(1),
+                    },
+                    Instruction::IMUL {
+                        dest: 3,
+                        src1: Source::Int(2),
+                        src2: Source::RegVar(2),
+                    },
+                    Instruction::IMUL {
+                        dest: 4,
+                        src1: Source::RegVar(3),
+                        src2: Source::RegVar(1),
+                    },
+                    Instruction::IMUL {
+                        dest: 5,
+                        src1: Source::Int(1),
+                        src2: Source::RegVar(4),
+                    },
+                ],
+                Source::RegInter(5),
+                Type::Int,
+            ))
+        );
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[2], true);
+        assert_eq!(compiler.reg_used[3], true);
+        assert_eq!(compiler.reg_used[4], true);
+        assert_eq!(compiler.reg_used[5], true);
     }
 
     #[test]

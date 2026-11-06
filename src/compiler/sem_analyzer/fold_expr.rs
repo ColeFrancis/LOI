@@ -1021,6 +1021,778 @@ mod tests {
     }
 
     #[test]
+    fn test_block_4() {
+        // let First(a, b) = a*b;
+
+        // let Second(a, b, c) = {
+        //     let temp = First(a, b+1);
+
+        //     First(temp, c)
+        // };
+
+        // ... First(1, Second(2, 3, 4)) ...
+        // expands to:
+
+        // {
+        //     a = 1;
+        //     b = {
+        //         a = 2;
+        //         b = 3;
+        //         c = 4:
+
+        //         {
+        //             let temp = {
+        //                 a = a;
+        //                 b = b+1;
+
+        //                 a*b
+        //             };
+
+        //             {
+        //                 a = temp;
+        //                 b = c;
+
+        //                 a*b
+        //             }
+        //         }
+        //     };
+
+        //     a*b
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "First".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 4, col: 19}})),
+                            right: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 4, col: 21}})),
+                            op: BinaryOp::Mul,
+                            op_span: Span{line: 4, col: 20},
+                            expr_type: Type::Unknown,
+                        })),
+                    },
+                    span: Span{line: 4, col: 5},
+                },
+                Symbol {
+                    name: "Second".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                            "c".to_string(),
+                        ],
+                        expr: Box::new(Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Str {
+                                        val: "temp".to_string(),
+                                        span: Span{line: 7, col: 9},
+                                    },
+                                    expr: Expr::Call(InlineCall {
+                                        name: Ident::Str {
+                                            val: "First".to_string(),
+                                            span: Span{line: 7, col: 16},
+                                        },
+                                        args: vec![
+                                            Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 7, col: 22}}),
+                                            Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 7, col: 25}})),
+                                                right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                op: BinaryOp::Add,
+                                                op_span: Span{line: 7, col: 26},
+                                                expr_type: Type::Unknown,
+                                            }),
+                                        ],
+                                        span: Span {line: 7, col: 16}
+                                    }),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Call(InlineCall {
+                                name: Ident::Str {
+                                    val: "First".to_string(),
+                                    span: Span {line: 9, col: 5}
+                                },
+                                args: vec![
+                                    Expr::Ident(Ident::Str {val: "temp".to_string(), span: Span {line: 9, col: 11}}),
+                                    Expr::Ident(Ident::Str {val: "c".to_string(), span: Span {line: 9, col: 17}})
+                                ],
+                                span: Span{line: 9, col: 5},
+                            })),
+                            expr_type: Type::Unknown
+                        })),
+                    },
+                    span: Span{line: 6, col: 5},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "temp".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 5},
+                },
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::new(),
+            }],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Block(BlockExpr {
+                statements: vec![
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(2),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(11),
+                        expr: Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(3),
+                                    expr: Expr::Literal(Literal::Int(2)),
+                                }),
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(4),
+                                    expr: Expr::Literal(Literal::Int(3)),
+                                }),
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(5),
+                                    expr: Expr::Literal(Literal::Int(4)),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Block(BlockExpr {
+                                statements: vec![
+                                    Statement::Var(Variable { // let temp = ...
+                                        name: Ident::Symbol(8),
+                                        expr: Expr::Block(BlockExpr {
+                                            statements: vec![
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(6),
+                                                    expr: Expr::Ident(Ident::Symbol(3)),
+                                                }),
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(7),
+                                                    expr: Expr::Binary(BinaryExpr {
+                                                        left: Box::new(Expr::Ident(Ident::Symbol(4))),
+                                                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                        op: BinaryOp::Add,
+                                                        op_span: Span{line: 12, col: 18},
+                                                        expr_type: Type::Unknown,
+                                                    }),
+                                                }),
+                                            ],
+                                            expr: Box::new(Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Symbol(6))),
+                                                right: Box::new(Expr::Ident(Ident::Symbol(7))),
+                                                op: BinaryOp::Mul,
+                                                op_span: Span {line: 12, col: 18},
+                                                expr_type: Type::Unknown,
+                                            })),
+                                            expr_type: Type::Unknown,
+                                        }),
+                                    }),
+                                ],
+                                expr: Box::new(Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(9),
+                                            expr: Expr::Ident(Ident::Symbol(8)),
+                                        }),
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(10),
+                                            expr: Expr::Ident(Ident::Symbol(5)),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Binary(BinaryExpr {
+                                        left: Box::new(Expr::Ident(Ident::Symbol(9))),
+                                        right: Box::new(Expr::Ident(Ident::Symbol(10))),
+                                        op: BinaryOp::Mul,
+                                        op_span: Span {line: 12, col: 18},
+                                        expr_type: Type::Unknown,
+                                    })),
+                                    expr_type: Type::Unknown,
+                                })),
+                                expr_type: Type::Unknown,
+                            })),
+                            expr_type: Type::Unknown,
+                        }),
+                    }),
+                ],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(2))),
+                    right: Box::new(Expr::Ident(Ident::Symbol(11))),
+                    op: BinaryOp::Mul,
+                    op_span: Span {line: 12, col: 9},
+                    expr_type: Type::Unknown,
+                })),
+                expr_type: Type::Unknown,
+            }),
+            true,
+        );
+
+        assert_eq!(
+            result,
+            Expr::Literal(Literal::Int(32)),
+        );
+    }
+
+    #[test]
+    fn test_block_5() {
+        // let First(a, b) = a*b;
+
+        // let Second(a, b, c) = {
+        //     let temp = First(a, b+1);
+
+        //     First(temp, c)
+        // };
+
+        // ... First(1, Second(2, v1, v2)) ...
+        // expands to:
+
+        // {
+        //     a = 1;
+        //     b = {
+        //         a = 2;
+        //         b = v1;
+        //         c = v2:
+
+        //         {
+        //             let temp = {
+        //                 a = a;
+        //                 b = b+1;
+
+        //                 a*b
+        //             };
+
+        //             {
+        //                 a = temp;
+        //                 b = c;
+
+        //                 a*b
+        //             }
+        //         }
+        //     };
+
+        //     a*b
+        // }
+
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "v1".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "v2".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "First".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 4, col: 19}})),
+                            right: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 4, col: 21}})),
+                            op: BinaryOp::Mul,
+                            op_span: Span{line: 4, col: 20},
+                            expr_type: Type::Unknown,
+                        })),
+                    },
+                    span: Span{line: 4, col: 5},
+                },
+                Symbol {
+                    name: "Second".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                            "c".to_string(),
+                        ],
+                        expr: Box::new(Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Str {
+                                        val: "temp".to_string(),
+                                        span: Span{line: 7, col: 9},
+                                    },
+                                    expr: Expr::Call(InlineCall {
+                                        name: Ident::Str {
+                                            val: "First".to_string(),
+                                            span: Span{line: 7, col: 16},
+                                        },
+                                        args: vec![
+                                            Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 7, col: 22}}),
+                                            Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 7, col: 25}})),
+                                                right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                op: BinaryOp::Add,
+                                                op_span: Span{line: 7, col: 26},
+                                                expr_type: Type::Unknown,
+                                            }),
+                                        ],
+                                        span: Span {line: 7, col: 16}
+                                    }),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Call(InlineCall {
+                                name: Ident::Str {
+                                    val: "First".to_string(),
+                                    span: Span {line: 9, col: 5}
+                                },
+                                args: vec![
+                                    Expr::Ident(Ident::Str {val: "temp".to_string(), span: Span {line: 9, col: 11}}),
+                                    Expr::Ident(Ident::Str {val: "c".to_string(), span: Span {line: 9, col: 17}})
+                                ],
+                                span: Span{line: 9, col: 5},
+                            })),
+                            expr_type: Type::Unknown
+                        })),
+                    },
+                    span: Span{line: 6, col: 5},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "temp".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 5},
+                },
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::new(),
+            }],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.fold_expr(
+            Expr::Block(BlockExpr {
+                statements: vec![
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(4),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    }),
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(13),
+                        expr: Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(5),
+                                    expr: Expr::Literal(Literal::Int(2)),
+                                }),
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(6),
+                                    expr: Expr::Ident(Ident::Symbol(0)),
+                                }),
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(7),
+                                    expr: Expr::Ident(Ident::Symbol(1)),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Block(BlockExpr {
+                                statements: vec![
+                                    Statement::Var(Variable { // let temp = ...
+                                        name: Ident::Symbol(10),
+                                        expr: Expr::Block(BlockExpr {
+                                            statements: vec![
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(8),
+                                                    expr: Expr::Ident(Ident::Symbol(5)),
+                                                }),
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(9),
+                                                    expr: Expr::Binary(BinaryExpr {
+                                                        left: Box::new(Expr::Ident(Ident::Symbol(6))),
+                                                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                        op: BinaryOp::Add,
+                                                        op_span: Span{line: 12, col: 18},
+                                                        expr_type: Type::Unknown,
+                                                    }),
+                                                }),
+                                            ],
+                                            expr: Box::new(Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Symbol(8))),
+                                                right: Box::new(Expr::Ident(Ident::Symbol(9))),
+                                                op: BinaryOp::Mul,
+                                                op_span: Span {line: 12, col: 18},
+                                                expr_type: Type::Unknown,
+                                            })),
+                                            expr_type: Type::Unknown,
+                                        }),
+                                    }),
+                                ],
+                                expr: Box::new(Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(11),
+                                            expr: Expr::Ident(Ident::Symbol(10)),
+                                        }),
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(12),
+                                            expr: Expr::Ident(Ident::Symbol(7)),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Binary(BinaryExpr {
+                                        left: Box::new(Expr::Ident(Ident::Symbol(11))),
+                                        right: Box::new(Expr::Ident(Ident::Symbol(12))),
+                                        op: BinaryOp::Mul,
+                                        op_span: Span {line: 12, col: 18},
+                                        expr_type: Type::Unknown,
+                                    })),
+                                    expr_type: Type::Unknown,
+                                })),
+                                expr_type: Type::Unknown,
+                            })),
+                            expr_type: Type::Unknown,
+                        }),
+                    }),
+                ],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Ident(Ident::Symbol(4))),
+                    right: Box::new(Expr::Ident(Ident::Symbol(13))),
+                    op: BinaryOp::Mul,
+                    op_span: Span {line: 12, col: 9},
+                    expr_type: Type::Unknown,
+                })),
+                expr_type: Type::Unknown,
+            }),
+            true,
+        );
+
+        assert_eq!(
+            result,
+            Expr::Block(BlockExpr {
+                statements: vec![
+                    Statement::Var(Variable {
+                        name: Ident::Symbol(13),
+                        expr: Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(6),
+                                    expr: Expr::Ident(Ident::Symbol(0)),
+                                }),
+                                Statement::Var(Variable {
+                                    name: Ident::Symbol(7),
+                                    expr: Expr::Ident(Ident::Symbol(1)),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Block(BlockExpr {
+                                statements: vec![
+                                    Statement::Var(Variable { // let temp = ...
+                                        name: Ident::Symbol(10),
+                                        expr: Expr::Block(BlockExpr {
+                                            statements: vec![
+                                                Statement::Var(Variable {
+                                                    name: Ident::Symbol(9),
+                                                    expr: Expr::Binary(BinaryExpr {
+                                                        left: Box::new(Expr::Ident(Ident::Symbol(6))),
+                                                        right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                        op: BinaryOp::Add,
+                                                        op_span: Span{line: 12, col: 18},
+                                                        expr_type: Type::Unknown,
+                                                    }),
+                                                }),
+                                            ],
+                                            expr: Box::new(Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Literal(Literal::Int(2))),
+                                                right: Box::new(Expr::Ident(Ident::Symbol(9))),
+                                                op: BinaryOp::Mul,
+                                                op_span: Span {line: 12, col: 18},
+                                                expr_type: Type::Unknown,
+                                            })),
+                                            expr_type: Type::Unknown,
+                                        }),
+                                    }),
+                                ],
+                                expr: Box::new(Expr::Block(BlockExpr {
+                                    statements: vec![
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(11),
+                                            expr: Expr::Ident(Ident::Symbol(10)),
+                                        }),
+                                        Statement::Var(Variable {
+                                            name: Ident::Symbol(12),
+                                            expr: Expr::Ident(Ident::Symbol(7)),
+                                        }),
+                                    ],
+                                    expr: Box::new(Expr::Binary(BinaryExpr {
+                                        left: Box::new(Expr::Ident(Ident::Symbol(11))),
+                                        right: Box::new(Expr::Ident(Ident::Symbol(12))),
+                                        op: BinaryOp::Mul,
+                                        op_span: Span {line: 12, col: 18},
+                                        expr_type: Type::Unknown,
+                                    })),
+                                    expr_type: Type::Unknown,
+                                })),
+                                expr_type: Type::Unknown,
+                            })),
+                            expr_type: Type::Unknown,
+                        }),
+                    }),
+                ],
+                expr: Box::new(Expr::Binary(BinaryExpr {
+                    left: Box::new(Expr::Literal(Literal::Int(1))),
+                    right: Box::new(Expr::Ident(Ident::Symbol(13))),
+                    op: BinaryOp::Mul,
+                    op_span: Span {line: 12, col: 9},
+                    expr_type: Type::Unknown,
+                })),
+                expr_type: Type::Unknown,
+            }),
+        );
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "v1".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "v2".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span{line: 0, col: 0},
+                },
+                Symbol {
+                    name: "First".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                        ],
+                        expr: Box::new(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 4, col: 19}})),
+                            right: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 4, col: 21}})),
+                            op: BinaryOp::Mul,
+                            op_span: Span{line: 4, col: 20},
+                            expr_type: Type::Unknown,
+                        })),
+                    },
+                    span: Span{line: 4, col: 5},
+                },
+                Symbol {
+                    name: "Second".to_string(),
+                    kind: SymbolKind::Inline {
+                        params: vec![
+                            "a".to_string(),
+                            "b".to_string(),
+                            "c".to_string(),
+                        ],
+                        expr: Box::new(Expr::Block(BlockExpr {
+                            statements: vec![
+                                Statement::Var(Variable {
+                                    name: Ident::Str {
+                                        val: "temp".to_string(),
+                                        span: Span{line: 7, col: 9},
+                                    },
+                                    expr: Expr::Call(InlineCall {
+                                        name: Ident::Str {
+                                            val: "First".to_string(),
+                                            span: Span{line: 7, col: 16},
+                                        },
+                                        args: vec![
+                                            Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 7, col: 22}}),
+                                            Expr::Binary(BinaryExpr {
+                                                left: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 7, col: 25}})),
+                                                right: Box::new(Expr::Literal(Literal::Int(1))),
+                                                op: BinaryOp::Add,
+                                                op_span: Span{line: 7, col: 26},
+                                                expr_type: Type::Unknown,
+                                            }),
+                                        ],
+                                        span: Span {line: 7, col: 16}
+                                    }),
+                                }),
+                            ],
+                            expr: Box::new(Expr::Call(InlineCall {
+                                name: Ident::Str {
+                                    val: "First".to_string(),
+                                    span: Span {line: 9, col: 5}
+                                },
+                                args: vec![
+                                    Expr::Ident(Ident::Str {val: "temp".to_string(), span: Span {line: 9, col: 11}}),
+                                    Expr::Ident(Ident::Str {val: "c".to_string(), span: Span {line: 9, col: 17}})
+                                ],
+                                span: Span{line: 9, col: 5},
+                            })),
+                            expr_type: Type::Unknown
+                        })),
+                    },
+                    span: Span{line: 6, col: 5},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(1)),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(2)),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Const(Literal::Int(2)),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "temp".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 18},
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 9},
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span {line: 12, col: 5},
+                },
+            ],
+        );
+    }
+
+    #[test]
     fn test_cases_1() {
         // cases (a, b) {    // a=1, b=1 constants
         //     (c, 1) : 1+1, // c=1 constant

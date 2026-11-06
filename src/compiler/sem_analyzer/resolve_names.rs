@@ -1958,6 +1958,130 @@ let n = First(1, Second(2, 3, 4));
 
         sem_analyzer.resolve_names();
 
+        assert_eq!(sem_analyzer.symbols, vec![
+            Symbol {
+                name: "First".to_string(),
+                kind: SymbolKind::Inline {
+                    params: vec![
+                        "a".to_string(),
+                        "b".to_string(),
+                    ],
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 4, col: 19}})),
+                        right: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 4, col: 21}})),
+                        op: BinaryOp::Mul,
+                        op_span: Span{line: 4, col: 20},
+                        expr_type: Type::Unknown,
+                    })),
+                },
+                span: Span{line: 4, col: 5},
+            },
+            Symbol {
+                name: "Second".to_string(),
+                kind: SymbolKind::Inline {
+                    params: vec![
+                        "a".to_string(),
+                        "b".to_string(),
+                        "c".to_string(),
+                    ],
+                    expr: Box::new(Expr::Block(BlockExpr {
+                        statements: vec![
+                            Statement::Var(Variable {
+                                name: Ident::Str {
+                                    val: "temp".to_string(),
+                                    span: Span{line: 7, col: 9},
+                                },
+                                expr: Expr::Call(InlineCall {
+                                    name: Ident::Str {
+                                        val: "First".to_string(),
+                                        span: Span{line: 7, col: 16},
+                                    },
+                                    args: vec![
+                                        Expr::Ident(Ident::Str {val: "a".to_string(), span: Span{line: 7, col: 22}}),
+                                        Expr::Binary(BinaryExpr {
+                                            left: Box::new(Expr::Ident(Ident::Str {val: "b".to_string(), span: Span{line: 7, col: 25}})),
+                                            right: Box::new(Expr::Literal(Literal::Int(1))),
+                                            op: BinaryOp::Add,
+                                            op_span: Span{line: 7, col: 26},
+                                            expr_type: Type::Unknown,
+                                        }),
+                                    ],
+                                    span: Span {line: 7, col: 16}
+                                }),
+                            }),
+                        ],
+                        expr: Box::new(Expr::Call(InlineCall {
+                            name: Ident::Str {
+                                val: "First".to_string(),
+                                span: Span {line: 9, col: 5}
+                            },
+                            args: vec![
+                                Expr::Ident(Ident::Str {val: "temp".to_string(), span: Span {line: 9, col: 11}}),
+                                Expr::Ident(Ident::Str {val: "c".to_string(), span: Span {line: 9, col: 17}})
+                            ],
+                            span: Span{line: 9, col: 5},
+                        })),
+                        expr_type: Type::Unknown
+                    })),
+                },
+                span: Span{line: 6, col: 5},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 9},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "c".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "temp".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 18},
+            },
+            Symbol {
+                name: "b".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 9},
+            },
+            Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Unknown),
+                span: Span {line: 12, col: 5},
+            },
+        ]);
         assert_eq!(sem_analyzer.ast, Program {
             seed: Some(10),
             items: vec![
