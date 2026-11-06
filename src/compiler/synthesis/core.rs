@@ -41,6 +41,27 @@ use crate::compiler::{
 use crate::simulator::objects::event::Event;
 
 impl Synthesis {
+    // pub fn new(
+    //     nets: Vec<Net>,
+    //     obj_map: HashMap<SymbolId, usize>,
+    //     symbols: &mut [Symbol],
+    //     seed: Option<u64>,
+    //     diagnostics: &mut Diagnostics,
+    // ) -> Self {
+    //     Self {
+    //         nets,
+    //         obj_map,
+    //         symbols,
+    //         seed,
+    //         diagnostics,
+    //         next_compiled_rel_id: 0,
+    //     }
+    // }
+
+    // pub fn synthesize(top_net_idx: usize) -> (Netlist, Interface, Vec<Event>) {
+
+    // }
+
     pub fn synthesize(
         nets: Vec<Net>,
         top_net_idx: usize,
@@ -374,7 +395,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -542,7 +563,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -551,7 +572,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
                     return_type: Type::Int,
-                    instantiated: false,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -560,7 +581,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -680,7 +701,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -951,7 +972,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -960,7 +981,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -969,7 +990,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1390,7 +1411,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1556,7 +1577,7 @@ mod tests {
                 kind: SymbolKind::Rel_t {
                     input_types: vec![Type::Int, Type::Int],
                     return_type: Type::Int,
-                    instantiated: true,
+                    
                 },
                 span: Span { line: 0, col: 0 },
             },

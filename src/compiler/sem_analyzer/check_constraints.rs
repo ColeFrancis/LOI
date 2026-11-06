@@ -172,7 +172,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Bool],
                         return_type: Type::Bool,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -266,7 +266,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Bool],
                         return_type: Type::Bool,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -365,7 +365,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Bool],
                         return_type: Type::Bool,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },

@@ -204,7 +204,7 @@ impl<'a> SemAnalyzer<'a> {
                             expected: vec![SymbolKind::Rel_t {
                                 input_types: Vec::new(),
                                 return_type: Type::Unknown,
-                                instantiated: false,
+                                
                             }],
                             found: other.clone(),
                             span: rel_inst.span,
@@ -473,7 +473,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -532,7 +532,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -570,7 +570,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -623,7 +623,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
                         return_type: Type::Custom(Ident::Symbol(0)),
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -643,7 +643,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -702,7 +702,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Int],
                         return_type: Type::Error,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -729,7 +729,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: Vec::new(),
                         return_type: Type::Unknown,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -782,7 +782,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Bool],
                         return_type: Type::Error,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1128,7 +1128,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1279,7 +1279,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1371,7 +1371,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1532,7 +1532,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1691,7 +1691,7 @@ mod tests {
                     kind: SymbolKind::Rel_t {
                         input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
                         return_type: Type::Float,
-                        instantiated: true,
+                        
                     },
                     span: Span { line: 0, col: 0 },
                 },

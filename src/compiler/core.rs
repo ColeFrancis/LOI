@@ -37,7 +37,7 @@ use crate::compiler::{
         ast::{Ident, Item, Program},
         compiled_rel::CompiledRel,
         netlist::{Interface, Netlist},
-        symbol::{Symbol, SymbolId, SymbolKind},
+        symbol::{Symbol, SymbolId},
     },
     parser::Parser,
     sem_analyzer::SemAnalyzer,
@@ -108,12 +108,6 @@ impl Compiler {
                     let Ident::Symbol(id) = relation.name else {
                         unreachable!("relation name must be ident::symbol by this point"); // unreachable
                     };
-
-                    if let SymbolKind::Rel_t { instantiated, .. } = symbols[id].kind {
-                        if !instantiated {
-                            continue;
-                        }
-                    }
 
                     let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics)
                     else {
