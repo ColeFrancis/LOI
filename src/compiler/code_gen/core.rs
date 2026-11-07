@@ -357,6 +357,7 @@ impl<'a> CodeGen<'a> {
                 Instruction::IMOD { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
+                Instruction::I2F { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::FADD { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
@@ -372,6 +373,22 @@ impl<'a> CodeGen<'a> {
                 Instruction::FABS { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::FEXP { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::FLN  { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CADD { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CSUB { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CMUL { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CDIV { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CABS { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CEXP { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CLN  { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CON  { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::AND { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
@@ -383,7 +400,9 @@ impl<'a> CodeGen<'a> {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::FLR { src, .. } => 2 + Self::get_num_source_bytes(src),
-                Instruction::I2F { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::F2C { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CRE { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CIM { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::JMP { .. } => 3,
                 Instruction::IJEQ { src1, src2, .. } => {
                     3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)

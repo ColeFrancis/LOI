@@ -26,6 +26,7 @@ enum Operand {
     Register(u8),
     Int(i64),
     Float(f64),
+    Complex(f32,f32),
     Offset(i16),
     Byte(u8),
 }
@@ -61,7 +62,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
     match mnemonic {
         // -----------------
-        // Arithmetic
+        // Integer/Float Arithmetic
         // -----------------
         "IADD" | "ISUB" | "IMUL" | "IDIV" | "IMOD" | "FADD" | "FSUB" | "FMUL" | "FDIV"  => {
             if operands.len() != 3 {
@@ -84,8 +85,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
@@ -98,6 +99,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
 
@@ -105,11 +110,15 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
 
-        "IABS" | "FABS" | "FEXP" | "FLN" => {
+        "IABS" | "FABS" | "I2F" | "FEXP" | "FLN" => {
             if operands.len() != 2 {
                 return None;
             }
@@ -117,7 +126,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             let operation = match mnemonic {
                 "IABS" | "FABS" => 0b100,
                 "FEXP" => 0b101,
-                "FLN" => 0b110,
+                "I2F" | "FLN" => 0b110,
                 _ => unreachable!(),
             };
 
@@ -128,7 +137,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -141,6 +150,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -165,8 +178,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
@@ -178,12 +191,22 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
 
             match operands[2] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -198,7 +221,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -210,6 +233,11 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             match operands[1] {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             };
         }
@@ -217,14 +245,16 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
         // ------------------------------------------------------------
         // Type converting operations
         // ------------------------------------------------------------
-        "FLR" | "I2F" => {
+        "FLR" | "F2C" | "CRE" | "CIM" => {
             if operands.len() != 2 {
                 return None;
             }
 
             let operation = match mnemonic {
                 "FLR" => 0b00,
-                "I2F" => 0b10,
+                "F2C" => 0b01,
+                "CRE" => 0b10,
+                "CIM" => 0b11,
                 _ => unreachable!(),
             };
 
@@ -233,7 +263,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -246,8 +276,105 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
+        }
+
+        // ------------------------------------------------------------
+        // Complex Arithmetic
+        // ------------------------------------------------------------
+        "CADD" | "CSUB" | "CMUL" | "CDIV" => {
+            if operands.len() != 3 {
+                return None;
+            }
+
+            let operation = match mnemonic {
+                "CADD" => 0b000,
+                "CSUB" => 0b001,
+                "CMUL" => 0b010,
+                "CDIV" => 0b011,
+                _ => unreachable!(),
+            };
+
+            let dest = match operands[0] {
+                Operand::Register(r) => r,
+                _ => return None,
+            };
+
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+            let opcode = (0b011 << 5) | (operation << 2) | ss;
+
+            output.push(opcode);
+            output.push(dest);
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+
+            match operands[2] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+        }
+
+        "CABS" | "CEXP" | "CLN" | "CON" => {
+            if operands.len() != 2 {
+                return None;
+            }
+
+            let operation = match mnemonic {
+                "CABS" => 0b100,
+                "CEXP" => 0b101,
+                "CLN" => 0b110,
+                "CON" => 0b111,
+                _ => unreachable!(),
+            };
+
+            let dest = match operands[0] {
+                Operand::Register(r) => r,
+                _ => return None,
+            };
+
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+
+            let ss = (src_immediate as u8) << 1;
+
+            let opcode = (0b011 << 5) | (operation << 2) | ss;
+
+            output.push(opcode);
+            output.push(dest);
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            };
         }
 
         // ------------------------------------------------------------
@@ -291,8 +418,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
@@ -305,6 +432,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
 
@@ -312,6 +443,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -342,8 +477,8 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
-            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_));
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
 
@@ -356,6 +491,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
 
@@ -363,6 +502,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -380,7 +523,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 _ => return None,
             };
 
-            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_));
+            let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -393,6 +536,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -402,7 +549,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 return None;
             }
 
-            let src_immediate = matches!(operands[0], Operand::Int(_) | Operand::Float(_));
+            let src_immediate = matches!(operands[0], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
             let ss = (src_immediate as u8) << 1;
 
@@ -414,6 +561,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                 Operand::Register(r) => output.push(r),
                 Operand::Int(i) => output.extend(i.to_le_bytes()),
                 Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
                 _ => return None,
             }
         }
@@ -449,6 +600,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
                     Operand::Register(r) => output.push(r),
                     Operand::Int(i) => output.extend(i.to_le_bytes()),
                     Operand::Float(f) => output.extend(f.to_le_bytes()),
+                    Operand::Complex(real, imag) => {
+                        output.extend(real.to_le_bytes());
+                        output.extend(imag.to_le_bytes());
+                    }
                     _ => return None,
                 }
             }
@@ -498,6 +653,20 @@ fn parse_operand(text: &str) -> Option<Operand> {
 
         "f" => Some(Operand::Float(value.parse().ok()?)),
 
+        "c" => {
+            let (real, imag) = value.split_once(',')?;
+
+            // Reject additional components.
+            if imag.contains(',') {
+                return None;
+            }
+
+            Some(Operand::Complex(
+                real.parse::<f32>().ok()?,
+                imag.parse::<f32>().ok()?,
+            ))
+        }
+
         "o" => Some(Operand::Offset(value.parse::<i16>().ok()?)),
 
         "b" => Some(Operand::Byte(value.parse::<u8>().ok()?)),
@@ -531,6 +700,8 @@ RET i1
 RND r0
 ERR b4 i0
 ERR b3
+CDIV r0 r1 c1.0,-2.4
+CLN r0 r1
         ",
         );
 
@@ -540,12 +711,13 @@ ERR b3
                 0b00000001, 0x01, 0x00, 0x17, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b00101001,
                 0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xC0, 0b00010000, 0x00, 0x01,
                 0b01000000, 0x00, 0x01, 0x02, 0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0b01011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00010101, 0x00, 0x01,
+                0x00, 0x00, 0b00011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00010101, 0x00, 0x01,
                 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b11001000, 0x00, 0x01, 0x02,
                 0b10111100, 0x30, 0x00, 0x00, 0x01, 0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x08, 0x40, 0b10100000, 0x00, 0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0b11100000, 0x00, 0b10100111, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0b10100100, 0x03,
+                0x00, 0x00, 0b10100100, 0x03, 0b01101101, 0x00, 0x01, 0x00, 0x00, 0x80, 0x3F, 0x9A, 
+                0x99, 0x19, 0xC0, 0b01111000, 0x00, 0x01,
             ])
         );
     }
@@ -561,7 +733,7 @@ JMP i48
         ",
         );
 
-        assert_eq!(result, Err(3));
+        assert_eq!(result, Err(5));
     }
 
     #[test]

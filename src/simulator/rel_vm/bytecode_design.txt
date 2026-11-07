@@ -97,22 +97,26 @@ bits:
         0: integer jumps /comparisons / other operations
         1: float jump / comparisons / other operations
 
+
+
+    0 0 0 d d d:
+        1 0 1: IMOD
+        1 1 0: I2F // to convert int to float (float)
+        1 1 1:
+
+    0 0 1 d d d:
+        1 0 1: FEXP
+        1 1 0: FLN
+        1 1 1:
+
     0 0 f d d d:
         0 0 0: ADD
         0 0 1: SUB
         0 1 0: MUL
         0 1 1: DIV
         1 0 0: ABS
-        1 0 1: 
-        1 1 0: 
-        1 1 1:
 
-    0 0 0 d d d:
-        1 0 1: IMOD
 
-    0 0 1 d d d:
-        1 0 1: FEXP
-        1 1 0: FLN
 
     0 1 0 0 d d:
         0 0: AND
@@ -122,24 +126,32 @@ bits:
 
     0 1 0 1 d d:
         0 0: FLR // floor
-        0 1: F2C            // not implemented yet
-        1 0: I2F // to convert int to float (float)
-        1 1: I2C            // not implemented yet
+        0 1: F2C // to convert float to complex   
+        1 0: CRE // real part of a complex number
+        1 1: CIM // imaginary part of a complex number        
 
 
     0 1 1 d d d:
-        0 0 0: CADD         // not implemented yet
-        0 0 1: CSUB         // not implemented yet
-        0 1 0: CMUL         // not implemented yet
-        0 1 1: CDIV         // not implemented yet
-        1 0 0: CABS         // not implemented yet
-        1 0 1: 
-        1 1 0:
-        1 1 1: CONJ
+        0 0 0: CADD         
+        0 0 1: CSUB         
+        0 1 0: CMUL         
+        0 1 1: CDIV         
+        1 0 0: CABS         
+        1 0 1: CEXP
+        1 1 0: CLN
+        1 1 1: CON
+
+
+
+    1 0 0 d d d:
+        0 0 0: JMP
+        0 0 1:
+
+    1 0 1 d d d:
+        0 0 0: RET
+        0 0 1: ERR
 
     1 0 f d d d:
-        0 0 0:
-        0 0 1: 
         0 1 0: JEQ
         0 1 1: JNE
         1 0 0: JLT
@@ -147,16 +159,17 @@ bits:
         1 1 0: JGT
         1 1 1: JGE
 
-    1 0 0 d d d:
-        0 0 0: JMP
 
-    1 0 1 d d d:
-        0 0 0: RET
-        0 0 1: ERR
+
+    1 1 0 d d d:
+        0 0 0: MOV
+        0 0 1: 
+
+    1 1 1 d d d:   
+        0 0 0: RND
+        0 0 1: RNDN
 
     1 1 f d d d:
-        0 0 0: 
-        0 0 1: 
         0 1 0: EQ
         0 1 1: NE
         1 0 0: LT
@@ -164,19 +177,12 @@ bits:
         1 1 0: GT
         1 1 1: GE
 
-    1 1 0 d d d:
-        0 0 0: MOV
-
-    1 1 1 d d d:   
-        0 0 0: RND
-        0 0 1: RNDN
-
 
 
     s s: source sources
         0 0: reg       reg
-        0 1: immediate reg
-        1 0: reg       immediate
+        0 1: reg       immediate
+        1 0: immediate reg
         1 1: immediate immediate
 
     s s (for ERR):

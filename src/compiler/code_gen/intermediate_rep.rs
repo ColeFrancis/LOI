@@ -64,6 +64,10 @@ pub enum Instruction {
         src1: Source,
         src2: Source,
     },
+    I2F {
+        dest: usize,
+        src: Source,
+    },
     FADD {
         dest: usize,
         src1: Source,
@@ -96,6 +100,42 @@ pub enum Instruction {
         dest: usize,
         src: Source,
     },
+    CADD {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CSUB {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CMUL {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CDIV {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CABS {
+        dest: usize,
+        src: Source,
+    },
+    CEXP {
+        dest: usize,
+        src: Source,
+    },
+    CLN {
+        dest: usize,
+        src: Source,
+    },
+    CON {
+        dest: usize,
+        src: Source,
+    },
     AND {
         dest: usize,
         src1: Source,
@@ -119,7 +159,15 @@ pub enum Instruction {
         dest: usize,
         src: Source,
     },
-    I2F {
+    F2C {
+        dest: usize,
+        src: Source,
+    },
+    CRE {
+        dest: usize,
+        src: Source,
+    },
+    CIM {
         dest: usize,
         src: Source,
     },

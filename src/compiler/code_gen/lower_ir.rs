@@ -107,6 +107,17 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src1_bytes);
                     bytes.extend(src2_bytes);
                 }
+                Instruction::I2F { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b000110 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
 
                 Instruction::FADD { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
@@ -194,6 +205,103 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src_bytes);
                 }
 
+                Instruction::CADD { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b011000 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CSUB { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b011001 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CMUL { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b011010 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CDIV { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b011011 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CABS { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b011100 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::CEXP { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b001101 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::CLN { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b011110 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::CON { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b011111 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+
                 Instruction::AND { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
@@ -256,12 +364,34 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
-                Instruction::I2F { dest, src } => {
+                Instruction::F2C { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b010101 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::CRE { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
 
                     let opcode = (0b010110 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
+                Instruction::CIM { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = (src_immediate as u8) << 1;
+
+                    let opcode = (0b010111 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);

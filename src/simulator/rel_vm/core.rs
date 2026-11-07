@@ -125,6 +125,12 @@ impl RelVM {
                             continue;
                         }
 
+                        // I2F
+                        0b00011000 => {
+                            registers[dest_reg] = (src1_val as f64).to_bits();
+                            continue;
+                        }
+
                         _ => {}
                     }
 
@@ -336,16 +342,44 @@ impl RelVM {
                             registers[dest_reg] = ((src_val as f64).floor() as i64) as u64;
                         }
 
-                        // I2F
+                        // F2C
+                        0b00010100 => {
+                            let src_val = f64::from_bits(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            ));
+
+                            registers[dest_reg] = Self::pack_complex(src_val as f32, 0.0_f32);
+                        }
+
+                        // CRE
                         0b00011000 => {
                             let src_val = Self::read_source(
                                 registers,
                                 bytecode,
                                 &mut inst_counter,
                                 src1_is_reg,
-                            ) as i64;
+                            );
 
-                            registers[dest_reg] = (src_val as f64).to_bits();
+                            let (real, _) = Self::unpack_complex(src_val);
+
+                            registers[dest_reg] = (real as f64).to_bits();
+                        }
+
+                        // CIM
+                        0b00011100 => {
+                            let src_val = Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            let (_, imag) = Self::unpack_complex(src_val);
+
+                            registers[dest_reg] = (imag as f64).to_bits();
                         }
 
                         _ => return Err(VMError::InvalidOpcode(inst)),
@@ -376,6 +410,103 @@ impl RelVM {
                 //         _ => {}
                 //     }
                 // }
+
+                // Complex arith
+                0b01100000 => {
+                    let dest_reg = bytecode[inst_counter] as usize;
+
+                    inst_counter += 1;
+
+                    // Handles incrementing inst_counter
+                    let src1_val = Self::read_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src1_is_reg,
+                    );
+
+                    let (a, b) = Self::unpack_complex(src1_val);
+
+                    // Single source operations
+                    match op {
+                        // CABS
+                        0b00010000 => {
+                            registers[dest_reg] = (a.hypot(b) as f64).to_bits();
+                            continue;
+                        }
+
+                        // CEXP
+                        0b00010100 => {
+                            let exp = a.exp();
+
+                            registers[dest_reg] =
+                                Self::pack_complex(exp * b.cos(), exp * b.sin());
+                            continue;
+                        }
+
+                        // CLN
+                        0b00011000 => {
+                            registers[dest_reg] =
+                                Self::pack_complex(a.hypot(b).ln(), b.atan2(a));
+                            continue;
+                        }
+
+                        // CON
+                        0b00011100 => {
+                            registers[dest_reg] = Self::pack_complex(a, -b);
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+
+                    // Handles incrementing inst_counter
+                    let src2_val = Self::read_source(
+                        registers,
+                        bytecode,
+                        &mut inst_counter,
+                        src2_is_reg,
+                    );
+
+                    let (c, d) = Self::unpack_complex(src2_val);
+
+                    match op {
+                        // CADD
+                        0b00000000 => {
+                            registers[dest_reg] =
+                                Self::pack_complex(a + c, b + d);
+                        }
+
+                        // CSUB
+                        0b00000100 => {
+                            registers[dest_reg] =
+                                Self::pack_complex(a - c, b - d);
+                        }
+
+                        // CMUL
+                        0b00001000 => {
+                            registers[dest_reg] =
+                                Self::pack_complex(
+                                    a * c - b * d,
+                                    a * d + b * c,
+                                );
+                        }
+
+                        // CDIV
+                        0b00001100 => {
+                            // Has numerical stability issue with denom. Perhaps use Smith's algorithm in future
+                            let denom = c * c + d * d;
+
+                            registers[dest_reg] =
+                                Self::pack_complex(
+                                    (a * c + b * d) / denom,
+                                    (b * c - a * d) / denom,
+                                );
+                        }
+
+                        _ => return Err(VMError::InvalidOpcode(inst)),
+                    }
+                }
 
                 // Int comp jumps, jump
                 0b10000000 => {
@@ -699,30 +830,15 @@ impl RelVM {
             result
         }
     }
+
+    fn unpack_complex(value: u64) -> (f32, f32) {
+        (f32::from_bits(value as u32), f32::from_bits((value >> 32) as u32))
+    }
+
+    fn pack_complex(real: f32, imag: f32) -> u64 {
+        (real.to_bits() as u64) | ((imag.to_bits() as u64) << 32)
+    }
 }
-
-/*
-// No source RND op
-                    match op {
-                        0b00000000 => {
-                            let random_val: f64 = self.rng.random();
-
-                            registers[dest_reg] = random_val.to_bits();
-                            continue;
-                        }
-
-                        0b00000100 => {
-                            use rand_distr::{Distribution, StandardNormal};
-
-                            let random_val: f64 = StandardNormal.sample(&mut self.rng);
-
-                            registers[dest_reg] = random_val.to_bits();
-                            continue;
-                        }
-
-                        _ => {}
-                    }
-*/
 
 #[cfg(test)]
 mod tests {
@@ -800,6 +916,57 @@ mod tests {
         let result = RelVM::new_test(vec![], &bytecode, None);
 
         assert_eq!(result, Ok((-2 as i64) as u64));
+    }
+    
+    #[test]
+    fn comp_arith_1() {
+        let bytecode = assemble(
+            "
+            CADD r0 c3.0,0.0 c0.0,4.0
+            CABS r0 r0       
+            RET r0
+        ",
+        )
+        .unwrap();
+
+        let result = RelVM::new_test(vec![], &bytecode, None);
+
+        assert_eq!(result, Ok((5.0_f64).to_bits() as u64));
+    }
+    
+    #[test]
+    fn comp_arith_2() {
+        let bytecode = assemble(
+            "
+            MOV r0 c1.0,1.0
+            CON r1 r0
+            CADD r0 r1 r0
+            CIM r0 r0    
+            RET r0
+        ",
+        )
+        .unwrap();
+
+        let result = RelVM::new_test(vec![], &bytecode, None);
+
+        assert_eq!(result, Ok((0.0_f64).to_bits() as u64));
+    }
+    
+    #[test]
+    fn comp_arith_3() {
+        let bytecode = assemble(
+            "
+            F2C r0 f2.0
+            CMUL r0 r0 c0.0,-1.0
+            CIM r0 r0  
+            RET r0
+        ",
+        )
+        .unwrap();
+
+        let result = RelVM::new_test(vec![], &bytecode, None);
+
+        assert_eq!(result, Ok((-2.0_f64).to_bits() as u64));
     }
 
     #[test]
