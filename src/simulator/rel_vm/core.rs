@@ -387,31 +387,6 @@ impl RelVM {
                 }
 
                 // Complex arith
-                // 0b01100000 => {
-                //     match inst & 0b0011100 {
-                //         // ADD
-                //         0b00000000 => {}
-
-                //         // SUB
-                //         0b00000100 => {}
-
-                //         // MUL
-                //         0b00001000 => {}
-
-                //         // DIV
-                //         0b00001100 => {}
-
-                //         // POW
-                //         0b00010000 => {}
-
-                //         // ABS
-                //         0b00010100 => {}
-
-                //         _ => {}
-                //     }
-                // }
-
-                // Complex arith
                 0b01100000 => {
                     let dest_reg = bytecode[inst_counter] as usize;
 
