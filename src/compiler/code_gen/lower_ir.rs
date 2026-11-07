@@ -846,7 +846,7 @@ impl<'a> CodeGen<'a> {
                         }
                         Some(Source::Int(val)) => (0b11, val.to_le_bytes().to_vec()),
                         Some(Source::Float(val)) => (0b11, val.to_le_bytes().to_vec()),
-                        Some(Source::Cmp(a, b)) => {
+                        Some(Source::Complex(a, b)) => {
                             let mut bytes = a.to_le_bytes().to_vec();
                             bytes.extend(b.to_le_bytes());
                             (0b11, bytes)
@@ -890,7 +890,7 @@ impl<'a> CodeGen<'a> {
             Source::Bool(val) => (true, (val as u64).to_le_bytes().to_vec()),
             Source::Int(val) => (true, val.to_le_bytes().to_vec()),
             Source::Float(val) => (true, val.to_le_bytes().to_vec()),
-            Source::Cmp(a, b) => {
+            Source::Complex(a, b) => {
                 let mut bytes = a.to_le_bytes().to_vec();
                 bytes.extend(b.to_le_bytes());
                 (true, bytes)

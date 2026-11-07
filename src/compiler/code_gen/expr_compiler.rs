@@ -40,6 +40,8 @@ impl<'a> CodeGen<'a> {
                 Literal::Int(i) => (Source::Int(i), Type::Int),
 
                 Literal::Float(r) => (Source::Float(r), Type::Float),
+
+                Literal::Complex(a, b) => (Source::Complex(a, b), Type::Float),
             },
 
             Expr::Ident(Ident::Symbol(id)) => match self.symbol_table[id].kind.clone() {
@@ -706,6 +708,8 @@ impl<'a> CodeGen<'a> {
                     Literal::Int(i) => (Source::Int(i), Type::Int),
 
                     Literal::Float(r) => (Source::Float(r), Type::Float),
+
+                    Literal::Complex(a, b) => (Source::Complex(a, b), Type::Complex),
                 };
 
                 (scrutinee_sources[0], lit_src, scrutinee_types[0]) = self.coerce_equal(

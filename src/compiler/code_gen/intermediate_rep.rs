@@ -29,7 +29,7 @@ pub enum Source {
     Bool(bool),
     Int(i64), // mod and custom types encoded as ints as well
     Float(f64),
-    Cmp(f32, f32),
+    Complex(f32, f32),
 }
 
 #[allow(dead_code)]
