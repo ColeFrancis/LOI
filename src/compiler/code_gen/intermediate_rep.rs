@@ -29,6 +29,7 @@ pub enum Source {
     Bool(bool),
     Int(i64), // mod and custom types encoded as ints as well
     Float(f64),
+    Cmp(f32, f32),
 }
 
 #[allow(dead_code)]
@@ -121,6 +122,10 @@ pub enum Instruction {
         src2: Source,
     },
     CABS {
+        dest: usize,
+        src: Source,
+    },
+    CARG {
         dest: usize,
         src: Source,
     },
@@ -234,6 +239,16 @@ pub enum Instruction {
         src1: Source,
         src2: Source,
     },
+    CJEQ {
+        offset: i16,
+        src1: Source,
+        src2: Source,
+    },
+    CJNE {
+        offset: i16,
+        src1: Source,
+        src2: Source,
+    },
     IEQ {
         dest: usize,
         src1: Source,
@@ -290,6 +305,16 @@ pub enum Instruction {
         src2: Source,
     },
     FGE {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CEQ {
+        dest: usize,
+        src1: Source,
+        src2: Source,
+    },
+    CNE {
         dest: usize,
         src1: Source,
         src2: Source,

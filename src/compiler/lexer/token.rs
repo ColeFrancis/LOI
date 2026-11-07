@@ -66,6 +66,7 @@ pub enum TokenKind {
     BoolLiteral(bool),
     IntLiteral(i64),
     FloatLiteral(f64),
+    // CMPLiteral(f32, f32),
 
     Uniform, // uniform
     Normal,  // normal

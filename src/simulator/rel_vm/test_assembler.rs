@@ -338,13 +338,13 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
-        "CABS" | "CEXP" | "CLN" | "CON" => {
+        "CABS" | "CARG" | "CEXP" | "CLN" | "CON" => {
             if operands.len() != 2 {
                 return None;
             }
 
             let operation = match mnemonic {
-                "CABS" => 0b100,
+                "CABS" | "CARG" => 0b100,
                 "CEXP" => 0b101,
                 "CLN" => 0b110,
                 "CON" => 0b111,
@@ -358,7 +358,10 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let src_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
 
-            let ss = (src_immediate as u8) << 1;
+            // For CARG, the unused lower s bit is 1
+            let ss_lower = u8::from(mnemonic == "CARG");
+
+            let ss = ((src_immediate as u8) << 1) | ss_lower;
 
             let opcode = (0b011 << 5) | (operation << 2) | ss;
 
@@ -451,6 +454,55 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
+        "CJEQ" | "CJNE" => {
+            if operands.len() != 3 {
+                return None;
+            }
+
+            let opcode = match mnemonic {
+                "CJEQ" => 0b000111,
+                "CJNE" => 0b001111,
+                _ => unreachable!(),
+            };
+
+            let offset = match operands[0] {
+                Operand::Offset(o) => o,
+                _ => return None,
+            };
+
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+            let opcode = (opcode << 2) | ss;
+
+            output.push(opcode);
+            output.extend(offset.to_le_bytes());
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+
+            match operands[2] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+        }
+
         // -----------------
         // Comparisons
         // -----------------
@@ -510,6 +562,55 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
             }
         }
 
+        "CEQ" | "CNE" => {
+            if operands.len() != 3 {
+                return None;
+            }
+
+            let operation = match mnemonic {
+                "CEQ" => 0b000,
+                "CNE" => 0b001,
+                _ => unreachable!(),
+            };
+
+            let dest_val = match operands[0] {
+                Operand::Register(r) => r,
+                _ => return None,
+            };
+
+            let src1_immediate = matches!(operands[1], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+            let src2_immediate = matches!(operands[2], Operand::Int(_) | Operand::Float(_) | Operand::Complex(_,_));
+
+            let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+            let opcode = (0b110 << 5) | (operation << 2) | ss;
+
+            output.push(opcode);
+            output.extend(dest_val.to_le_bytes());
+
+            match operands[1] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+
+            match operands[2] {
+                Operand::Register(r) => output.push(r),
+                Operand::Int(i) => output.extend(i.to_le_bytes()),
+                Operand::Float(f) => output.extend(f.to_le_bytes()),
+                Operand::Complex(real, imag) => {
+                    output.extend(real.to_le_bytes());
+                    output.extend(imag.to_le_bytes());
+                }
+                _ => return None,
+            }
+        }
+
         // ------------------------------------------------------------
         // Other
         // ------------------------------------------------------------
@@ -527,7 +628,7 @@ fn assemble_line(text: &str) -> Option<Vec<u8>> {
 
             let ss = (src_immediate as u8) << 1;
 
-            let opcode = (0b110000) << 2 | ss;
+            let opcode = (0b100001) << 2 | ss;
 
             output.push(opcode);
             output.push(dest);
@@ -701,7 +802,10 @@ RND r0
 ERR b4 i0
 ERR b3
 CDIV r0 r1 c1.0,-2.4
-CLN r0 r1
+CABS r0 r1
+CARG r0 r1
+CJEQ o0 r1 r2
+CJNE o0 r1 r2
         ",
         );
 
@@ -713,11 +817,12 @@ CLN r0 r1
                 0b01000000, 0x00, 0x01, 0x02, 0b01001010, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0b00011000, 0x00, 0x01, 0b10000000, 0x30, 0x00, 0b00010101, 0x00, 0x01,
                 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0b11001000, 0x00, 0x01, 0x02,
-                0b10111100, 0x30, 0x00, 0x00, 0x01, 0b11000010, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0b10111100, 0x30, 0x00, 0x00, 0x01, 0b10000110, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x08, 0x40, 0b10100000, 0x00, 0b10100010, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0b11100000, 0x00, 0b10100111, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
                 0x00, 0x00, 0b10100100, 0x03, 0b01101101, 0x00, 0x01, 0x00, 0x00, 0x80, 0x3F, 0x9A, 
-                0x99, 0x19, 0xC0, 0b01111000, 0x00, 0x01,
+                0x99, 0x19, 0xC0, 0b01110000, 0x00, 0x01, 0b01110001, 0x00, 0x01, 0b00011100, 0x00,
+                0x00, 0x01, 0x02, 0b00111100, 0x00, 0x00, 0x01, 0x02,
             ])
         );
     }

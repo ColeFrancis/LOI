@@ -103,8 +103,39 @@ impl RelVM {
             inst_counter += 1;
 
             match inst_type {
-                // Int arith
+                // Int arith, CJEQ
                 0b00000000 => {
+                    match op {
+                        // CJEQ
+                        0b00011100 => {
+                            let offset =
+                                i16::from_le_bytes([bytecode[inst_counter], bytecode[inst_counter + 1]]);
+                            inst_counter += 2;
+
+                            let (a, b) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            ));
+
+                            let (c, d) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            ));
+
+                            if (a == c) && (b == d) {
+                                inst_counter = (inst_counter as isize + offset as isize) as usize;
+                            }
+
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+
                     let dest_reg = bytecode[inst_counter] as usize;
 
                     inst_counter += 1;
@@ -184,8 +215,39 @@ impl RelVM {
                     }
                 }
 
-                // Float arith
+                // Float arith, CJNE
                 0b00100000 => {
+                    match op {
+                        // CJNE
+                        0b00011100 => {
+                            let offset =
+                                i16::from_le_bytes([bytecode[inst_counter], bytecode[inst_counter + 1]]);
+                            inst_counter += 2;
+
+                            let (a, b) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            ));
+
+                            let (c, d) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            ));
+
+                            if (a != c) || (b != d) {
+                                inst_counter = (inst_counter as isize + offset as isize) as usize;
+                            }
+
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+
                     let dest_reg = bytecode[inst_counter] as usize;
 
                     inst_counter += 1;
@@ -387,31 +449,6 @@ impl RelVM {
                 }
 
                 // Complex arith
-                // 0b01100000 => {
-                //     match inst & 0b0011100 {
-                //         // ADD
-                //         0b00000000 => {}
-
-                //         // SUB
-                //         0b00000100 => {}
-
-                //         // MUL
-                //         0b00001000 => {}
-
-                //         // DIV
-                //         0b00001100 => {}
-
-                //         // POW
-                //         0b00010000 => {}
-
-                //         // ABS
-                //         0b00010100 => {}
-
-                //         _ => {}
-                //     }
-                // }
-
-                // Complex arith
                 0b01100000 => {
                     let dest_reg = bytecode[inst_counter] as usize;
 
@@ -429,9 +466,16 @@ impl RelVM {
 
                     // Single source operations
                     match op {
-                        // CABS
+                        // CABS, CARG
                         0b00010000 => {
-                            registers[dest_reg] = (a.hypot(b) as f64).to_bits();
+                            // CARG
+                            if inst & 0b1 != 0 {
+                                registers[dest_reg] = (b.atan2(a) as f64).to_bits();
+                            } 
+                            // CABS
+                            else {
+                                registers[dest_reg] = (a.hypot(b) as f64).to_bits();
+                            }
                             continue;
                         }
 
@@ -508,8 +552,29 @@ impl RelVM {
                     }
                 }
 
-                // Int comp jumps, jump
+                // Int comp jumps, jump, mov
                 0b10000000 => {
+                    // Single source mov
+                    match op {
+                        0b00000100 => {
+                            let dest_reg = bytecode[inst_counter] as usize;
+                            inst_counter += 1;
+
+                            // Even if its a float we're moving, we just need to move the raw bytes
+                            let src_val = Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            );
+
+                            registers[dest_reg] = src_val;
+                            continue;
+                        }
+
+                        _ => {}
+                    }
+
                     let offset =
                         i16::from_le_bytes([bytecode[inst_counter], bytecode[inst_counter + 1]]);
                     inst_counter += 2;
@@ -687,24 +752,51 @@ impl RelVM {
                     }
                 }
 
-                // Int comp ops, mov
+                // Int comp ops, Cmp comp ops
                 0b11000000 => {
                     let dest_reg = bytecode[inst_counter] as usize;
-
                     inst_counter += 1;
 
-                    // Single source mov
                     match op {
+                        // CEQ
                         0b00000000 => {
-                            // Even if its a float we're moving, we just need to move the raw bytes
-                            let src_val = Self::read_source(
+                            let (a, b) = Self::unpack_complex(Self::read_source(
                                 registers,
                                 bytecode,
                                 &mut inst_counter,
                                 src1_is_reg,
-                            );
+                            ));
 
-                            registers[dest_reg] = src_val;
+                            let (c, d) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            ));
+
+                            registers[dest_reg] = ((a == c) && (b == d)) as u64;
+
+                            continue;
+                        }
+
+                        // CNE
+                        0b00000100 => {
+                            let (a, b) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src1_is_reg,
+                            ));
+
+                            let (c, d) = Self::unpack_complex(Self::read_source(
+                                registers,
+                                bytecode,
+                                &mut inst_counter,
+                                src2_is_reg,
+                            ));
+
+                            registers[dest_reg] = ((a != c) || (b != d)) as u64;
+
                             continue;
                         }
 

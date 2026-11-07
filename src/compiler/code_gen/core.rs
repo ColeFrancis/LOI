@@ -386,6 +386,7 @@ impl<'a> CodeGen<'a> {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::CABS { src, .. } => 2 + Self::get_num_source_bytes(src),
+                Instruction::CARG { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::CEXP { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::CLN  { src, .. } => 2 + Self::get_num_source_bytes(src),
                 Instruction::CON  { src, .. } => 2 + Self::get_num_source_bytes(src),
@@ -440,6 +441,12 @@ impl<'a> CodeGen<'a> {
                 Instruction::FJGE { src1, src2, .. } => {
                     3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
+                Instruction::CJEQ { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CJNE { src1, src2, .. } => {
+                    3 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
                 Instruction::IEQ { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
@@ -474,6 +481,12 @@ impl<'a> CodeGen<'a> {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::FGE { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CEQ { src1, src2, .. } => {
+                    2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
+                }
+                Instruction::CNE { src1, src2, .. } => {
                     2 + Self::get_num_source_bytes(src1) + Self::get_num_source_bytes(src2)
                 }
                 Instruction::MOV { src, .. } => 2 + Self::get_num_source_bytes(src),

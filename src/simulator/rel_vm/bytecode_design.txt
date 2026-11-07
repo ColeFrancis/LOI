@@ -20,6 +20,7 @@ Instructions:
     CMUL dest src1 src2
     CDIV dest src1 src2
     CABS dest src       
+    CARG dest src   // argument (angle) of complex number
     CEXP dest src       
     CLN  dest src       
     CON  dest src   // take conjuate of complex number
@@ -50,6 +51,9 @@ Instructions:
     FJLE offset src1 src2 // jump if less than or equal
     FJGE offset src1 src2 // jump if greater than or equal
 
+    CJEQ offset src1 src2
+    CJNE offset src1 src2
+
     IEQ dest src1 src2 // src1 == src2
     INE dest src1 src2 // src1 != src2
     ILT dest src1 src2 // src1 < src2
@@ -63,6 +67,9 @@ Instructions:
     FGT dest src1 src2
     FLE dest src1 src2 
     FGE dest src1 src2 
+
+    CEQ dest src1 src2
+    CNE dest src1 src2
 
 
     MOV dest, src 
@@ -114,12 +121,12 @@ bits:
     0 0 0 d d d:
         1 0 1: IMOD
         1 1 0: I2F // to convert int to float (float)
-        1 1 1:
+        1 1 1: CJEQ
 
     0 0 1 d d d:
         1 0 1: FEXP
         1 1 0: FLN
-        1 1 1:
+        1 1 1: CJNE
 
     0 0 f d d d:
         0 0 0: ADD
@@ -142,13 +149,15 @@ bits:
         1 0: CRE // real part of a complex number
         1 1: CIM // imaginary part of a complex number        
 
+    0 1 1 d d d 0 s:
+        1 0 0 _ 0: CABS
+        1 0 0 _ 1: CARG
 
     0 1 1 d d d:
         0 0 0: CADD         
         0 0 1: CSUB         
         0 1 0: CMUL         
-        0 1 1: CDIV         
-        1 0 0: CABS         
+        0 1 1: CDIV 
         1 0 1: CEXP
         1 1 0: CLN
         1 1 1: CON
@@ -157,7 +166,7 @@ bits:
 
     1 0 0 d d d:
         0 0 0: JMP
-        0 0 1:
+        0 0 1: MOV
 
     1 0 1 d d d:
         0 0 0: RET
@@ -174,8 +183,8 @@ bits:
 
 
     1 1 0 d d d:
-        0 0 0: MOV
-        0 0 1: 
+        0 0 0: CEQ
+        0 0 1: CNE
 
     1 1 1 d d d:   
         0 0 0: RND

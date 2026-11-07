@@ -268,6 +268,17 @@ impl<'a> CodeGen<'a> {
                     bytes.push(dest as u8);
                     bytes.extend(src_bytes);
                 }
+                Instruction::CARG { dest, src } => {
+                    let (src_immediate, src_bytes) = Self::src_to_bytes(src);
+
+                    let ss = ((src_immediate as u8) << 1) | 1;
+
+                    let opcode = (0b011100 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src_bytes);
+                }
                 Instruction::CEXP { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
@@ -589,6 +600,37 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
+                Instruction::CJEQ { offset, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b000111 << 2) | ss;
+
+                    let offset_bytes = offset.to_le_bytes();
+
+                    bytes.push(opcode);
+                    bytes.extend(offset_bytes);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CJNE { offset, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b001111 << 2) | ss;
+
+                    let offset_bytes = offset.to_le_bytes();
+
+                    bytes.push(opcode);
+                    bytes.extend(offset_bytes);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+
                 Instruction::IEQ { dest, src1, src2 } => {
                     let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
                     let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
@@ -747,12 +789,39 @@ impl<'a> CodeGen<'a> {
                     bytes.extend(src2_bytes);
                 }
 
+                Instruction::CEQ { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b110000 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+                Instruction::CNE { dest, src1, src2 } => {
+                    let (src1_immediate, src1_bytes) = Self::src_to_bytes(src1);
+                    let (src2_immediate, src2_bytes) = Self::src_to_bytes(src2);
+
+                    let ss = (src1_immediate as u8) << 1 | (src2_immediate as u8);
+
+                    let opcode = (0b110001 << 2) | ss;
+
+                    bytes.push(opcode);
+                    bytes.push(dest as u8);
+                    bytes.extend(src1_bytes);
+                    bytes.extend(src2_bytes);
+                }
+
                 Instruction::MOV { dest, src } => {
                     let (src_immediate, src_bytes) = Self::src_to_bytes(src);
 
                     let ss = (src_immediate as u8) << 1;
 
-                    let opcode = (0b110000 << 2) | ss;
+                    let opcode = (0b100001 << 2) | ss;
 
                     bytes.push(opcode);
                     bytes.push(dest as u8);
@@ -777,6 +846,11 @@ impl<'a> CodeGen<'a> {
                         }
                         Some(Source::Int(val)) => (0b11, val.to_le_bytes().to_vec()),
                         Some(Source::Float(val)) => (0b11, val.to_le_bytes().to_vec()),
+                        Some(Source::Cmp(a, b)) => {
+                            let mut bytes = a.to_le_bytes().to_vec();
+                            bytes.extend(b.to_le_bytes());
+                            (0b11, bytes)
+                        }
                         None => (0b00, vec![]),
                     };
 
@@ -816,6 +890,11 @@ impl<'a> CodeGen<'a> {
             Source::Bool(val) => (true, (val as u64).to_le_bytes().to_vec()),
             Source::Int(val) => (true, val.to_le_bytes().to_vec()),
             Source::Float(val) => (true, val.to_le_bytes().to_vec()),
+            Source::Cmp(a, b) => {
+                let mut bytes = a.to_le_bytes().to_vec();
+                bytes.extend(b.to_le_bytes());
+                (true, bytes)
+            }
         }
     }
 }
