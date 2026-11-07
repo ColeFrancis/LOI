@@ -5,6 +5,7 @@ Instructions:
     IDIV dest src1 src2 // src1/src2
     IABS dest src       // |src|
     IMOD  dest src1 src2 // src1 % src2
+    I2F dest src     // Convert int to float
 
     FADD dest src1 src2
     FSUB dest src1 src2
@@ -14,13 +15,24 @@ Instructions:
     FEXP dest src       // e^src
     FLN  dest src       // ln(src)
 
+    CADD dest src1 src2
+    CSUB dest src1 src2
+    CMUL dest src1 src2
+    CDIV dest src1 src2
+    CABS dest src       
+    CEXP dest src       
+    CLN  dest src       
+    CON  dest src   // take conjuate of complex number
+
     AND dest src1, src2
     OR dest src1, src2
     NOT dest src   
     XOR dest src1, src2
 
     FLR dest scr     // convert float to int with floor
-    I2F dest src     // Convert int to float
+    F2C dest src     // convert float to complex
+    CRE dest src     // return real part of complex as float
+    CIM dest src     // return imaginary part of complex as float
 
     JMP offset             // unconditional jump 
 
