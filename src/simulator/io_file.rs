@@ -126,7 +126,21 @@ impl IoFile {
             let val = if Self::starts_with_number(fields[2]) {
                 let num_str = fields[2];
 
-                if num_str.contains('.') || num_str.contains('e') || num_str.contains('E') {
+                if num_str == "i" {
+                    IoVal::Complex(0.0, 1.0)
+                } else if num_str.ends_with('i') {
+                    let imaginary_str = &num_str[..num_str.len() - 1];
+
+                    match imaginary_str.parse::<f32>() {
+                        Ok(imag) if imag.is_finite() => IoVal::Complex(0.0, imag),
+                        _ => {
+                            return Err(InputFileReadError::InvalidNumber {
+                                num: num_str.to_string(),
+                                line_num,
+                            });
+                        }
+                    }
+                } else if num_str.contains('.') || num_str.contains('e') || num_str.contains('E') {
                     match num_str.parse::<f64>() {
                         Ok(x) if x.is_finite() => IoVal::Float(x),
                         _ => {
@@ -196,12 +210,13 @@ impl IoFile {
         Ok(())
     }
 
+    // "i" is true for starts_with_number because it represents 0.0+1.0i
     fn starts_with_number(s: &str) -> bool {
         let mut chars = s.chars();
 
         match chars.next() {
             Some('-' | '+') => chars.next().is_some_and(|c| c.is_ascii_digit()),
-            Some(c) => c.is_ascii_digit(),
+            Some(c) => c.is_ascii_digit() || c == 'i',
             None => false,
         }
     }

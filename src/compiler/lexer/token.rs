@@ -59,14 +59,15 @@ pub enum TokenKind {
     Bool,    // Bool
     Impulse, // Impulse
     Int,     // Int
-    Float,    // Float
+    Float,   // Float
+    Complex, // Complex
     Mod,     // Mod
 
     Ident(String),
     BoolLiteral(bool),
     IntLiteral(i64),
     FloatLiteral(f64),
-    // CMPLiteral(f32, f32),
+    ComplexLiteral(f32, f32),
 
     Uniform, // uniform
     Normal,  // normal
@@ -100,6 +101,10 @@ pub enum TokenKind {
     Ln,     // ln
     Floor,  // floor
     Abs,    // abs
+    Arg,    // arg
+    Real,   // real
+    Imag,   // imag
+    Conj,   // conj
 
     Pipe,       // |
     Ampersand,  // &
@@ -133,12 +138,14 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Impulse => write!(f, "\"Impulse\""),
             TokenKind::Int => write!(f, "\"Int\""),
             TokenKind::Float => write!(f, "\"Float\""),
+            TokenKind::Complex => write!(f, "\"Complex\""),
             TokenKind::Mod => write!(f, "\"Mod\""),
 
             TokenKind::Ident(_) => write!(f, "Identifier"),
             TokenKind::BoolLiteral(_) => write!(f, "Bool Literal"),
             TokenKind::IntLiteral(_) => write!(f, "Int Literal"),
             TokenKind::FloatLiteral(_) => write!(f, "Float Literal"),
+            TokenKind::ComplexLiteral(_, _) => write!(f, "Complex Literal"),
 
             TokenKind::Uniform => write!(f, "\"uniform\""),
             TokenKind::Normal => write!(f, "\"normal\""),
@@ -171,6 +178,10 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Ln => write!(f, "\"ln(...)\""),
             TokenKind::Floor => write!(f, "\"floor(...)\""),
             TokenKind::Abs => write!(f, "\"abs(...)\""),
+            TokenKind::Arg => write!(f, "\"arg(...)\""),
+            TokenKind::Real => write!(f, "\"real(...)\""),
+            TokenKind::Imag => write!(f, "\"imag(...)\""),
+            TokenKind::Conj => write!(f, "\"conj(...)\""),
             TokenKind::Pipe => write!(f, "\"|\""),
             TokenKind::Ampersand => write!(f, "\"&\""),
 

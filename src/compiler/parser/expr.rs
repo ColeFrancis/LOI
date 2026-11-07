@@ -222,6 +222,62 @@ impl<'a> Parser<'a> {
                 }))
             }
 
+            TokenKind::Arg => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Arg,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Real => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Real,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Imag => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Imag,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
+            TokenKind::Conj => {
+                self.next();
+                self.expect(TokenKind::LParen, &SyncRule::Expr { depth: 0 })?;
+                let rhs = self.parse_expr(0)?;
+                self.expect(TokenKind::RParen, &SyncRule::Expr { depth: 0 })?;
+
+                Some(Expr::Unary(UnaryExpr {
+                    op: UnaryOp::Conj,
+                    expr: Box::new(rhs),
+                    op_span: token.span,
+                    expr_type: Type::Unknown,
+                }))
+            }
+
             TokenKind::LParen => {
                 self.next();
                 let first = self.parse_expr(0);
@@ -570,6 +626,7 @@ mod tests {
             Expr::Literal(Literal::Int(n)) => n.to_string(),
             Expr::Literal(Literal::Bool(b)) => b.to_string(),
             Expr::Literal(Literal::Float(x)) => x.to_string(),
+            Expr::Literal(Literal::Complex(a, b)) => format!("{}+{}i", a.to_string(), b.to_string()),
 
             Expr::Ident(ident) => match ident {
                 ast::Ident::Str { val, .. } => val.clone(),
@@ -718,6 +775,7 @@ mod tests {
             SimplePattern::Literal(Literal::Int(n)) => n.to_string(),
             SimplePattern::Literal(Literal::Bool(b)) => b.to_string(),
             SimplePattern::Literal(Literal::Float(x)) => x.to_string(),
+            SimplePattern::Literal(Literal::Complex(a, b)) => format!("{}+{}i", a.to_string(), b.to_string()),
 
             SimplePattern::Ident(ident) => match ident {
                 ast::Ident::Str { val, .. } => val.clone(),
@@ -765,6 +823,10 @@ mod tests {
             UnaryOp::Ln => "ln",
             UnaryOp::Floor => "floor",
             UnaryOp::Abs => "abs",
+            UnaryOp::Arg => "arg",
+            UnaryOp::Real => "real",
+            UnaryOp::Imag => "imag",
+            UnaryOp::Conj => "conj",
         }
     }
 

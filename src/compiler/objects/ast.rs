@@ -72,6 +72,7 @@ pub enum Literal {
     Bool(bool),
     Int(i64),
     Float(f64),
+    Complex(f32, f32),
 }
 
 #[derive(PartialEq, Debug, Clone)]
@@ -102,7 +103,11 @@ pub enum UnaryOp {
     Exp,    // exp()
     Ln,     // ln()
     Floor,  // floor()
-    Abs,    // | |
+    Abs,    // abs()
+    Arg,    // arg()
+    Real,   // real()
+    Imag,   // imag()
+    Conj,   // conj()
 }
 
 #[derive(PartialEq, Debug, Clone)]

@@ -225,6 +225,8 @@ impl<'a> SemAnalyzer<'a> {
                 Literal::Int(_) => Type::Int,
 
                 Literal::Float(_) => Type::Float,
+
+                Literal::Complex(_, _) => Type::Complex,
             },
 
             Expr::Ident(ident) => match ident {
@@ -277,6 +279,8 @@ impl<'a> SemAnalyzer<'a> {
                 Literal::Int(_) => Type::Int,
 
                 Literal::Float(_) => Type::Float,
+
+                Literal::Complex(_, _) => Type::Complex,
             },
 
             SimplePattern::Ident(ident) => match ident {
@@ -315,26 +319,35 @@ impl<'a> SemAnalyzer<'a> {
     ) -> Option<Type> {
         match (expr_type, op) {
             (Type::Bool, UnaryOp::BitNot) => Some(Type::Bool),
+
             (Type::Impulse, UnaryOp::BitNot) => Some(Type::Bool),
-
-            (Type::Int, UnaryOp::Neg) => Some(Type::Int),
-            (Type::Float, UnaryOp::Neg) => Some(Type::Float),
+            
             (Type::Mod(n), UnaryOp::Neg) => Some(Type::Mod(*n)),
-
-            (Type::Int, UnaryOp::Exp) => Some(Type::Float),
-            (Type::Float, UnaryOp::Exp) => Some(Type::Float),
             (Type::Mod(_), UnaryOp::Exp) => Some(Type::Float),
-
-            (Type::Int, UnaryOp::Ln) => Some(Type::Float),
-            (Type::Float, UnaryOp::Ln) => Some(Type::Float),
             (Type::Mod(_), UnaryOp::Ln) => Some(Type::Float),
-
-            (Type::Int, UnaryOp::Floor) => Some(Type::Int),
-            (Type::Float, UnaryOp::Floor) => Some(Type::Int),
             (Type::Mod(n), UnaryOp::Floor) => Some(Type::Mod(*n)),
 
+            (Type::Int, UnaryOp::Neg) => Some(Type::Int),
+            (Type::Int, UnaryOp::Exp) => Some(Type::Float),
+            (Type::Int, UnaryOp::Ln) => Some(Type::Float),
+            (Type::Int, UnaryOp::Floor) => Some(Type::Int),
             (Type::Int, UnaryOp::Abs) => Some(Type::Int),
+
+            (Type::Float, UnaryOp::Neg) => Some(Type::Float),
+            (Type::Float, UnaryOp::Exp) => Some(Type::Float),
+            (Type::Float, UnaryOp::Ln) => Some(Type::Float),
+            (Type::Float, UnaryOp::Floor) => Some(Type::Int),
             (Type::Float, UnaryOp::Abs) => Some(Type::Float),
+
+            (Type::Complex, UnaryOp::Neg) => Some(Type::Complex),
+            (Type::Complex, UnaryOp::Exp) => Some(Type::Complex),
+            (Type::Complex, UnaryOp::Ln) => Some(Type::Complex),
+            (Type::Complex, UnaryOp::Floor) => Some(Type::Complex),
+            (Type::Complex, UnaryOp::Abs) => Some(Type::Float),
+            (Type::Complex, UnaryOp::Arg) => Some(Type::Float),
+            (Type::Complex, UnaryOp::Real) => Some(Type::Float),
+            (Type::Complex, UnaryOp::Imag) => Some(Type::Float),
+            (Type::Complex, UnaryOp::Conj) => Some(Type::Complex),
 
             (Type::Error, _) => None,
 
@@ -346,6 +359,10 @@ impl<'a> SemAnalyzer<'a> {
                     UnaryOp::Ln => Operation::Ln,
                     UnaryOp::Floor => Operation::Floor,
                     UnaryOp::Abs => Operation::Abs,
+                    UnaryOp::Arg => Operation::Arg,
+                    UnaryOp::Real => Operation::Real,
+                    UnaryOp::Imag => Operation::Imag,
+                    UnaryOp::Conj => Operation::Conj,
                 };
 
                 self.diagnostics.error(Diagnostic::IncompatibleOp {
@@ -388,11 +405,20 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Mod(_), Type::Int) => Some(Type::Int),
             (Type::Int, Type::Mod(_)) => Some(Type::Int),
             (Type::Int, Type::Int) => Some(Type::Int),
+
             (Type::Mod(_), Type::Float) => Some(Type::Float),
             (Type::Float, Type::Mod(_)) => Some(Type::Float),
             (Type::Int, Type::Float) => Some(Type::Float),
             (Type::Float, Type::Int) => Some(Type::Float),
             (Type::Float, Type::Float) => Some(Type::Float),
+
+            (Type::Mod(_), Type::Complex) => Some(Type::Complex),
+            (Type::Complex, Type::Mod(_)) => Some(Type::Complex),
+            (Type::Int, Type::Complex) => Some(Type::Complex),
+            (Type::Complex, Type::Int) => Some(Type::Complex),
+            (Type::Float, Type::Complex) => Some(Type::Complex),
+            (Type::Complex, Type::Float) => Some(Type::Complex),
+            (Type::Complex, Type::Complex) => Some(Type::Complex),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
@@ -478,6 +504,13 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Float, BinaryOp::Sub) => Some(Type::Float),
             (Type::Float, BinaryOp::Mul) => Some(Type::Float),
             (Type::Float, BinaryOp::Div) => Some(Type::Float),
+            
+            (Type::Complex, BinaryOp::Eq) => Some(Type::Bool),
+            (Type::Complex, BinaryOp::Ne) => Some(Type::Bool),
+            (Type::Complex, BinaryOp::Add) => Some(Type::Complex),
+            (Type::Complex, BinaryOp::Sub) => Some(Type::Complex),
+            (Type::Complex, BinaryOp::Mul) => Some(Type::Complex),
+            (Type::Complex, BinaryOp::Div) => Some(Type::Complex),
 
             (Type::Error, _) => None,
 
@@ -631,12 +664,19 @@ impl<'a> SemAnalyzer<'a> {
             }
             (Type::Mod(_), Type::Int) => Some(()),
             (Type::Mod(_), Type::Float) => Some(()),
+            (Type::Mod(_), Type::Complex) => Some(()),
             (Type::Int, Type::Mod(_)) => Some(()),
             (Type::Int, Type::Int) => Some(()),
             (Type::Int, Type::Float) => Some(()),
+            (Type::Int, Type::Complex) => Some(()),
             (Type::Float, Type::Mod(_)) => Some(()),
             (Type::Float, Type::Int) => Some(()),
             (Type::Float, Type::Float) => Some(()),
+            (Type::Float, Type::Complex) => Some(()),
+            (Type::Complex, Type::Mod(_)) => Some(()),
+            (Type::Complex, Type::Int) => Some(()),
+            (Type::Complex, Type::Float) => Some(()),
+            (Type::Complex, Type::Complex) => Some(()),
 
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {

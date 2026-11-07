@@ -125,6 +125,7 @@ impl Simulator {
                             IoVal::Bool(_) => Type::Bool,
                             IoVal::Int(_) => Type::Int,
                             IoVal::Float(_) => Type::Float,
+                            IoVal::Complex(_, _) => Type::Complex,
                             IoVal::Custom(_) => Type::Unknown,
                         };
 

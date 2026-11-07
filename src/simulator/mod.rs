@@ -30,6 +30,7 @@ pub enum IoVal {
     Bool(bool),
     Int(i64),
     Float(f64),
+    Complex(f32, f32),
     Custom(String),
 }
 
@@ -40,6 +41,7 @@ impl std::fmt::Display for IoVal {
             IoVal::Int(value) => write!(f, "{value}"),
             IoVal::Float(value) if value.fract() == 0.0 => write!(f, "{value:.1}"),
             IoVal::Float(value) => write!(f, "{value}"),
+            IoVal::Complex(a, b) => write!(f, "{a}+{b}i"),
             IoVal::Custom(value) => write!(f, "{value}"),
         }
     }

@@ -347,6 +347,7 @@ impl<'a> SemAnalyzer<'a> {
             Type::Impulse => Some(Type::Impulse),
             Type::Int => Some(Type::Int),
             Type::Float => Some(Type::Float),
+            Type::Complex => Some(Type::Complex),
 
             Type::Tuple(mut types) => {
                 for type_box in &mut types {

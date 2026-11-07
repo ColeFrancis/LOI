@@ -268,6 +268,7 @@ impl<'a> Lexer<'a> {
             "Bool" => TokenKind::Bool,
             "Impulse" => TokenKind::Impulse,
             "Float" => TokenKind::Float,
+            "Complex" => TokenKind::Complex,
             "Int" => TokenKind::Int,
             "Mod" => TokenKind::Mod,
             "uniform" => TokenKind::Uniform,
@@ -278,6 +279,11 @@ impl<'a> Lexer<'a> {
             "ln" => TokenKind::Ln,
             "floor" => TokenKind::Floor,
             "abs" => TokenKind::Abs,
+            "arg" => TokenKind::Arg,
+            "real" => TokenKind::Real,
+            "imag" => TokenKind::Imag,
+            "conj" => TokenKind::Conj,
+            "i" => TokenKind::ComplexLiteral(0.0, 1.0),
             "_" => TokenKind::Underscore,
             _ => TokenKind::Ident(buf),
         }
@@ -290,16 +296,17 @@ impl<'a> Lexer<'a> {
 
         let mut is_valid = true;
         let mut is_float = false;
+        let mut is_complex = false;
         let mut has_exponent = false;
 
         while let Some(c) = self.peek() {
             match c {
-                b'0'..=b'9' => {
+                b'0'..=b'9' if !is_complex => {
                     buf.push(c as char);
                     self.next();
                 }
 
-                b'.' if !is_float && !has_exponent => {
+                b'.' if !is_float && !has_exponent && !is_complex => {
                     is_float = true;
                     buf.push('.');
                     self.next();
@@ -311,7 +318,7 @@ impl<'a> Lexer<'a> {
                     self.next();
                 }
 
-                b'e' | b'E' if !has_exponent => {
+                b'e' | b'E' if !has_exponent && !is_complex => {
                     is_float = true;
                     has_exponent = true;
                     buf.push(c as char);
@@ -322,6 +329,11 @@ impl<'a> Lexer<'a> {
                         buf.push(sign as char);
                         self.next();
                     }
+                }
+
+                b'i' if !is_complex => {
+                    is_complex = true;
+                    self.next();
                 }
 
                 // Underscores are skipped in numbers
@@ -346,6 +358,18 @@ impl<'a> Lexer<'a> {
             });
             
             TokenKind::ErrorToken
+        } else if is_complex {
+            match buf.parse::<f32>() {
+                Ok(n) => TokenKind::ComplexLiteral(0.0, n),
+                Err(_) => {
+                    self.diagnostics.error(Diagnostic::InvalidNum {
+                        lexeme: buf.clone(),
+                        span: Span { line, col },
+                    });
+                    
+                    TokenKind::ErrorToken
+                }
+            }
         } else if is_float {
             match buf.parse::<f64>() {
                 Ok(n) => TokenKind::FloatLiteral(n),
@@ -409,7 +433,7 @@ mod test {
     fn test_num() {
         let mut diagnostics = Diagnostics::new();
         let tokens = Lexer::new(
-            "94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000",
+            "94f 9.9.9 10_000_000_000_000_000_000 99 9.8 1_000 24.4i i",
             &mut diagnostics,
         )
         .tokenize();
@@ -423,6 +447,8 @@ mod test {
                 IntLiteral(99),
                 FloatLiteral(9.8),
                 IntLiteral(1000),
+                ComplexLiteral(0.0, 24.4),
+                ComplexLiteral(0.0, 1.0),
                 Eof
             ]
         );

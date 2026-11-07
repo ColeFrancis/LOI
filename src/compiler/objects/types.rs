@@ -31,6 +31,7 @@ pub enum Type {
     Impulse,
     Int,
     Float,
+    Complex,
     Tuple(Vec<Type>),
     Mod(i64),
     Custom(Ident),
@@ -45,6 +46,7 @@ impl std::fmt::Display for Type {
             Type::Impulse => write!(f, "Impulse"),
             Type::Int => write!(f, "Int"),
             Type::Float => write!(f, "Float"),
+            Type::Complex => write!(f, "Complex"),
             Type::Tuple(types) => {
                 write!(f, "(")?;
 
