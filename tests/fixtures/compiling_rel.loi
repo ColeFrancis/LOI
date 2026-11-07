@@ -1,0 +1,27 @@
+rel_t Rel1 () -> Int = 1;
+rel_t Rel2 () -> Int = 2;
+rel_t Rel3 () -> Int = 3;
+rel_t Rel4 () -> Int = 4;
+
+net Sub1 {
+    output a: Int;
+
+    Rel2() := a;
+}
+
+net Sub2 {
+    output a: Int;
+
+    Rel3() := a;
+}
+
+net Net {
+    output a: Int;
+    output b: Int;
+    
+    Rel4() := b;
+
+    Sub2 {
+        a := a,
+    };
+}

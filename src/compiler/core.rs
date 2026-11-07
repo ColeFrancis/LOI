@@ -94,30 +94,15 @@ impl Compiler {
         symbols: &mut [Symbol],
         diagnostics: &mut Diagnostics,
     ) -> (Netlist, Interface, Vec<CompiledRel>, Option<u64>, Vec<Event>) {
-        let mut compiled_relations = Vec::new();
-        let mut obj_map = HashMap::<SymbolId, usize>::new();
+        let mut net_map = HashMap::<SymbolId, usize>::new();
         let mut nets = Vec::new();
+        let mut non_net_items = Vec::new();
         let seed = ast.seed;
 
         let mut top_net_idx_option: Option<usize> = None;
+
         for item in ast.items {
             match item {
-                Item::Rel(relation) => {
-                    let idx = compiled_relations.len();
-
-                    let Ident::Symbol(id) = relation.name else {
-                        unreachable!("relation name must be ident::symbol by this point"); // unreachable
-                    };
-
-                    let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics)
-                    else {
-                        continue;
-                    };
-
-                    compiled_relations.push(compiled_relation);
-                    obj_map.insert(id, idx);
-                }
-
                 Item::Net(net) => {
                     let idx = nets.len();
 
@@ -130,10 +115,10 @@ impl Compiler {
                     }
 
                     nets.push(net);
-                    obj_map.insert(id, idx);
+                    net_map.insert(id, idx);
                 }
 
-                _ => {}
+                other => non_net_items.push(other),
             }
         }
 
@@ -145,14 +130,38 @@ impl Compiler {
             return (
                 Netlist::new(),
                 Interface::new(),
-                compiled_relations,
+                Vec::new(),
                 seed,
                 Vec::new(),
             );
         };
 
-        let (netlist, interface, inits) =
-            Synthesis::new(nets, obj_map, symbols, seed, diagnostics).synthesize(top_net_idx);
+        let (netlist, interface, inits, rel_map) =
+            Synthesis::new(nets, net_map, symbols, seed, diagnostics).synthesize(top_net_idx);
+
+        let mut compiled_relations: Vec<Option<CompiledRel>> =
+            std::iter::repeat_with(|| None)
+                .take(rel_map.len())
+                .collect();
+
+        for item in non_net_items {
+            if let Item::Rel(relation) = item {
+                let Ident::Symbol(rel_id) = relation.name else {
+                        unreachable!("should not be ident string");
+                    };
+
+                if let Some(&rel_idx) = rel_map.get(&rel_id) {
+                    if let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics) {
+                        compiled_relations[rel_idx] = Some(compiled_relation);
+                    }
+                }
+            }
+        }
+
+        let compiled_relations: Vec<CompiledRel> = compiled_relations
+            .into_iter()
+            .map(|rel| rel.expect("missing compiled relation"))
+            .collect();
 
         (netlist, interface, compiled_relations, seed, inits)
     }

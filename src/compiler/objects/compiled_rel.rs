@@ -30,3 +30,15 @@ pub struct CompiledRel {
     pub impulse_input: bool,
     pub bytecode: Vec<u8>,
 }
+
+impl Default for CompiledRel {
+    fn default() -> Self {
+        Self {
+            name: "".to_string(),
+            complexity: 0,
+            deterministic: false,
+            impulse_input: false,
+            bytecode: Vec::new(),
+        }
+    }
+}

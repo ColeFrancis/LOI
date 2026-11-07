@@ -26,9 +26,10 @@ use crate::compiler::{
 
 pub struct Synthesis<'a> {
     nets: Vec<Net>,
-    obj_map: HashMap<SymbolId, usize>,
+    net_map: HashMap<SymbolId, usize>,
+    rel_map: HashMap<SymbolId, usize>,
     symbols: &'a mut [Symbol],
     seed: Option<u64>,
     diagnostics: &'a mut Diagnostics,
-    next_compiled_rel_id: usize,
+    next_compiled_rel_idx: usize,
 }

@@ -833,3 +833,72 @@ fn coin_flip() {
         }],
     );
 }
+
+#[test]
+fn compiled_rel() {
+    let path = format!(
+        "{}/tests/fixtures/compiling_rel.loi",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    println!("path: {}", path);
+
+    let (netlist, _, compiled_rel, _, _) = Compiler::compile(&path, "Net").expect("should return some");
+
+    assert_eq!(
+        netlist,
+        Netlist {
+            relations: vec![
+                Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![],
+                    output_ent: 1,
+                },
+                Relation {
+                    idx: 1,
+                    delay: 1,
+                    input_ents: vec![],
+                    output_ent: 0,
+                },
+            ],
+            ents: vec![
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+                Entity {
+                    val: None,
+                    sinks: vec![],
+                },
+            ],
+        }
+    );
+
+    assert_eq!(
+        compiled_rel,
+        vec![
+            CompiledRel {
+                name: "Rel4".to_string(),
+                complexity: 0,
+                deterministic: true,
+                impulse_input: false,
+                bytecode: assemble(
+                    "
+                    RET i4
+                "
+                ).unwrap(),
+            },
+            CompiledRel {
+                name: "Rel3".to_string(),
+                complexity: 0,
+                deterministic: true,
+                impulse_input: false,
+                bytecode: assemble(
+                    "
+                    RET i3
+                "
+                ).unwrap(),
+            },
+        ],
+    );
+}
