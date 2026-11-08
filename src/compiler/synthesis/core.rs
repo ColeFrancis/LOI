@@ -60,17 +60,6 @@ impl<'a> Synthesis<'a> {
     }
 
     pub fn synthesize(mut self, top_net_idx: usize) -> (Netlist, Interface, Vec<Event>, HashMap<SymbolId, usize>) {
-
-    // }
-
-    // pub fn synthesize(
-    //     nets: Vec<Net>,
-    //     top_net_idx: usize,
-    //     net_map: HashMap<SymbolId, usize>,
-    //     symbols: &mut [Symbol],
-    //     seed: Option<u64>,
-    //     diagnostics: &mut Diagnostics,
-    // ) -> (Netlist, Interface, Vec<Event>) {
         let mut inputs = HashMap::<String, (EntId, Type)>::new();
         let mut outputs = HashMap::<EntId, (String, Type)>::new();
         let mut custom_type_maps = HashMap::<String, Vec<(String, u64)>>::new();
