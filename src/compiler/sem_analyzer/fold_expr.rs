@@ -358,11 +358,7 @@ impl<'a> SemAnalyzer<'a> {
             (UnaryOp::BitNot, Literal::Bool(x)) => Some(Literal::Bool(!x)),
 
             (UnaryOp::Neg, Literal::Int(x)) => Some(Literal::Int(-x)),
-            (UnaryOp::Neg, Literal::Float(x)) => Some(Literal::Float(-x)),
-
             (UnaryOp::Exp, Literal::Int(x)) => Some(Literal::Float((*x as f64).exp())),
-            (UnaryOp::Exp, Literal::Float(x)) => Some(Literal::Float(x.exp())),
-
             (UnaryOp::Ln, Literal::Int(x)) => {
                 if *x > 0 {
                     Some(Literal::Float((*x as f64).ln()))
@@ -371,6 +367,11 @@ impl<'a> SemAnalyzer<'a> {
                     None
                 }
             }
+            (UnaryOp::Floor, Literal::Int(x)) => Some(Literal::Int(*x)),
+            (UnaryOp::Abs, Literal::Int(x)) => Some(Literal::Int(x.abs())),
+
+            (UnaryOp::Neg, Literal::Float(x)) => Some(Literal::Float(-x)),
+            (UnaryOp::Exp, Literal::Float(x)) => Some(Literal::Float(x.exp())),
             (UnaryOp::Ln, Literal::Float(x)) => {
                 if *x > 0.0 {
                     Some(Literal::Float(x.ln()))
@@ -379,12 +380,17 @@ impl<'a> SemAnalyzer<'a> {
                     None
                 }
             }
-            
-            (UnaryOp::Floor, Literal::Int(x)) => Some(Literal::Int(*x)),
             (UnaryOp::Floor, Literal::Float(x)) => Some(Literal::Int(x.floor() as i64)),
-            
-            (UnaryOp::Abs, Literal::Int(x)) => Some(Literal::Int(x.abs())),
             (UnaryOp::Abs, Literal::Float(x)) => Some(Literal::Float(x.abs())),
+
+            (UnaryOp::Neg, Literal::Complex(a, b)) => Some(Literal::Complex(-a, -b)),
+            (UnaryOp::Exp, Literal::Complex(a, b)) => Some(Literal::Complex(a.exp() * b.cos(), a.exp() * b.sin())),
+            (UnaryOp::Ln, Literal::Complex(a, b)) => Some(Literal::Complex(a.hypot(*b).ln(), b.atan2(*a))),
+            (UnaryOp::Abs, Literal::Complex(a, b)) => Some(Literal::Float(a.hypot(*b) as f64)),
+            (UnaryOp::Arg, Literal::Complex(a, b)) => Some(Literal::Float(b.atan2(*a) as f64)),
+            (UnaryOp::Real, Literal::Complex(a, _b)) => Some(Literal::Float(*a as f64)),
+            (UnaryOp::Imag, Literal::Complex(_a, b)) => Some(Literal::Float(*b as f64)),
+            (UnaryOp::Conj, Literal::Complex(a, b)) => Some(Literal::Complex(*a, -b)),
             
 
             _ => None,
@@ -435,6 +441,23 @@ impl<'a> SemAnalyzer<'a> {
             (BinaryOp::Div, Literal::Float(a), Literal::Float(b)) => {
                 if *b != 0.0 {
                     Some(Literal::Float(a / b))
+                } else {
+                    diagnostics.error(Diagnostic::DivideByZero { op_span: op_span.clone() });
+
+                    None
+                }
+            }
+
+            (BinaryOp::Eq, Literal::Complex(a, b), Literal::Complex(c, d)) => Some(Literal::Bool((a == c) && (b == d))),
+            (BinaryOp::Ne, Literal::Complex(a, b), Literal::Complex(c, d)) => Some(Literal::Bool((a != c) || (b != d))),
+            (BinaryOp::Add, Literal::Complex(a, b), Literal::Complex(c, d)) => Some(Literal::Complex(a + c, b + d)),
+            (BinaryOp::Sub, Literal::Complex(a, b), Literal::Complex(c, d)) => Some(Literal::Complex(a - c, b - d)),
+            (BinaryOp::Mul, Literal::Complex(a, b), Literal::Complex(c, d)) => Some(Literal::Complex(a*c - b*d, a*d + b*c)),
+            (BinaryOp::Div, Literal::Complex(a, b), Literal::Complex(c, d)) => {
+                if *c != 0.0 && *d != 0.0 {
+                    let denom = c*c + d*d;
+
+                    Some(Literal::Complex((a*c + b*d) / denom, (b*c-a*d) / denom))
                 } else {
                     diagnostics.error(Diagnostic::DivideByZero { op_span: op_span.clone() });
 

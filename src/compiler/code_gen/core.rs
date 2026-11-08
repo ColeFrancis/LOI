@@ -207,6 +207,66 @@ impl<'a> CodeGen<'a> {
         }
     }
 
+    // Reduce mod should be false for add/sub/mul because (a + b) mod n == (a mod n + b mod n) mod n but it is not true for div nor the right side of pow
+    pub fn coerce_complex(
+        &mut self,
+        bytecode: &mut Vec<Instruction>,
+        src: Source,
+        ty: &Type,
+        reduce_mod: bool,
+    ) -> Option<Source> {
+        match ty {
+            Type::Mod(n) => {
+                let src = if reduce_mod {
+                    let dest = match src {
+                        Source::RegInter(reg) => reg,
+                        _ => self.get_next_reg()?,
+                    };
+
+                    bytecode.push(Instruction::IMOD {
+                        dest,
+                        src1: src,
+                        src2: Source::Int(*n),
+                    });
+
+                    Source::RegInter(dest)
+                } else {
+                    src
+                };
+
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => self.get_next_reg()?,
+                };
+                bytecode.push(Instruction::I2F { dest, src });
+                bytecode.push(Instruction::F2C { dest, src: Source::RegInter(dest) });
+
+                Some(Source::RegInter(dest))
+            }
+            Type::Int => {
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => self.get_next_reg()?,
+                };
+                bytecode.push(Instruction::I2F { dest, src });
+                bytecode.push(Instruction::F2C { dest, src: Source::RegInter(dest) });
+
+                Some(Source::RegInter(dest))
+            }
+            Type::Float => {
+                let dest = match src {
+                    Source::RegInter(reg) => reg,
+                    _ => self.get_next_reg()?,
+                };
+                bytecode.push(Instruction::F2C {dest, src});
+
+                Some(Source::RegInter(dest))
+            },
+            Type::Complex => Some(src),
+            _ => unreachable!("cannot coerce {:?} to be Complex", ty.clone()),
+        }
+    }
+
     // Converts all impulse type to bool with an IEQ
     pub fn coerce_bool(
         &mut self,
@@ -289,17 +349,23 @@ impl<'a> CodeGen<'a> {
         type_r: &Type,
     ) -> Option<(Source, Source, Type)> {
         let (new_src_l, new_type) = match type_r {
-            Type::Float => (
+            Type::Complex => (
+                self.coerce_complex(bytecode, src_l, type_l, true)?,
+                Type::Complex,
+            ),
+
+            // Need to be careful not to try and coerce complex to float
+            Type::Float if *type_l != Type::Complex => (
                 self.coerce_float(bytecode, src_l, type_l, true)?,
                 Type::Float,
             ),
 
-            // Need to be careful not to try and coerce float to be int (the next match will take that int to be float)
-            Type::Int if *type_l != Type::Float => {
+            // Need to be careful not to try and coerce complex or float to be int (the next match will take that int to be float)
+            Type::Int if (*type_l != Type::Complex && *type_l != Type::Float) => {
                 (self.coerce_int(bytecode, src_l, type_l)?, Type::Int)
             }
 
-            Type::Mod(n) if (*type_l != Type::Float && *type_l != Type::Int) => {
+            Type::Mod(n) if (*type_l != Type::Complex && *type_l != Type::Float && *type_l != Type::Int) => {
                 (self.coerce_int(bytecode, src_l, type_l)?, Type::Mod(*n))
             }
 
@@ -309,6 +375,8 @@ impl<'a> CodeGen<'a> {
         };
 
         let new_src_r = match new_type {
+            Type::Complex => self.coerce_complex(bytecode, src_r, type_r, true)?,
+
             Type::Float => self.coerce_float(bytecode, src_r, type_r, true)?,
 
             Type::Int => self.coerce_int(bytecode, src_r, type_r)?,
@@ -529,6 +597,9 @@ impl<'a> CodeGen<'a> {
             Instruction::FJGT { offset, .. } => *offset += change,
             Instruction::FJLE { offset, .. } => *offset += change,
             Instruction::FJGE { offset, .. } => *offset += change,
+            
+            Instruction::CJEQ { offset, .. } => *offset += change,
+            Instruction::CJNE { offset, .. } => *offset += change,
 
             _ => {}
         }

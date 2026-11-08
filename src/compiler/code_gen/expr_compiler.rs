@@ -41,7 +41,7 @@ impl<'a> CodeGen<'a> {
 
                 Literal::Float(r) => (Source::Float(r), Type::Float),
 
-                Literal::Complex(a, b) => (Source::Complex(a, b), Type::Float),
+                Literal::Complex(a, b) => (Source::Complex(a, b), Type::Complex),
             },
 
             Expr::Ident(Ident::Symbol(id)) => match self.symbol_table[id].kind.clone() {
@@ -149,7 +149,7 @@ impl<'a> CodeGen<'a> {
                         }
                     }
 
-                    (Type::Float, UnaryOp::Neg | UnaryOp::Exp | UnaryOp::Ln | UnaryOp::Abs) => {
+                    (Type::Float, UnaryOp::Neg | UnaryOp::Exp | UnaryOp::Ln) => {
                         let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
                         bytecode.extend(expr_bytecode);
 
@@ -164,12 +164,85 @@ impl<'a> CodeGen<'a> {
                             UnaryOp::Neg => Instruction::FMUL {dest, src1:src, src2:Source::Float(-1.0)},
                             UnaryOp::Exp => Instruction::FEXP{dest, src},
                             UnaryOp::Ln => Instruction::FLN{dest, src},
-                            UnaryOp::Abs => Instruction::FABS{dest, src},
 
                             _ => unreachable!(),
                         });
 
                         (Source::RegInter(dest), Type::Float)
+                    }
+                    (Type::Float, UnaryOp::Abs) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        if sub_type == Type::Complex {
+                            let src = self.coerce_complex(&mut bytecode, src, &sub_type, true)?;
+
+                            let dest = match src {
+                                Source::RegInter(reg) => reg,
+                                _ => self.get_next_reg()?,
+                            };
+
+                            bytecode.push(Instruction::CABS {dest, src});
+
+                            (Source::RegInter(dest), Type::Float)
+                        } else {
+                            let src = self.coerce_float(&mut bytecode, src, &sub_type, true)?;
+
+                            let dest = match src {
+                                Source::RegInter(reg) => reg,
+                                _ => self.get_next_reg()?,
+                            };
+
+                            bytecode.push(Instruction::FABS {dest, src});
+
+                            (Source::RegInter(dest), Type::Float)
+                        }
+
+                    }
+                    (Type::Float, UnaryOp::Arg | UnaryOp::Real | UnaryOp::Imag | UnaryOp::Conj) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let src = self.coerce_complex(&mut bytecode, src, &sub_type, true)?;
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(match unary.op {
+                            UnaryOp::Arg => Instruction::CARG {dest, src},
+                            UnaryOp::Real => Instruction::CRE {dest, src},
+                            UnaryOp::Imag => Instruction::CIM {dest, src},
+                            UnaryOp::Conj => Instruction::CON {dest, src},
+
+                            _ => unreachable!(),
+                        });
+
+                        (Source::RegInter(dest), Type::Float)
+                    }
+
+                    (Type::Complex, UnaryOp::Neg | UnaryOp::Exp | UnaryOp::Ln | UnaryOp::Conj) => {
+                        let (expr_bytecode, src, sub_type) = self.compile_expr(*unary.expr)?;
+                        bytecode.extend(expr_bytecode);
+
+                        let src = self.coerce_complex(&mut bytecode, src, &sub_type, true)?;
+
+                        let dest = match src {
+                            Source::RegInter(reg) => reg,
+                            _ => self.get_next_reg()?,
+                        };
+
+                        bytecode.push(match unary.op {
+                            UnaryOp::Neg => Instruction::CMUL {dest, src1:src, src2:Source::Complex(-1.0, 0.0)},
+                            UnaryOp::Exp => Instruction::CEXP{dest, src},
+                            UnaryOp::Ln => Instruction::CLN{dest, src},
+                            UnaryOp::Conj => Instruction::CON {dest, src},
+
+                            _ => unreachable!(),
+                        });
+
+                        (Source::RegInter(dest), Type::Complex)
                     }
 
                     (Type::Bool, UnaryOp::BitNot) => {
@@ -300,6 +373,32 @@ impl<'a> CodeGen<'a> {
                         });
 
                         (Source::RegInter(dest), Type::Float)
+                    }
+
+                    (Type::Complex, BinaryOp::Add | BinaryOp::Sub | BinaryOp::Mul | BinaryOp::Div) => {
+                        let (left_expr_bytecode, src1, left_sub_type) =
+                            self.compile_expr(*binary.left)?;
+                        let (right_expr_bytecode, src2, right_sub_type) =
+                            self.compile_expr(*binary.right)?;
+
+                        bytecode.extend(left_expr_bytecode);
+                        bytecode.extend(right_expr_bytecode);
+
+                        let src1 = self.coerce_complex(&mut bytecode, src1, &left_sub_type, true)?;
+                        let src2 = self.coerce_complex(&mut bytecode, src2, &right_sub_type, true)?;
+
+                        let dest = self.get_binary_dest(src1, src2)?;
+
+                        bytecode.push(match binary.op {
+                            BinaryOp::Add => Instruction::CADD {dest, src1, src2},
+                            BinaryOp::Sub => Instruction::CSUB {dest, src1, src2},
+                            BinaryOp::Mul => Instruction::CMUL {dest, src1, src2},
+                            BinaryOp::Div => Instruction::CDIV {dest, src1, src2},
+
+                            _ => unreachable!(),
+                        });
+
+                        (Source::RegInter(dest), Type::Complex)
                     }
 
                     (Type::Bool, BinaryOp::Eq | BinaryOp::Ne | BinaryOp::Lt | BinaryOp::Gt | BinaryOp::Le | BinaryOp::Ge) => {
@@ -721,6 +820,14 @@ impl<'a> CodeGen<'a> {
                 )?;
 
                 match scrutinee_types[0] {
+                    Type::Complex => {
+                        bytecode.push(Instruction::CJNE {
+                            offset: 3, // Jump to right past the
+                            src1: scrutinee_sources[0],
+                            src2: lit_src,
+                        });
+                    }
+
                     Type::Float => {
                         bytecode.push(Instruction::FJNE {
                             offset: 3, // Jump to right past the
@@ -833,6 +940,22 @@ impl<'a> CodeGen<'a> {
                 )?;
 
                 match scrutinee_types[0] {
+                    Type::Complex => match comp_pattern.op {
+                        CompOp::Eq => bytecode.push(Instruction::CJNE {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        CompOp::Ne => bytecode.push(Instruction::CJEQ {
+                            offset: 3, // Jump to right past the jmp inst
+                            src1: scrutinee_sources[0],
+                            src2: comp_src,
+                        }),
+
+                        _ => unreachable!(),
+                    }
+
                     Type::Float => match comp_pattern.op {
                         CompOp::Eq => bytecode.push(Instruction::FJNE {
                             offset: 3, // Jump to right past the jmp inst
@@ -1331,6 +1454,56 @@ mod tests {
         assert_eq!(compiler.reg_used[0], true);
         assert_eq!(compiler.reg_used[1], true);
         assert_eq!(compiler.reg_used[2], false);
+    }
+
+    #[test]
+    fn binary_add_2() {
+        // 1 + i
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![Symbol {
+            name: "".to_string(),
+            kind: SymbolKind::Variable(Type::Int),
+            span: Span { line: 0, col: 0 },
+        }];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Literal(Literal::Int(1))),
+            right: Box::new(Expr::Literal(Literal::Complex(0.0, 1.0))),
+            op: BinaryOp::Add,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Complex,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::I2F {
+                        dest: 0,
+                        src: Source::Int(1),
+                    },
+                    Instruction::F2C {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::CADD {
+                        dest: 0,
+                        src1: Source::RegInter(0),
+                        src2: Source::Complex(0.0, 1.0),
+                    },
+                ],
+                Source::RegInter(0),
+                Type::Complex
+            ))
+        );
+        assert_eq!(compiler.reg_used[0], true);
     }
 
     #[test]
@@ -2964,5 +3137,83 @@ mod tests {
         assert_eq!(compiler.reg_used[4], false);
         assert_eq!(compiler.reg_used[5], false);
         assert_eq!(compiler.reg_used[6], false);
+    }
+
+    #[test]
+    fn cases_5() {
+        // cases a {
+        //     1.2+2.3i : true,
+        //     _ : false,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = vec![
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Variable(Type::Float),
+                span: Span { line: 0, col: 0 },
+            },
+        ];
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+        compiler.reg_map.insert(0, 0);
+        compiler.reg_used[0] = true;
+
+        let ir = compiler.compile_expr(Expr::Cases(CasesExpr {
+            scrutinee: Box::new(Expr::Ident(Ident::Symbol(0))),
+            arms: vec![
+                CasesArm {
+                    pattern: vec![
+                        SimplePattern::Literal(Literal::Complex(1.2, 2.3))
+                    ],
+                    expr: Expr::Literal(Literal::Bool(true)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+                CasesArm {
+                    pattern: vec![SimplePattern::Default],
+                    expr: Expr::Literal(Literal::Bool(false)),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+            ],
+            expr_type: Type::Bool,
+            span: Span { line: 0, col: 0 },
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::F2C {
+                        dest: 2,
+                        src: Source::RegVar(0),
+                    },
+                    Instruction::CJNE {
+                        offset: 13,
+                        src1: Source::RegInter(2),
+                        src2: Source::Complex(1.2, 2.3),
+                    },
+                    Instruction::MOV {
+                        dest: 1,
+                        src: Source::Bool(true),
+                    },
+                    Instruction::JMP {
+                        offset: 10,
+                    },
+                    Instruction::MOV {
+                        dest: 1,
+                        src: Source::Bool(false),
+                    },
+                ],
+                Source::RegInter(1),
+                Type::Bool
+            ))
+        );
+        assert_eq!(compiler.reg_used[0], true);
+        assert_eq!(compiler.reg_used[1], true);
+        assert_eq!(compiler.reg_used[2], false);
     }
 }

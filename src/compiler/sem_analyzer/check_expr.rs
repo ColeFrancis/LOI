@@ -342,7 +342,6 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Complex, UnaryOp::Neg) => Some(Type::Complex),
             (Type::Complex, UnaryOp::Exp) => Some(Type::Complex),
             (Type::Complex, UnaryOp::Ln) => Some(Type::Complex),
-            (Type::Complex, UnaryOp::Floor) => Some(Type::Complex),
             (Type::Complex, UnaryOp::Abs) => Some(Type::Float),
             (Type::Complex, UnaryOp::Arg) => Some(Type::Float),
             (Type::Complex, UnaryOp::Real) => Some(Type::Float),
