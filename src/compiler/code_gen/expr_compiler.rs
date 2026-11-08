@@ -1327,6 +1327,78 @@ mod tests {
     }
 
     #[test]
+    fn unary_expr_5() {
+        // floor(abs(conj(3 + 4i)))
+        let mut diagnostics = Diagnostics::new();
+        let symbol_table = Vec::new();
+        let mut compiler = CodeGen {
+            reg_map: HashMap::new(),
+            reg_used: [false; 64],
+            rel_symbol_id: 0,
+            symbol_table: &symbol_table,
+            diagnostics: &mut diagnostics,
+        };
+
+        let ir = compiler.compile_expr(Expr::Unary(UnaryExpr {
+            expr: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Unary(UnaryExpr {
+                    expr: Box::new(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(3))),
+                        right: Box::new(Expr::Literal(Literal::Complex(0.0, 4.0))),
+                        op: BinaryOp::Add,
+                        op_span: Span { line: 0, col: 0 },
+                        expr_type: Type::Complex,
+                    })),
+                    op: UnaryOp::Conj,
+                    op_span: Span { line: 0, col: 0 },
+                    expr_type: Type::Complex,
+                })),
+                op: UnaryOp::Abs,
+                op_span: Span { line: 0, col: 0 },
+                expr_type: Type::Float,
+            })),
+            op: UnaryOp::Floor,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Int,
+        }));
+
+        assert_eq!(
+            ir,
+            Some((
+                vec![
+                    Instruction::I2F {
+                        dest: 0,
+                        src: Source::Int(3),
+                    },
+                    Instruction::F2C {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::CADD {
+                        dest: 0,
+                        src1: Source::RegInter(0),
+                        src2: Source::Complex(0.0, 4.0),
+                    },
+                    Instruction::CON {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::CABS {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    },
+                    Instruction::FLR {
+                        dest: 0,
+                        src: Source::RegInter(0),
+                    } 
+                ],
+                Source::RegInter(0),
+                Type::Int
+            ))
+        );
+    }
+
+    #[test]
     fn binary_rand_1() {
         // 2 * (uniform + normal)
         let mut diagnostics = Diagnostics::new();
