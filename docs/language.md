@@ -27,6 +27,7 @@ There are several reserved keywords in the LOI language that may not be used as 
 - "Bool"
 - "Impulse"
 - "Float"
+- "Complex"
 - "Int"
 - "Mod"
 - "uniform"
@@ -37,6 +38,11 @@ There are several reserved keywords in the LOI language that may not be used as 
 - "ln"
 - "floor"
 - "abs"
+- "arg"
+- "real"
+- "imag"
+- "conj"
+- "i"
 - "_"
 
 # Structures
@@ -74,10 +80,11 @@ Entities, when instantiated in a network, each have a type which defines what va
 - **Bool:** Represents a boolean value and takes either "true" or "false"
 - **Int:** Represents an integer value. ex: "10". Internally stored as 64-bit signed integers
 - **Float:** Represents an IEEE 64-bit floating point value. Float literals must have either a decimal present, or use scientific notation. ex: "1.0", "-24.03", "2e-6"
+- **Complex:** Represents a complex number value. ex: "i", "2.3e2i", "1+3i". Internally stored as two IEEE 32-bit floating point values (one for real part, one for the complex part)
 - **Mod(n):** Represents an integer (mod n). Internally stored as a 64-bit signed integer
 - **Impulse:** Represents a boolean that is true for a single timestep. Takes either "true" if the impulse is occuring this timestep and "false" otherwise. If set to true, will only remain true for one timestep. Represented internally as a 64-bit unsigned integer representing the simulation timestep that it will be "true"
 
-Some types can be implicitly converted to each other. Mod can be converted to Int, Mod and Int can be converted to Float, Impulse can be converted to Bool, and Bool can be converted to Impulse. See Expressions for more details
+Some types can be implicitly converted to each other. Mod can be converted to Int, Mod and Int can be converted to Float, Mod, Int, and Float can be converted to Complex, Impulse can be converted to Bool, and Bool can be converted to Impulse. See Expressions for more details
 
 LOI also allows you to define custom types with sets of values. Just like enums in other popular languages. The syntax is as follows:
 
@@ -147,12 +154,16 @@ rel_t RepeatInput (a: Impulse) -> Impulse = a;
 
 Allow you to apply one of the following unary operators to an expression:
 
-- "-": negation for Int, Float, and Mod values
+- "-": negation for Int, Float, Complex, and Mod values
 - "~": boolean not for Bool and Impulse
-- "exp()": e^x for Int, Float, and Mod values (returns Float)
-- "ln()": natural log for Int, Float, and Mod values (returns Float)
-- "abs()": magnitude/absolute value for Int, Float, and Mod values
-- "floor()": floor function for Int, Float, and Mod values (returns Int if Float is passed in)
+- "exp()": e^x for Int, Float, Complex, and Mod values (returns Float)
+- "ln()": natural log for Int, Float, Complex, and Mod values (returns Float)
+- "abs()": magnitude/absolute value for Int, Float, Complex, and Mod values
+- "arg()": argument/angle for Complex values,
+- "floor()": floor function for Int, Float, and Mod values (returns Int if Float is passed in, Complex not allowed)
+- "real()": real part for Complex values
+- "imag()": imaginary part for Complex values
+- "conj()": conjugate for Complex values
 
 For example:
 
@@ -164,13 +175,13 @@ rel_t NotGate (in: Bool) -> Bool = ~in;
 
 Allow you to apply one of the following binary operations to two expressions:
 
-- "+": addition for Int, Float, and Mod values
-- "-": subtraction for Int, Float, and Mod values
-- "*": multiplication for Int, Float, and Mod values 
-- "/": division for Int, Float, and Mod values
+- "+": addition for Int, Float, Complex, and Mod values
+- "-": subtraction for Int, Float, Complex, and Mod values
+- "*": multiplication for Int, Float, Complex, and Mod values 
+- "/": division for Int, Float, Complex, and Mod values
 - "%": modulus for Int, Float, and Mod values
-- "==": equal for Int, Float, and Mod values (returns Bool)
-- "!=": not equal for Int, Float, and Mod values (returns Bool)
+- "==": equal for Int, Float, Complex, and Mod values (returns Bool)
+- "!=": not equal for Int, Float, Complex,  and Mod values (returns Bool)
 - ">": greater than for Int, Float, and Mod values (returns Bool)
 - "<": less than for Int, Float, and Mod values (returns Bool)
 - ">=": greater than or equal for Int, Float, and Mod values (returns Bool)
@@ -181,7 +192,7 @@ Allow you to apply one of the following binary operations to two expressions:
 
 #### Operator Precedence
 
-1. -x, ~x (highest)
+1. -x, ~x, all other unary (highest)
 2. *, /, %, &
 3. ^
 4. +, -, \|

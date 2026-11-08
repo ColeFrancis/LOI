@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Allowed scientific notation for float literals
 - Removed pow op, replaced with ^ oor boolean xor
-- Added exp(), ln(), xor, abs(), floor(), ==, !=, % ops
+- Added exp(), ln(), xor, abs(), floor(), ==, !=, % ops, arg(), real(), imag(), conj()
 - Added expressions to sample standard uniform and normal rvs
 - Users can now set the seed of the random number generator through a seed statement
 - Added == and != comparison operators in cases patterns
 - Added inline functions
+- Added complex number types
 
 ### Changed
 
