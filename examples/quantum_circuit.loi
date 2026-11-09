@@ -1,0 +1,334 @@
+// Here are examples of quantum logic gates,
+//  then a simple implementation of Grovers algorithm with 2 Qbits
+
+let inv_sqrt2 = 0.7071067811865476;
+
+rel_t X0(a: Complex, b: Complex) -> Complex = b;
+rel_t X1(a: Complex, b: Complex) -> Complex = a;
+
+rel_t Y0(a: Complex, b: Complex) -> Complex = -i * b;
+rel_t Y1(a: Complex, b: Complex) -> Complex = i * a;
+
+rel_t Z0(a: Complex, b: Complex) -> Complex = a;
+rel_t Z1(a: Complex, b: Complex) -> Complex = -b;
+
+rel_t H0 (a: Complex, b: Complex) -> Complex = inv_sqrt2 * (a + b);
+rel_t H1 (a: Complex, b: Complex) -> Complex = inv_sqrt2 * (a - b);
+
+rel_t S0 (a: Complex, b: Complex) -> Complex = a;
+rel_t S1 (a: Complex, b: Complex) -> Complex = i * b;
+
+rel_t T0 (a: Complex, b: Complex) -> Complex = a;
+rel_t T1 (a: Complex, b: Complex) -> Complex = ((1.0 + i) * inv_sqrt2) * b;
+
+rel_t DELAY (a: Complex) -> Complex = a;
+
+net X_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    X0(a_in, b_in) := a_out;
+    X1(a_in, b_in) := b_out;
+}
+
+net Y_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    Y0(a_in, b_in) := a_out;
+    Y1(a_in, b_in) := b_out;
+}
+
+net Z_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    Z0(a_in, b_in) := a_out;
+    Z1(a_in, b_in) := b_out;
+}
+
+net H_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    H0(a_in, b_in) := a_out;
+    H1(a_in, b_in) := b_out;
+}
+
+net S_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    S0(a_in, b_in) := a_out;
+    S1(a_in, b_in) := b_out;
+}
+
+net T_Gate {
+    input a_in: Complex;
+    input b_in: Complex;
+
+    output a_out: Complex;
+    output b_out: Complex;
+
+    T0(a_in, b_in) := a_out;
+    T1(a_in, b_in) := b_out;
+}
+
+rel_t MEASURE (a: Complex, b: Complex) -> Bool = 
+    sample {
+        abs(a) * abs(a) : false,
+        _ : true,
+    };
+
+
+//-----------------------
+// Grovers Algorithm
+//-----------------------
+
+rel_t D00(
+    a00: Complex,
+    a01: Complex,
+    a10: Complex,
+    a11: Complex
+) -> Complex =
+    2.0 * ((a00 + a01 + a10 + a11) / 4.0) - a00;
+
+rel_t D01(
+    a00: Complex,
+    a01: Complex,
+    a10: Complex,
+    a11: Complex
+) -> Complex =
+    2.0 * ((a00 + a01 + a10 + a11) / 4.0) - a01;
+
+rel_t D10(
+    a00: Complex,
+    a01: Complex,
+    a10: Complex,
+    a11: Complex
+) -> Complex =
+    2.0 * ((a00 + a01 + a10 + a11) / 4.0) - a10;
+
+rel_t D11(
+    a00: Complex,
+    a01: Complex,
+    a10: Complex,
+    a11: Complex
+) -> Complex =
+    2.0 * ((a00 + a01 + a10 + a11) / 4.0) - a11;
+
+ent_t BASIS = {S00, S01, S10, S11};
+
+rel_t MEASURE_2(
+    a00: Complex,
+    a01: Complex,
+    a10: Complex,
+    a11: Complex
+) -> BASIS =
+    sample {
+        abs(a00) * abs(a00) : S00,
+        abs(a01) * abs(a01) : S01,
+        abs(a10) * abs(a10) : S10,
+        _ : S11,
+    };
+
+net CNOT {
+    input a00_in: Complex;
+    input a01_in: Complex;
+    input a10_in: Complex;
+    input a11_in: Complex;
+
+    output a00_out: Complex;
+    output a01_out: Complex;
+    output a10_out: Complex;
+    output a11_out: Complex;
+
+    // Control = 0: identity
+    DELAY(a00_in) := a00_out;
+    DELAY(a01_in) := a01_out;
+
+    // Control = 1: apply Pauli X to target
+    DELAY(a11_in) := a10_out;
+    DELAY(a10_in) := a11_out;
+}
+
+net H2 {
+    input a00_in: Complex;
+    input a01_in: Complex;
+    input a10_in: Complex;
+    input a11_in: Complex;
+
+    output a00_out: Complex;
+    output a01_out: Complex;
+    output a10_out: Complex;
+    output a11_out: Complex;
+
+    // Apply H to the first qubit
+    H_Gate {
+        a_in := a00_in,
+        b_in := a10_in,
+        a_out := h00,
+        b_out := h10,
+    };
+
+    H_Gate {
+        a_in := a01_in,
+        b_in := a11_in,
+        a_out := h01,
+        b_out := h11,
+    };
+
+    // Apply H to the second qubit
+    H_Gate {
+        a_in := h00,
+        b_in := h01,
+        a_out := a00_out,
+        b_out := a01_out,
+    };
+
+    H_Gate {
+        a_in := h10,
+        b_in := h11,
+        a_out := a10_out,
+        b_out := a11_out,
+    };
+}
+
+net ORACLE_11 {
+    input a00_in: Complex;
+    input a01_in: Complex;
+    input a10_in: Complex;
+    input a11_in: Complex;
+
+    output a00_out: Complex;
+    output a01_out: Complex;
+    output a10_out: Complex;
+    output a11_out: Complex;
+
+    // Hadamard on target qubit
+    H_Gate {
+        a_in := a00_in,
+        b_in := a01_in,
+        a_out := h00,
+        b_out := h01,
+    };
+
+    H_Gate {
+        a_in := a10_in,
+        b_in := a11_in,
+        a_out := h10,
+        b_out := h11,
+    };
+
+    // Controlled X
+    CNOT_Gate {
+        a00_in := h00,
+        a01_in := h01,
+        a10_in := h10,
+        a11_in := h11,
+
+        a00_out := c00,
+        a01_out := c01,
+        a10_out := c10,
+        a11_out := c11,
+    };
+
+    // Hadamard on target qubit again
+    H_Gate {
+        a_in := c00,
+        b_in := c01,
+        a_out := a00_out,
+        b_out := a01_out,
+    };
+
+    H_Gate {
+        a_in := c10,
+        b_in := c11,
+        a_out := a10_out,
+        b_out := a11_out,
+    };
+}
+
+net DIFFUSION {
+    input a00_in: Complex;
+    input a01_in: Complex;
+    input a10_in: Complex;
+    input a11_in: Complex;
+
+    output a00_out: Complex;
+    output a01_out: Complex;
+    output a10_out: Complex;
+    output a11_out: Complex;
+
+    D00(a00_in, a01_in, a10_in, a11_in) := a00_out;
+    D01(a00_in, a01_in, a10_in, a11_in) := a01_out;
+    D10(a00_in, a01_in, a10_in, a11_in) := a10_out;
+    D11(a00_in, a01_in, a10_in, a11_in) := a11_out;
+}
+
+net GROVER_2Q {
+    output result: BASIS;
+
+    // Initialize |00>
+    init a00: Complex = 1.0;
+    init a01: Complex = 0.0;
+    init a10: Complex = 0.0;
+    init a11: Complex = 0.0;
+
+    // Create uniform superposition
+    H2 {
+        a00_in := a00,
+        a01_in := a01,
+        a10_in := a10,
+        a11_in := a11,
+
+        a00_out := s00,
+        a01_out := s01,
+        a10_out := s10,
+        a11_out := s11,
+    };
+
+    // Mark |11>
+    ORACLE_11 {
+        a00_in := s00,
+        a01_in := s01,
+        a10_in := s10,
+        a11_in := s11,
+
+        a00_out := o00,
+        a01_out := o01,
+        a10_out := o10,
+        a11_out := o11,
+    };
+
+    // Amplify marked state
+    DIFFUSION {
+        a00_in := o00,
+        a01_in := o01,
+        a10_in := o10,
+        a11_in := o11,
+
+        a00_out := d00,
+        a01_out := d01,
+        a10_out := d10,
+        a11_out := d11,
+    };
+
+    // Measure
+    MEASURE_2(d00, d01, d10, d11) := result;
+}
