@@ -187,6 +187,12 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::Init(ent_init))
             }
 
+            // How do I cover the case where I encounter an ent_alias then later asign conflicting types?
+                // Maybe check alias in a different function, and call it in a second loop in check_net
+            // NetItem::Alias(ent_alias) => {
+
+            // }
+
             NetItem::RelInst(mut rel_inst) => {
                 let Ident::Symbol(rel_id) = rel_inst.rel else {
                     return None; // not reachable

@@ -87,6 +87,7 @@ impl<'a> Parser<'a> {
             }
 
             TokenKind::Ident(_) => match self.peek_n(1).kind {
+                // TokenKind::Connect => Some(NetItem::EntAlias(self.parse_ent_assign()?)),
                 TokenKind::LParen => Some(NetItem::RelInst(self.parse_rel_inst()?)),
                 TokenKind::LBrace => Some(NetItem::NetInst(self.parse_net_inst()?)),
                 _ => {
@@ -139,13 +140,23 @@ impl<'a> Parser<'a> {
         Some(EntInit { param, val })
     }
 
+    // fn parse_ent_alias(&mut self) -> Option<EntAlias> {
+    //     let left = self.expect_ident(&SyncRule::NetItem { depth: 0 })?;
+
+    //     let span = self.peek().span.clone();
+
+    //     let right = self.expect_ident(&SyncRule::NetItem { depth: 0 })?;
+
+    //     self.expect(TokenKind::Semicolon, &SyncRule::NetItem { depth: 0 })?;
+
+    //     Some(EntAlias {
+    //         left,
+    //         right,
+    //         span,
+    //     })
+    // }
+
     fn parse_rel_inst(&mut self) -> Option<RelInst> {
-        // let asignee = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
-
-        // let span = self.peek().span.clone();
-        // self.expect(TokenKind::Connect, &SyncRule::NetItem {depth: 0})?;
-
-        // let rel = self.expect_ident(&SyncRule::NetItem {depth: 0})?;
         let span = self.peek().span.clone();
         let rel = self.expect_ident(&SyncRule::NetItem { depth: 0 })?;
 

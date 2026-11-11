@@ -272,6 +272,7 @@ pub enum NetItem {
     Input(InputEnt),
     Output(OutputEnt),
     Init(EntInit),
+    // Alias(EntAlias),
     RelInst(RelInst),
     NetInst(NetInst),
     Error,
@@ -295,6 +296,13 @@ pub struct EntInit {
     pub val: Expr,
     // span not needed
 }
+
+// #[derive(PartialEq, Debug)]
+// pub struct EntAlias {
+//     pub left: Ident,
+//     pub right: Ident,
+//     pub span: Span,
+// }
 
 #[derive(PartialEq, Debug)]
 pub struct RelInst {

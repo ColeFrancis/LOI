@@ -251,6 +251,22 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::Init(ent_init))
             }
 
+            // NetItem::EntAlias(mut ent_assign) => {
+            //     let (name_l, span_l) = self.extract_ident_str(ent_assign.left)?;
+            //     ent_assign.left = Ident::Symbol(self.find_or_define_symbol(
+            //         &name_l,
+            //         SymbolKind::Ent(Type::Unknown),
+            //         span_l,
+            //     ));
+
+            //     let (name_r, span_r) = self.extract_ident_str(ent_assign.right)?;
+            //     ent_assign.right = Ident::Symbol(self.find_or_define_symbol(
+            //         &name_r,
+            //         SymbolKind::Ent(Type::Unknown),
+            //         span_r,
+            //     ));
+            // }
+
             NetItem::RelInst(mut rel_inst) => {
                 let (name, span) = self.extract_ident_str(rel_inst.asignee)?;
                 rel_inst.asignee = Ident::Symbol(self.find_or_define_symbol(

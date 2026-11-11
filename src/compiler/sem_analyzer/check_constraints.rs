@@ -78,6 +78,37 @@ impl<'a> SemAnalyzer<'a> {
                     driven_ents.push((symbol_id, &input_ent.span));
                 }
 
+                // NetItem::Alias(ent_alias) => {
+                //     let Ident::Symbol(left_symbol_id) = ent_alias.left else {
+                //         return None; // Not reachable
+                //     };
+                //     let Ident::Symbol(right_symbol_id) = ent_alias.right else {
+                //         return None; // Not reachable
+                //     };
+
+                //     match (driven_ents.iter().find(|(id, _) | *id == left_symbol_id), driven_ents.iter().find(|(id, _) | *id == right_symbol_id)) {
+                //         (Some((_, span_l)), None) => {
+                //             driven_ents.push((right_symbol_id, &span_l));
+                //         }
+
+                //         (None, Some((_, span_r))) => {
+                //             driven_ents.push((left_symbol_id, &span_r));
+                //         }
+
+                //         (Some((_, span_l)), Some((_, span_r))) => {
+                //             self.diagnostics.error(Diagnostic::MultipleEntDrivers {
+                //                 name: self.symbols[asignee_symbol_id].name.to_string(),
+                //                 first_span: (*old_span).clone(),
+                //                 last_span: rel_inst.span.clone(),
+                //             });
+
+                //             has_errors = true;
+                //         }
+
+                //         _ => {}
+                //     }
+                // }
+
                 NetItem::RelInst(rel_inst) => {
                     let Ident::Symbol(asignee_symbol_id) = rel_inst.asignee else {
                         return None; // Not reachable
