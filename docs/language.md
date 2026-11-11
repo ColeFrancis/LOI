@@ -464,6 +464,8 @@ or
 <rel_t name> (<input entity 1>, <input entity 2>, ...) := <output entity> @ <expression>;
 ```
 
+The expression in the second option lets you define the delay of that relation instantiation (in simulator timesteps). Providing expression causes the delay to default to 1.
+
 
 For example, to define a relation and place it inside a network, you would do as follows:
 
