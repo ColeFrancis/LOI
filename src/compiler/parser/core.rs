@@ -458,7 +458,7 @@ let 9n = 4;
 let n = 5;
 let n = 6
 let n = 7;
-let n = @;
+let n = $;
         ",
             &mut diagnostics,
         )

@@ -255,6 +255,7 @@ net SECOND {
                                 asignee: Ident::Symbol(8),
                                 rel: Ident::Symbol(4),
                                 args: vec![Ident::Symbol(7),],
+                                delay: Expr::Literal(Literal::Int(1)),
                                 span: Span { line: 17, col: 5 },
                             }),
                         ],

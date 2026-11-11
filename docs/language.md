@@ -459,6 +459,11 @@ Relation instantiations allow you to place relations in a network and define the
 ```
 <rel_t name> (<input entity 1>, <input entity 2>, ...) := <output entity> ;
 ```
+or
+```
+<rel_t name> (<input entity 1>, <input entity 2>, ...) := <output entity> @ <expression>;
+```
+
 
 For example, to define a relation and place it inside a network, you would do as follows:
 
@@ -479,13 +484,15 @@ net MULT_ADD {
 
     MULT(c, d) := inter_2;
 
-    ADD(inter_1, inter_2) := q;
+    ADD(inter_1, inter_2) := q @ 2 + 1;
 }
 ```
 
-In this example, a, b, c, d, inter_1, inter_2, and q are entities, all of type Int. There are three relations, two of type MULT, one of type ADD.
+In this example, a, b, c, d, inter_1, inter_2, and q are entities, all of type Int. There are three relations, two of type MULT, one of type ADD. The relation of type ADD will have a delay of 2+1=3 within the simulator
 
 Note that in a relation instantiation, all input arguments of the relation type must be provided.
+
+Also note that the return type of the delay expression must be integer.
 
 Also note, that an entity cannot be driven more than once. Therefore, an entity cannot simultaneously be an input and the output of a relation
 

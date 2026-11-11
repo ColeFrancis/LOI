@@ -187,7 +187,7 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::Init(ent_init))
             }
 
-            NetItem::RelInst(rel_inst) => {
+            NetItem::RelInst(mut rel_inst) => {
                 let Ident::Symbol(rel_id) = rel_inst.rel else {
                     return None; // not reachable
                 };
@@ -247,6 +247,11 @@ impl<'a> SemAnalyzer<'a> {
                 let (asignee_type, span) = self.get_ent_type(asignee_id)?;
 
                 let new_type = self.compare_ent_types(asignee_type, return_type, &span)?;
+
+                rel_inst.delay = self.add_types_expr(rel_inst.delay)?;
+                let delay_type = self.get_expr_type(&rel_inst.delay);
+
+                self.verify_return_type(&Type::Int, &delay_type, &rel_inst.span)?;
 
                 // if ent is first declared here, its type will be Unknown and it needs to be set based on the rel_t
                 if let SymbolKind::Ent(ty) = &mut self.symbols[asignee_id].kind {
@@ -1101,7 +1106,7 @@ mod tests {
         //     input b: COIN;
         //     output c: Float;
 
-        //     c := ADD(a, b);
+        //     ADD(a, b) := c;
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
@@ -1215,6 +1220,7 @@ mod tests {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
                     args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1250,6 +1256,7 @@ mod tests {
                         asignee: Ident::Symbol(7),
                         rel: Ident::Symbol(3),
                         args: vec![Ident::Symbol(5), Ident::Symbol(6),],
+                        delay: Expr::Literal(Literal::Int(1)),
                         span: Span { line: 0, col: 0 },
                     }),
                 ],
@@ -1344,7 +1351,7 @@ mod tests {
         //     input b: COIN;
         //     output c: Int; // Wrong type
 
-        //     c := ADD(a, b);
+        //     ADD(a, b) := c;
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
@@ -1458,6 +1465,7 @@ mod tests {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
                     args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1619,6 +1627,7 @@ mod tests {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
                     args: vec![Ident::Symbol(5)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1777,6 +1786,7 @@ mod tests {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(3),
                     args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -2485,5 +2495,171 @@ mod tests {
         );
         
         assert_eq!(diagnostics.num_errors(), 0);
+    }
+
+    #[test]
+    fn check_net_11() {
+        // net TEST {
+        //     input a: Float;
+        //     input b: COIN;
+        //     output c: Float;
+
+        //     ADD(a, b) := c @ 1 + 2.0; // float type delay
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "COIN".to_string(),
+                    kind: SymbolKind::EntType,
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "H".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 0,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "T".to_string(),
+                    kind: SymbolKind::EntMember {
+                        parent: 0,
+                        mapping: 1,
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Float, Type::Custom(Ident::Symbol(0))],
+                        return_type: Type::Float,
+                        
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 5,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 6,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "c".to_string(),
+                                NetPort {
+                                    symbol: 7,
+                                    input: false,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "c".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(4),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Float,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(6),
+                        param_type: Type::Custom(Ident::Symbol(0)),
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(7),
+                        param_type: Type::Float,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(7),
+                    rel: Ident::Symbol(3),
+                    args: vec![Ident::Symbol(5), Ident::Symbol(6)],
+                    delay: Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Int(1))),
+                        right: Box::new(Expr::Literal(Literal::Float(2.0))),
+                        op: BinaryOp::Add,
+                        op_span: Span {line: 0, col: 0},
+                        expr_type: Type::Unknown,
+                    }),
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        });
+
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(4),
+                items: vec![
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(5),
+                            param_type: Type::Float,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(6),
+                            param_type: Type::Custom(Ident::Symbol(0)),
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Input(InputEnt {
+                        param: Param {
+                            name: Ident::Symbol(7),
+                            param_type: Type::Float,
+                        },
+                        span: Span { line: 0, col: 0 },
+                    }),
+                    NetItem::Error,
+                ],
+            })
+        );
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }

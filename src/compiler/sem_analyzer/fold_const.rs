@@ -105,11 +105,22 @@ impl<'a> SemAnalyzer<'a> {
 
     fn fold_net(&mut self, mut net_t: Net) -> Net {
         for item in &mut net_t.items {
-            if let NetItem::Init(ent_init) = item {
-                let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
+            match item {
+                NetItem::Init(ent_init) => {
+                    let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
 
-                // Do not fold samples as these are evaluated upon the instantiation of a net
-                ent_init.val = self.fold_expr(owned_expr, true);
+                    // Do not fold samples as these are evaluated upon the instantiation of a net
+                    ent_init.val = self.fold_expr(owned_expr, true);
+                }
+
+                NetItem::RelInst(rel_inst) => {
+                    let owned_expr = std::mem::replace(&mut rel_inst.delay, Expr::Error);
+
+                    // Do not fold samples as these are evaluated upon the instantiation of a net
+                    rel_inst.delay = self.fold_expr(owned_expr, true);
+                }
+
+                _ => {}
             }
         }
         net_t
@@ -176,7 +187,7 @@ mod tests {
 
         //     init b: Int = 2+n;
 
-        //     out := ADD_N(in);
+        //     out := ADD_N(in) @ n+1;
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
@@ -235,6 +246,13 @@ mod tests {
                                 asignee: Ident::Symbol(5),
                                 rel: Ident::Symbol(1),
                                 args: vec![Ident::Symbol(4)],
+                                delay: Expr::Binary(BinaryExpr {
+                                    left: Box::new(Expr::Ident(Ident::Symbol(0))),
+                                    right: Box::new(Expr::Literal(Literal::Int(1))),
+                                    op: BinaryOp::Add,
+                                    op_span: Span {line: 0, col: 0},
+                                    expr_type: Type::Int,
+                                }),
                                 span: Span { line: 0, col: 0 },
                             }),
                         ],
@@ -355,6 +373,7 @@ mod tests {
                                 asignee: Ident::Symbol(5),
                                 rel: Ident::Symbol(1),
                                 args: vec![Ident::Symbol(4),],
+                                delay: Expr::Literal(Literal::Int(2)),
                                 span: Span { line: 0, col: 0 },
                             }),
                         ],

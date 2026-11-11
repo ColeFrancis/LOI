@@ -241,6 +241,7 @@ mod tests {
                     asignee: Ident::Symbol(3),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -336,6 +337,7 @@ mod tests {
                     asignee: Ident::Symbol(3),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -455,6 +457,7 @@ mod tests {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(4)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
                 NetItem::NetInst(NetInst {

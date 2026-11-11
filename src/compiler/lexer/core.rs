@@ -179,6 +179,8 @@ impl<'a> Lexer<'a> {
                 b'|' => return Some(Token::new(TokenKind::Pipe, line, col)),
                 b'&' => return Some(Token::new(TokenKind::Ampersand, line, col)),
 
+                b'@' => return Some(Token::new(TokenKind::At, line, col)),
+
                 // Unknown
                 _ => {
                     self.diagnostics.error(Diagnostic::UnknownToken {
@@ -423,7 +425,7 @@ mod test {
     #[test]
     fn test_unknown() {
         let mut diagnostics = Diagnostics::new();
-        let tokens = Lexer::new("@", &mut diagnostics).tokenize();
+        let tokens = Lexer::new("$", &mut diagnostics).tokenize();
 
         assert_eq!(kinds(&tokens), vec![ErrorToken, Eof]);
         assert_eq!(diagnostics.num_errors(), 1);
@@ -514,6 +516,7 @@ mod test {
             | _
             = -> :=
             @
+            $
             ",
             &mut diagnostics,
         )
@@ -572,6 +575,7 @@ mod test {
                 Equals,
                 Arrow,
                 Connect,
+                At,
                 ErrorToken,
                 Eof,
             ]

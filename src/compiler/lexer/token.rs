@@ -114,6 +114,8 @@ pub enum TokenKind {
     Arrow,   // ->
     Connect, // :=
 
+    At, // @
+
     ErrorToken,
 
     Eof,
@@ -189,6 +191,8 @@ impl std::fmt::Display for TokenKind {
             TokenKind::Equals => write!(f, "\"=\""),
             TokenKind::Arrow => write!(f, "\"->\""),
             TokenKind::Connect => write!(f, "\":=\""),
+
+            TokenKind::At => write!(f, "\"@\""),
 
             TokenKind::ErrorToken => write!(f, "Error Token"),
             TokenKind::Eof => write!(f, "End of File"),

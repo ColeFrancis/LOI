@@ -272,6 +272,8 @@ impl<'a> SemAnalyzer<'a> {
                     ));
                 }
 
+                rel_inst.delay = self.resolve_expr(rel_inst.delay).unwrap_or(Expr::Error);
+
                 Some(NetItem::RelInst(rel_inst))
             }
 
@@ -1212,6 +1214,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
                 NetItem::NetInst(NetInst {
@@ -1277,6 +1280,7 @@ mod tests {
                         asignee: Ident::Symbol(8),
                         rel: Ident::Symbol(0),
                         args: vec![Ident::Symbol(5), Ident::Symbol(7),],
+                        delay: Expr::Literal(Literal::Int(1)),
                         span: Span { line: 0, col: 0 },
                     }),
                     NetItem::NetInst(NetInst {
@@ -1487,6 +1491,7 @@ mod tests {
                             span: Span { line: 0, col: 0 },
                         },
                     ],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
                 NetItem::NetInst(NetInst {
@@ -1883,6 +1888,7 @@ net SECOND {
                                 asignee: Ident::Symbol(8),
                                 rel: Ident::Symbol(4),
                                 args: vec![Ident::Symbol(7),],
+                                delay: Expr::Literal(Literal::Int(1)),
                                 span: Span { line: 15, col: 5 },
                             }),
                         ],

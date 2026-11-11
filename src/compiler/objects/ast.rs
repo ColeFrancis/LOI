@@ -301,6 +301,7 @@ pub struct RelInst {
     pub asignee: Ident,
     pub rel: Ident,
     pub args: Vec<Ident>,
+    pub delay: Expr,
     pub span: Span,
 }
 

@@ -169,12 +169,24 @@ impl<'a> Parser<'a> {
 
         let asignee = self.expect_ident(&SyncRule::NetItem { depth: 0 })?;
 
+        let delay = if self.peek().kind == TokenKind::At {
+            self.next();
+
+            match self.parse_expr(0) {
+                Some(expr) => expr,
+                None => Expr::Error,
+            }
+        } else {
+            Expr::Literal(Literal::Int(1))
+        };
+
         self.expect(TokenKind::Semicolon, &SyncRule::NetItem { depth: 0 })?;
 
         Some(RelInst {
             asignee,
             rel,
             args,
+            delay,
             span,
         })
     }
@@ -267,7 +279,7 @@ mod tests {
         //         cout := h2_carry,
         //     };
 
-        //     OR(h1_carry, h2_carry) := cout;
+        //     OR(h1_carry, h2_carry) := cout @ 2;
 
         // }
         let kinds: Vec<TokenKind> = vec![
@@ -348,6 +360,8 @@ mod tests {
             RParen,
             Connect,
             Ident("cout".to_string()),
+            At,
+            IntLiteral(2),
             Semicolon,
             RBrace,
             Eof,
@@ -456,6 +470,7 @@ mod tests {
                         asignee: build_ident_str("cout"),
                         rel: build_ident_str("OR"),
                         args: vec![build_ident_str("h1_carry"), build_ident_str("h2_carry"),],
+                        delay: Expr::Literal(Literal::Int(2)),
                         span: Span { line: 0, col: 0 },
                     })
                 ],

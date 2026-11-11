@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added == and != comparison operators in cases patterns
 - Added inline functions
 - Added complex number types
+- Added way to specify delay of a relation instantiation
 
 ### Changed
 

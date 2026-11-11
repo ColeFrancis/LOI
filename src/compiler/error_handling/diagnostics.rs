@@ -719,7 +719,7 @@ mod tests {
     fn lexer_1() {
         let mut diagnostics = Diagnostics::new();
         Lexer::new(
-            "@ 9a
+            "$ 9a
         ",
             &mut diagnostics,
         )
@@ -729,7 +729,7 @@ mod tests {
             diagnostics.errors,
             vec![
                 Diagnostic::UnknownToken {
-                    lexeme: "@".to_string(),
+                    lexeme: "$".to_string(),
                     span: Span { line: 1, col: 1 }
                 },
                 Diagnostic::InvalidNum {
@@ -796,7 +796,7 @@ let 9n = 4;
 let n = 5;
 let n = 6
 let n = 7;
-let n = @;",
+let n = $;",
             &mut diagnostics,
         )
         .tokenize();
@@ -811,7 +811,7 @@ let n = @;",
                     span: Span { line: 4, col: 5 }
                 },
                 Diagnostic::UnknownToken {
-                    lexeme: "@".to_string(),
+                    lexeme: "$".to_string(),
                     span: Span { line: 8, col: 9 }
                 },
                 Diagnostic::UnexpectedToken {

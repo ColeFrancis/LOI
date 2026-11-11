@@ -244,9 +244,15 @@ impl<'a> Synthesis<'a> {
                         input_indices.push(arg_idx);
                     }
 
+                    let delay = match rel.delay {
+                        Expr::Literal(Literal::Int(val)) => val as usize,
+
+                        _ => unreachable!("type checking already occured and it should be an int literal")
+                    };
+
                     relations.push(Relation {
                         idx: rel_idx,
-                        delay: 1,
+                        delay,
                         input_ents: input_indices,
                         output_ent: asignee_idx,
                     });
@@ -396,7 +402,7 @@ mod tests {
         //     input C: Int;
         //     output S: Int;
 
-        //     S = ADD(A, B);
+        //     S = ADD(A, B) @ 2;
         // }
         let mut diagnostics = Diagnostics::new();
         let mut ents: Vec<Entity> = Vec::new();
@@ -504,6 +510,7 @@ mod tests {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    delay: Expr::Literal(Literal::Int(2)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -548,7 +555,7 @@ mod tests {
             relations,
             vec![Relation {
                 idx: 0,
-                delay: 1,
+                delay: 2,
                 input_ents: vec![0, 1],
                 output_ent: 3,
             },]
@@ -624,12 +631,14 @@ mod tests {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
                     args: vec![],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(2),
                     args: vec![],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -842,6 +851,7 @@ mod tests {
                     asignee: Ident::Symbol(5),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1163,12 +1173,14 @@ mod tests {
                     asignee: Ident::Symbol(7),
                     rel: Ident::Symbol(1),
                     args: vec![Ident::Symbol(4), Ident::Symbol(5)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(6),
                     rel: Ident::Symbol(2),
                     args: vec![Ident::Symbol(7)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1277,6 +1289,7 @@ mod tests {
                     asignee: Ident::Symbol(12),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(13), Ident::Symbol(14), Ident::Symbol(15)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1521,6 +1534,7 @@ mod tests {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
@@ -1674,6 +1688,7 @@ mod tests {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),
                     args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    delay: Expr::Literal(Literal::Int(1)),
                     span: Span { line: 0, col: 0 },
                 }),
             ],
