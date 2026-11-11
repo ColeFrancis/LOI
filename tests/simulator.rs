@@ -198,8 +198,8 @@ fn impulse_and_custom() {
             "out".to_string(),
             vec![
                 (0, IoVal::Custom("A".to_string())),
-                (3, IoVal::Custom("B".to_string())),
-                (9, IoVal::Custom("A".to_string())),
+                (4, IoVal::Custom("B".to_string())),
+                (10, IoVal::Custom("A".to_string())),
             ]
         ),]
     );
