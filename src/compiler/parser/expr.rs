@@ -95,6 +95,11 @@ impl<'a> Parser<'a> {
                 Some(Expr::Literal(Literal::Float(n)))
             }
 
+            TokenKind::ComplexLiteral(a, b) => {
+                self.next();
+                Some(Expr::Literal(Literal::Complex(a, b)))
+            }
+
             TokenKind::Ident(str) => {
                 self.next();
 

@@ -197,6 +197,7 @@ impl<'a> Parser<'a> {
             TokenKind::Impulse => Some(Type::Impulse),
             TokenKind::Int => Some(Type::Int),
             TokenKind::Float => Some(Type::Float),
+            TokenKind::Complex => Some(Type::Complex),
             TokenKind::Mod => {
                 self.expect(TokenKind::LParen, rule)?;
 
@@ -230,6 +231,7 @@ impl<'a> Parser<'a> {
                         Expected::Token(TokenKind::Impulse),
                         Expected::Token(TokenKind::Int),
                         Expected::Token(TokenKind::Float),
+                        Expected::Token(TokenKind::Complex),
                         Expected::Ident,
                     ],
                     found: other,

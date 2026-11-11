@@ -147,7 +147,7 @@ rel_t MEASURE_2(
         _ : S11,
     };
 
-net CNOT {
+net CNOT_Gate {
     input a00_in: Complex;
     input a01_in: Complex;
     input a10_in: Complex;

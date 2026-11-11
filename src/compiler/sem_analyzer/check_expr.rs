@@ -189,7 +189,10 @@ impl<'a> SemAnalyzer<'a> {
                         },
                     };
 
-                    if let Prob::Expr(expr) = &arm.prob {
+                    if let Prob::Expr(expr) = &mut arm.prob {
+                        let owned_expr = std::mem::replace(expr, Expr::Error);
+                        *expr = self.add_types_expr(owned_expr)?;
+
                         let prob_type = self.get_expr_type(expr);
 
                         if prob_type != Type::Int && prob_type != Type::Float {
@@ -200,7 +203,7 @@ impl<'a> SemAnalyzer<'a> {
 
                             has_errors = true;
                         }
-                    };
+                    }
                 }
 
                 sample_expr.expr_type = expr_type?;
@@ -1059,6 +1062,65 @@ mod tests {
                 op_span: Span { line: 0, col: 0 },
                 expr_type: Type::Mod(3),
             }))
+        );
+    }
+
+    #[test]
+    fn binary_expr_7() {
+        // abs(a) * abs(a) // a is complex
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Variable(Type::Complex),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([("a".to_string(), 0)]),
+            }],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Abs,
+                op_span: Span {line: 0, col: 0 },
+                expr_type: Type::Unknown,
+            })),
+            right: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Abs,
+                op_span: Span {line: 0, col: 0 },
+                expr_type: Type::Unknown,
+            })),
+            op: BinaryOp::Mul,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Unknown,
+        }));
+
+        assert_eq!(
+            result,
+            Some(Expr::Binary(BinaryExpr {
+            left: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Abs,
+                op_span: Span {line: 0, col: 0 },
+                expr_type: Type::Float,
+            })),
+            right: Box::new(Expr::Unary(UnaryExpr {
+                expr: Box::new(Expr::Ident(Ident::Symbol(0))),
+                op: UnaryOp::Abs,
+                op_span: Span {line: 0, col: 0 },
+                expr_type: Type::Float,
+            })),
+            op: BinaryOp::Mul,
+            op_span: Span { line: 0, col: 0 },
+            expr_type: Type::Float,
+        }))
         );
     }
 
@@ -2096,6 +2158,90 @@ mod tests {
                 arms: vec![
                     SampleArm {
                         prob: Prob::Expr(Expr::Literal(Literal::Float(0.5))),
+                        expr: Expr::Unary(UnaryExpr {
+                            expr: Box::new(Expr::Literal(Literal::Float(1.0))),
+                            op: UnaryOp::Neg,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Float,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                    SampleArm {
+                        prob: Prob::Default,
+                        expr: Expr::Unary(UnaryExpr {
+                            expr: Box::new(Expr::Literal(Literal::Int(2))),
+                            op: UnaryOp::Neg,
+                            op_span: Span { line: 0, col: 0 },
+                            expr_type: Type::Int,
+                        }),
+                        arm_span: Span { line: 0, col: 0 },
+                    },
+                ],
+                expr_type: Type::Float,
+                span: Span { line: 0, col: 0 },
+            }))
+        );
+    }
+
+    #[test]
+    fn sample_expr_6() {
+        // sample {
+        //     0.1*0.5 : -1.0,
+        //     _ : -2,
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![],
+            scopes: vec![],
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.add_types_expr(Expr::Sample(SampleExpr {
+            arms: vec![
+                SampleArm {
+                    prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                        left: Box::new(Expr::Literal(Literal::Float(0.1))),
+                        right: Box::new(Expr::Literal(Literal::Float(0.5))),
+                        op: BinaryOp::Mul,
+                        op_span: Span {line: 0, col: 0 },
+                        expr_type: Type::Unknown,
+                    })),
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Float(1.0))),
+                        op: UnaryOp::Neg,
+                        op_span: Span { line: 0, col: 0 },
+                        expr_type: Type::Unknown,
+                    }),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+                SampleArm {
+                    prob: Prob::Default,
+                    expr: Expr::Unary(UnaryExpr {
+                        expr: Box::new(Expr::Literal(Literal::Int(2))),
+                        op: UnaryOp::Neg,
+                        op_span: Span { line: 0, col: 0 },
+                        expr_type: Type::Unknown,
+                    }),
+                    arm_span: Span { line: 0, col: 0 },
+                },
+            ],
+            expr_type: Type::Unknown,
+            span: Span { line: 0, col: 0 },
+        }));
+
+        assert_eq!(
+            result,
+            Some(Expr::Sample(SampleExpr {
+                arms: vec![
+                    SampleArm {
+                        prob: Prob::Expr(Expr::Binary(BinaryExpr {
+                            left: Box::new(Expr::Literal(Literal::Float(0.1))),
+                            right: Box::new(Expr::Literal(Literal::Float(0.5))),
+                            op: BinaryOp::Mul,
+                            op_span: Span {line: 0, col: 0 },
+                            expr_type: Type::Float,
+                        })),
                         expr: Expr::Unary(UnaryExpr {
                             expr: Box::new(Expr::Literal(Literal::Float(1.0))),
                             op: UnaryOp::Neg,

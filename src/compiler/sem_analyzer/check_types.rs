@@ -349,6 +349,11 @@ impl<'a> SemAnalyzer<'a> {
             (Type::Float, Type::Int) => Some(Type::Float),
             (Type::Float, Type::Float) => Some(Type::Float),
 
+            (Type::Complex, Type::Mod(_)) => Some(Type::Complex),
+            (Type::Complex, Type::Int) => Some(Type::Complex),
+            (Type::Complex, Type::Float) => Some(Type::Complex),
+            (Type::Complex, Type::Complex) => Some(Type::Complex),
+
             (Type::Custom(ident_l), Type::Custom(ident_r)) => {
                 let (parent_l, parent_r) = match (ident_l, ident_r) {
                     (Ident::Symbol(id_l), Ident::Symbol(id_r)) => (*id_l, *id_r),

@@ -87,6 +87,8 @@ impl<'a> CodeGen<'a> {
 
             Type::Float => self.coerce_float(&mut ir_bytecode, src, &result_type, true)?,
 
+            Type::Complex => self.coerce_complex(&mut ir_bytecode, src, &result_type, true)?,
+
             Type::Mod(_) => self.coerce_int(&mut ir_bytecode, src, &result_type)?, // handles taking modulus
 
             Type::Custom(Ident::Symbol(_)) => src,

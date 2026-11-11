@@ -150,6 +150,7 @@ impl Compiler {
                         unreachable!("should not be ident string");
                     };
 
+
                 if let Some(&rel_idx) = rel_map.get(&rel_id) {
                     if let Some(compiled_relation) = CodeGen::compile(relation, symbols, diagnostics) {
                         compiled_relations[rel_idx] = Some(compiled_relation);

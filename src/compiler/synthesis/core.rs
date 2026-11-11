@@ -317,6 +317,11 @@ impl<'a> Synthesis<'a> {
                         (Literal::Int(i), &Type::Float) => (i as f64).to_bits(),
 
                         (Literal::Float(r), &Type::Float) => r.to_bits(),
+                        (Literal::Float(r), &Type::Complex) => (r as f32).to_bits() as u64,
+
+                        (Literal::Complex(a, b), &Type::Complex) => {
+                            (a.to_bits() as u64) | ((b.to_bits() as u64) << 32)
+                        }
 
                         _ => unreachable!("type checking already occured"),
                     },
