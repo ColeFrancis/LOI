@@ -213,7 +213,7 @@ impl<'a> SemAnalyzer<'a> {
                     self.find_or_define_symbol(&name, SymbolKind::Ent(Type::Unknown), span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
-                if let SymbolKind::Net { ports, .. } = &mut self.symbols[net_id].kind {
+                if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
                     ports.insert(
                         name,
                         NetPort {
