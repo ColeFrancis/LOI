@@ -31,7 +31,7 @@ use crate::compiler::{
     error_handling::diagnostics::Diagnostics,
     error_handling::span::Span,
     objects::{
-        ast::{Expr, Ident, Literal, Net, NetItem},
+        ast::{Expr, Ident, Literal, Net, NetItem, Statement},
         netlist::{EntId, Entity, Interface, Netlist, Relation},
         symbol::{Symbol, SymbolId, SymbolKind},
         types::Type,
@@ -194,6 +194,16 @@ impl<'a> Synthesis<'a> {
 
         for item in &items {
             match item {
+                NetItem::Stmt(Statement::Var(var)) => {
+                    // fold expression, deep clone necessary
+                    let mut rng = match self.seed {
+                        Some(seed) => ChaCha8Rng::seed_from_u64(seed),
+                        None => ChaCha8Rng::from_rng(&mut rand::rng()),
+                    };
+
+                    SemAnalyzer::fold_let_inner(var.clone(), true, self.symbols, &mut rng, self.diagnostics);
+                }
+
                 NetItem::Input(input) => {
                     let Ident::Symbol(id) = input.param.name else {
                         unreachable!("should not be ident string");
@@ -2097,7 +2107,9 @@ mod tests {
 
         //     A := D:
 
-        //     init D: Int = 1;
+        //     let n = sample {1.0: 1, _ : 0};
+
+        //     init D: Int = n;
 
         //     S = ADD(A, B);
         // }
@@ -2162,6 +2174,11 @@ mod tests {
                 kind: SymbolKind::Ent(Type::Int),
                 span: Span { line: 0, col: 0 },
             },
+            Symbol {
+                name: "n".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
         ];
 
         let net = Net {
@@ -2199,6 +2216,25 @@ mod tests {
                     },
                     val: Expr::Literal(Literal::Int(1)),
                 }),
+                NetItem::Stmt(Statement::Var(Variable {
+                    name: Ident::Symbol(6),
+                    expr: Expr::Sample(SampleExpr {
+                        arms: vec![
+                            SampleArm {
+                                prob: Prob::Expr(Expr::Literal(Literal::Float(1.0))),
+                                expr: Expr::Literal(Literal::Int(1)),
+                                arm_span: Span { line: 0, col: 0 },
+                            },
+                            SampleArm {
+                                prob: Prob::Default,
+                                expr: Expr::Literal(Literal::Int(0)),
+                                arm_span: Span { line: 0, col: 0 },
+                            },
+                        ],
+                        expr_type: Type::Int,
+                        span: Span { line: 0, col: 0 },
+                    }),
+                })),
                 NetItem::RelInst(RelInst {
                     asignee: Ident::Symbol(4),
                     rel: Ident::Symbol(0),

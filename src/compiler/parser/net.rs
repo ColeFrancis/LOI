@@ -55,6 +55,15 @@ impl<'a> Parser<'a> {
         let token = &self.peek();
 
         match &token.kind {
+            TokenKind::Let => {
+                self.next();
+
+                match self.parse_stmt() {
+                    Some(stmt) => Some(NetItem::Stmt(stmt)),
+                    None => Some(NetItem::Error),
+                }
+            }
+
             TokenKind::Input => {
                 let span = self.peek().span.clone();
                 self.next();

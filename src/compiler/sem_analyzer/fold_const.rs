@@ -74,7 +74,7 @@ impl<'a> SemAnalyzer<'a> {
         Self::fold_let_inner(stmt, fold_sample, &mut self.symbols, &mut rng, self.diagnostics)
     }
 
-    pub(super) fn fold_let_inner(
+    pub fn fold_let_inner(
         mut stmt: Variable,
         fold_sample: bool,
         symbols: &mut [Symbol],
@@ -106,6 +106,14 @@ impl<'a> SemAnalyzer<'a> {
     fn fold_net(&mut self, mut net_t: Net) -> Net {
         for item in &mut net_t.items {
             match item {
+                NetItem::Stmt(statement) => {
+                    *statement = match std::mem::replace(statement, Statement::Error) {
+                        Statement::Var(var) => self.fold_variable(var, false).map(Statement::Var).unwrap_or(Statement::Error),
+
+                        _ => Statement::Error,
+                    };
+                }
+
                 NetItem::Init(ent_init) => {
                     let owned_expr = std::mem::replace(&mut ent_init.val, Expr::Error);
 

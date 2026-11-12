@@ -132,6 +132,12 @@ impl<'a> SemAnalyzer<'a> {
 
     fn check_net_item(&mut self, item: NetItem) -> Option<NetItem> {
         match item {
+            NetItem::Stmt(statement) => match statement {
+                Statement::Var(var) => Some(NetItem::Stmt(Statement::Var(self.check_variable(var)))),
+                Statement::Inline(_) => unreachable!("inlines should be resolved"),
+                Statement::Error => Some(NetItem::Error),
+            }
+
             NetItem::Input(input_ent) => {
                 let Ident::Symbol(id) = input_ent.param.name else {
                     return None; // Not reachable

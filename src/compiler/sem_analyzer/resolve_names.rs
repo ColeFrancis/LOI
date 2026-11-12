@@ -165,13 +165,10 @@ impl<'a> SemAnalyzer<'a> {
 
         self.create_scope();
 
-        for item in &mut net.items {
-            let owned_item = std::mem::replace(item, NetItem::Error);
-
-            *item = self
-                .resolve_net_item(owned_item, symbol_id)
-                .unwrap_or(NetItem::Error);
-        }
+        net.items = std::mem::take(&mut net.items)
+            .into_iter()
+            .filter_map(|item| self.resolve_net_item(item, symbol_id))
+            .collect();
 
         self.exit_scope();
 
@@ -182,6 +179,33 @@ impl<'a> SemAnalyzer<'a> {
 
     fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
+            NetItem::Stmt(statement) => match statement {
+                Statement::Var(var) => {
+                    // var.expr = self.resolve_expr(var.expr).unwrap_or(Expr::Error);
+
+                    // let (name, span) = self.extract_ident_str(var.name)?; // Should not return None
+
+                    // let id = self.define_symbol(name, SymbolKind::Variable(Type::Unknown), span)?;
+
+                    // // Params need to be accessable outside for overriding
+                    // if let SymbolKind::Net { params, .. } = &mut self.symbols[net_id].kind {
+                    //     params.insert(
+                    //         name,
+                    //         id,
+                    //     );
+                    // }
+
+                    // var.name = Ident::Symbol(id);
+
+                    self.resolve_variable(var).map(|var| NetItem::Stmt(Statement::Var(var)))
+                }
+                Statement::Inline(inline) => {
+                    self.resolve_inline(inline);
+                    None
+                },
+                Statement::Error => None,
+            }
+
             NetItem::Input(mut input_ent) => {
                 let (name, span) = self.extract_ident_str(input_ent.param.name)?;
 
@@ -189,7 +213,7 @@ impl<'a> SemAnalyzer<'a> {
                     self.find_or_define_symbol(&name, SymbolKind::Ent(Type::Unknown), span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
-                if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
+                if let SymbolKind::Net { ports, .. } = &mut self.symbols[net_id].kind {
                     ports.insert(
                         name,
                         NetPort {
@@ -330,7 +354,7 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::NetInst(net_inst))
             }
 
-            NetItem::Error => Some(NetItem::Error),
+            NetItem::Error => None,
         }
     }
 
@@ -1564,9 +1588,6 @@ mod tests {
                             param_type: Type::Float,
                         },
                     }),
-                    NetItem::Error,
-                    NetItem::Error,
-                    NetItem::Error,
                 ],
             })
         );
@@ -1693,7 +1714,6 @@ mod tests {
                             param_type: Type::Bool,
                         },
                     }),
-                    NetItem::Error,
                 ],
             })
         );

@@ -269,6 +269,7 @@ pub struct Net {
 
 #[derive(PartialEq, Debug)]
 pub enum NetItem {
+    Stmt(Statement),
     Input(InputEnt),
     Output(OutputEnt),
     Init(EntInit),
