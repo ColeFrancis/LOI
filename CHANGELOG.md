@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added inline functions
 - Added complex number types
 - Added way to specify delay of a relation instantiation
+- Added entity aliases
 
 ### Changed
 

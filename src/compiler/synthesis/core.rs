@@ -20,12 +20,13 @@
 //!
 //! Author: Cole Francis
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 use super::Synthesis;
+use super::union_find::UnionFind;
 use crate::compiler::{
     error_handling::diagnostics::Diagnostics,
     error_handling::span::Span,
@@ -63,9 +64,10 @@ impl<'a> Synthesis<'a> {
         let mut inputs = HashMap::<String, (EntId, Type)>::new();
         let mut outputs = HashMap::<EntId, (String, Type)>::new();
         let mut custom_type_maps = HashMap::<String, Vec<(String, u64)>>::new();
-        let mut ents = Vec::new();
         let mut relations = Vec::new();
         let mut inits = Vec::new();
+
+        let mut union_find = UnionFind::new(0);
 
         let mut ent_map: HashMap<SymbolId, usize> = HashMap::new();
         for item in &self.nets[top_net_idx].items {
@@ -91,7 +93,7 @@ impl<'a> Synthesis<'a> {
                         _ => unreachable!("type should match one of above"),
                     };
 
-                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut ents);
+                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut union_find);
                     inputs.insert(self.symbols[id].name.to_string(), (idx, ent_type));
                 }
 
@@ -116,7 +118,7 @@ impl<'a> Synthesis<'a> {
                         _ => unreachable!("type should match one of above"),
                     };
 
-                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut ents);
+                    let idx = Self::insert_or_get_ent(id, &mut ent_map, &mut union_find);
                     outputs.insert(idx, (self.symbols[id].name.to_string(), ent_type));
                 }
 
@@ -139,22 +141,12 @@ impl<'a> Synthesis<'a> {
         self.synthesize_net(
             top_net_idx,
             ent_map,
-            &mut ents,
             &mut relations,
+            &mut inits,
+            &mut union_find
         );
-
-        // loop through ents, finding ones that aren't None, and creating inits events instead
-        for (idx, ent) in ents.iter_mut().enumerate() {
-            if let Some(val) = ent.val {
-                ent.val = None;
-
-                inits.push(Event {
-                    timestep: 0,
-                    ent_id: idx,
-                    new_val: val,
-                });
-            }
-        }
+        
+        let ents = Self::canonicalize(&mut relations, &mut inits, union_find);
 
         (
             Netlist { relations, ents },
@@ -180,16 +172,20 @@ impl<'a> Synthesis<'a> {
         seed: Option<u64>,
         diagnostics: &mut Diagnostics,
     ){
+        let mut union_find = UnionFind::new(0);
+        let mut inits = Vec::new();
+        Synthesis::new(nets, net_map, symbols, seed, diagnostics).synthesize_net(target_net_idx, ent_map, relations, &mut inits, &mut union_find);
 
-        Synthesis::new(nets, net_map, symbols, seed, diagnostics).synthesize_net(target_net_idx, ent_map, ents, relations);
+        *ents = Self::canonicalize(relations, &mut inits, union_find);
     }
 
     fn synthesize_net(
         &mut self,
         target_net_idx: usize,
         mut ent_map: HashMap<SymbolId, usize>,
-        ents: &mut Vec<Entity>,
         relations: &mut Vec<Relation>,
+        inits: &mut Vec<Event>,
+        union_find: &mut UnionFind,
     ) {
         // make net_map an immutable reference that honly maps for nets and rels
         // make new mutable ent_map that is passed in (not a reference) and a new one is created for each net instantiation
@@ -203,7 +199,7 @@ impl<'a> Synthesis<'a> {
                         unreachable!("should not be ident string");
                     };
 
-                    Self::insert_or_get_ent(id, &mut ent_map, ents);
+                    Self::insert_or_get_ent(id, &mut ent_map, union_find);
                 }
 
                 NetItem::Output(input) => {
@@ -211,7 +207,21 @@ impl<'a> Synthesis<'a> {
                         unreachable!("should not be ident string");
                     };
 
-                    Self::insert_or_get_ent(id, &mut ent_map, ents);
+                    Self::insert_or_get_ent(id, &mut ent_map, union_find);
+                }
+
+                NetItem::Alias(alias) => {
+                    let Ident::Symbol(left_id) = alias.left else {
+                        unreachable!("should not be ident string");
+                    };
+                    let Ident::Symbol(right_id) = alias.right else {
+                        unreachable!("should not be ident string");
+                    };
+
+                    let left_idx = Self::insert_or_get_ent(left_id, &mut ent_map, union_find);
+                    let right_idx = Self::insert_or_get_ent(right_id, &mut ent_map, union_find);
+
+                    union_find.union(left_idx, right_idx);
                 }
 
                 NetItem::RelInst(rel) => {
@@ -225,7 +235,7 @@ impl<'a> Synthesis<'a> {
                         unreachable!("should not be ident string");
                     };
 
-                    let asignee_idx = Self::insert_or_get_ent(asignee_id, &mut ent_map, ents);
+                    let asignee_idx = Self::insert_or_get_ent(asignee_id, &mut ent_map, union_find);
 
                     let mut input_indices = Vec::new();
                     for arg in &rel.args {
@@ -233,13 +243,7 @@ impl<'a> Synthesis<'a> {
                             unreachable!("should not be ident string");
                         };
 
-                        let arg_idx = Self::insert_or_get_ent(*arg_id, &mut ent_map, ents);
-
-                        // if the same ent is used as multiple inputs to a relation, this if check prevents
-                        //  the relation from occuring multiple times in the sinks of the ent
-                        if !ents[arg_idx].sinks.contains(&relations.len()) {
-                            ents[arg_idx].sinks.push(relations.len());
-                        }
+                        let arg_idx = Self::insert_or_get_ent(*arg_id, &mut ent_map, union_find);
 
                         input_indices.push(arg_idx);
                     }
@@ -276,7 +280,7 @@ impl<'a> Synthesis<'a> {
                             unreachable!("should not be ident string");
                         };
 
-                        let ent_idx = Self::insert_or_get_ent(ent_id, &mut ent_map, ents);
+                        let ent_idx = Self::insert_or_get_ent(ent_id, &mut ent_map, union_find);
 
                         // both the port and the connected ent are the same ent in the netlist
                         sub_net_map.insert(port_id, ent_idx);
@@ -285,8 +289,9 @@ impl<'a> Synthesis<'a> {
                     self.synthesize_net(
                         net_idx,
                         sub_net_map,
-                        ents,
                         relations,
+                        inits,
+                        union_find,
                     );
                 }
 
@@ -301,7 +306,7 @@ impl<'a> Synthesis<'a> {
                     unreachable!("should not be ident string");
                 };
 
-                let idx = Self::insert_or_get_ent(id, &mut ent_map, ents);
+                let idx = Self::insert_or_get_ent(id, &mut ent_map, union_find);
 
                 // fold expression, deep clone necessary
                 let mut rng = match self.seed {
@@ -341,11 +346,63 @@ impl<'a> Synthesis<'a> {
                     _ => unreachable!("type checking already occured"),
                 };
 
-                ents[idx].val = Some(folded_val);
+                inits.push(Event {
+                    timestep: 0,
+                    ent_id: idx,
+                    new_val: folded_val,
+                });
             }
         }
 
         self.nets[target_net_idx].items = items;
+    }
+
+    fn canonicalize(relations: &mut Vec<Relation>, inits: &mut Vec<Event>, mut union_find: UnionFind) -> Vec<Entity> {
+        let mut root_to_new = HashMap::new();
+        let mut old_to_new = Vec::with_capacity(union_find.len()); // replaces union_find to get compacted indices of the corresponding entities
+
+        for i in 0..union_find.len() {
+            let root = union_find.find(i);
+
+            let next = root_to_new.len();
+            let new_idx = *root_to_new.entry(root).or_insert(next);
+
+            old_to_new.push(new_idx);
+        }
+
+        let mut ents = (0..root_to_new.len())
+            .map(|_| Entity {
+                val: None,
+                sinks: Vec::new(),
+            })
+            .collect::<Vec<_>>();
+
+        for (rel_id, relation) in relations.iter_mut().enumerate() {
+            for arg in &mut relation.input_ents {
+                *arg = old_to_new[*arg];
+
+                if !ents[*arg].sinks.contains(&rel_id) {
+                    ents[*arg].sinks.push(rel_id);
+                }
+            }
+
+            relation.output_ent = old_to_new[relation.output_ent];
+        }
+
+        let mut initilaized = HashSet::new();
+        let mut canonical_inits = Vec::with_capacity(inits.len());
+
+        for mut event in inits.drain(..).rev() {
+            event.ent_id = old_to_new[event.ent_id];
+
+            if initilaized.insert(event.ent_id) {
+                canonical_inits.push(event);
+            }
+        }
+
+        *inits = canonical_inits;
+
+        ents
     }
 
     fn insert_or_get_rel(&mut self, rel_id: usize) -> usize {
@@ -365,19 +422,14 @@ impl<'a> Synthesis<'a> {
     fn insert_or_get_ent(
         id: SymbolId,
         ent_map: &mut HashMap<SymbolId, usize>,
-        ents: &mut Vec<Entity>,
+        union_find: &mut UnionFind,
     ) -> usize {
         match ent_map.get(&id) {
             Some(&idx) => idx,
             None => {
-                let idx = ents.len();
+                let idx = union_find.add();
 
                 ent_map.insert(id, idx);
-
-                ents.push(Entity {
-                    val: None,
-                    sinks: vec![],
-                });
 
                 idx
             }
@@ -1298,6 +1350,14 @@ mod tests {
         let net_map = HashMap::from([(0, 0), (1, 1), (2, 2), (3, 0), (8, 1)]);
         let ent_map: HashMap<SymbolId, usize> = HashMap::new();
 
+        // fn synthesize_net(
+        // &mut self,
+        // target_net_idx: usize,
+        // mut ent_map: HashMap<SymbolId, usize>,
+        // relations: &mut Vec<Relation>,
+        // inits: &mut Vec<Event>,
+        // union_find: &mut UnionFind,
+
         Synthesis::test_synthesize_net(
             vec![net1, net2],
             1,
@@ -1315,17 +1375,17 @@ mod tests {
             vec![
                 Entity {
                     // IN1, A(1)
-                    val: Some(4),
+                    val: None,
                     sinks: vec![0],
                 },
                 Entity {
                     // IN2, A(2)
-                    val: Some(2),
+                    val: None,
                     sinks: vec![2],
                 },
                 Entity {
                     // IN3, A(3)
-                    val: Some(2),
+                    val: None,
                     sinks: vec![4],
                 },
                 Entity {
@@ -1558,11 +1618,11 @@ mod tests {
             ents,
             vec![
                 Entity {
-                    val: Some(5),
+                    val: None,
                     sinks: vec![0],
                 },
                 Entity {
-                    val: Some(4),
+                    val: None,
                     sinks: vec![0],
                 },
                 Entity {
@@ -2022,6 +2082,180 @@ mod tests {
                 "COIN".to_string(),
                 vec![("H".to_string(), 0), ("T".to_string(), 1),]
             ),])
+        );
+    }
+
+    #[test]
+    fn ent_alias() {
+        // rel_t ADD : (a: Int, b: Int) -> Int = a + b;
+
+        // net ADD_NET {
+        //     input A: Int;
+        //     input B: Int;
+
+        //     output S: Int;
+
+        //     A := D:
+
+        //     init D: Int = 1;
+
+        //     S = ADD(A, B);
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "REL".to_string(),
+                kind: SymbolKind::Rel_t {
+                    input_types: vec![Type::Int, Type::Int],
+                    return_type: Type::Int,
+                    
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "ADD_NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        (
+                            "A".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "B".to_string(),
+                            NetPort {
+                                symbol: 3,
+                                input: true,
+                            },
+                        ),
+                        (
+                            "S".to_string(),
+                            NetPort {
+                                symbol: 4,
+                                input: false,
+                            },
+                        ),
+                    ]),
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "A".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "B".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "S".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "D".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+        ];
+
+        let net = Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Int,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(4),
+                        param_type: Type::Int,
+                    },
+                }),
+                NetItem::Alias(EntAlias {
+                    left: Ident::Symbol(2),
+                    right: Ident::Symbol(5),
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(5),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Literal(Literal::Int(1)),
+                }),
+                NetItem::RelInst(RelInst {
+                    asignee: Ident::Symbol(4),
+                    rel: Ident::Symbol(0),
+                    args: vec![Ident::Symbol(2), Ident::Symbol(3)],
+                    delay: Expr::Literal(Literal::Int(1)),
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        };
+        let net_map = HashMap::from([(0, 0), (1, 0)]);
+
+        let (netlist, interface, inits, _) =
+            Synthesis::new(vec![net], net_map, &mut symbol_table, None, &mut diagnostics).synthesize(0);
+
+        assert_eq!(
+            netlist,
+            Netlist {
+                relations: vec![Relation {
+                    idx: 0,
+                    delay: 1,
+                    input_ents: vec![0, 1],
+                    output_ent: 2,
+                },],
+                ents: vec![
+                    Entity {
+                        val: None,
+                        sinks: vec![0],
+                    },
+                    Entity {
+                        val: None,
+                        sinks: vec![0],
+                    },
+                    Entity {
+                        val: None,
+                        sinks: vec![],
+                    },
+                ]
+            }
+        );
+        assert_eq!(
+            interface,
+            Interface {
+                inputs: HashMap::from([
+                    ("A".to_string(), (0, Type::Int)),
+                    ("B".to_string(), (1, Type::Int)),
+                ]),
+                outputs: HashMap::from([(2, ("S".to_string(), Type::Int)),]),
+                custom_type_maps: HashMap::new(),
+            }
+        );
+        assert_eq!(
+            inits,
+            vec![Event {
+                timestep: 0,
+                ent_id: 0,
+                new_val: 1,
+            },]
         );
     }
 }

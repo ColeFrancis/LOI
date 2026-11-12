@@ -19,6 +19,7 @@
 //! ## Invariants
 //!
 //! - All incoming symbols will have Type::Unknown
+//! - With ent alias statements, at least one of the types must be known before
 //!
 //! Author: Cole Francis
 
@@ -187,11 +188,57 @@ impl<'a> SemAnalyzer<'a> {
                 Some(NetItem::Init(ent_init))
             }
 
-            // How do I cover the case where I encounter an ent_alias then later asign conflicting types?
-                // Maybe check alias in a different function, and call it in a second loop in check_net
-            // NetItem::Alias(ent_alias) => {
+            // Rule: One of the entities must already have a known type?
+            NetItem::Alias(ent_alias) => {
+                let Ident::Symbol(id_l) = ent_alias.left else {
+                    return None; // Not reachable
+                };
 
-            // }
+                let (type_l, _) = self.get_ent_type(id_l)?;
+
+                let Ident::Symbol(id_r) = ent_alias.right else {
+                    return None; // Not reachable
+                };
+
+                let (type_r, _) = self.get_ent_type(id_r)?;
+
+                match (type_l, type_r) {
+                    (Type::Unknown, Type::Unknown) => {
+                        self.diagnostics.error(Diagnostic::UnknownEntType {
+                            name_l: self.symbols[id_l].name.clone(),
+                            name_r: self.symbols[id_r].name.clone(),
+                            span: ent_alias.span,
+                        });
+
+                        return None;
+                    }
+
+                    (Type::Unknown, type_r) => {
+                        if let SymbolKind::Ent(ty) = &mut self.symbols[id_l].kind {
+                            *ty = type_r;
+                        }
+                    }
+                    (type_l, Type::Unknown) => {
+                        if let SymbolKind::Ent(ty) = &mut self.symbols[id_r].kind {
+                            *ty = type_l;
+                        }
+                    }
+
+                    (type_l, type_r) => {
+                        if type_l != type_r {
+                            self.diagnostics.error(Diagnostic::IncompatibleTypes {
+                                left: type_l,
+                                right: type_r,
+                                op_span: ent_alias.span,
+                            });
+                        }
+
+                        return None;
+                    }
+                }
+
+                Some(NetItem::Alias(ent_alias))
+            }
 
             NetItem::RelInst(mut rel_inst) => {
                 let Ident::Symbol(rel_id) = rel_inst.rel else {
@@ -2665,6 +2712,180 @@ mod tests {
                     NetItem::Error,
                 ],
             })
+        );
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_12() {
+        // net TEST {
+        //     input a: Bool;
+        //
+        //     a := b;
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let _result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(1),
+                        param_type: Type::Bool,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Alias(EntAlias {
+                    left: Ident::Symbol(1),
+                    right: Ident::Symbol(2),
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        });
+
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
+        );
+        assert_eq!(diagnostics.num_errors(), 0);
+    }
+
+    #[test]
+    fn check_net_13() {
+        // net TEST {
+        //     a := b; // neither a nor b type known
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            },
+                        )]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Alias(EntAlias {
+                    left: Ident::Symbol(1),
+                    right: Ident::Symbol(2),
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        });
+
+        assert_eq!(result, Some(Net {
+            name: Ident::Symbol(0),
+            items: vec![NetItem::Error],
+        }));
+
+        assert_eq!(
+            sem_analyzer.symbols,
+            vec![
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([(
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 1,
+                                input: true,
+                            }
+                        ),])
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 },
+                },
+            ]
         );
         assert_eq!(diagnostics.num_errors(), 1);
     }

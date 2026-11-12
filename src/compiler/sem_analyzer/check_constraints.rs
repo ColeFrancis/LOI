@@ -78,36 +78,36 @@ impl<'a> SemAnalyzer<'a> {
                     driven_ents.push((symbol_id, &input_ent.span));
                 }
 
-                // NetItem::Alias(ent_alias) => {
-                //     let Ident::Symbol(left_symbol_id) = ent_alias.left else {
-                //         return None; // Not reachable
-                //     };
-                //     let Ident::Symbol(right_symbol_id) = ent_alias.right else {
-                //         return None; // Not reachable
-                //     };
+                NetItem::Alias(ent_alias) => {
+                    let Ident::Symbol(left_symbol_id) = ent_alias.left else {
+                        return None; // Not reachable
+                    };
+                    let Ident::Symbol(right_symbol_id) = ent_alias.right else {
+                        return None; // Not reachable
+                    };
 
-                //     match (driven_ents.iter().find(|(id, _) | *id == left_symbol_id), driven_ents.iter().find(|(id, _) | *id == right_symbol_id)) {
-                //         (Some((_, span_l)), None) => {
-                //             driven_ents.push((right_symbol_id, &span_l));
-                //         }
+                    match (driven_ents.iter().find(|(id, _) | *id == left_symbol_id), driven_ents.iter().find(|(id, _) | *id == right_symbol_id)) {
+                        (Some((_, span_l)), None) => {
+                            driven_ents.push((right_symbol_id, &span_l));
+                        }
 
-                //         (None, Some((_, span_r))) => {
-                //             driven_ents.push((left_symbol_id, &span_r));
-                //         }
+                        (None, Some((_, span_r))) => {
+                            driven_ents.push((left_symbol_id, &span_r));
+                        }
 
-                //         (Some((_, span_l)), Some((_, span_r))) => {
-                //             self.diagnostics.error(Diagnostic::MultipleEntDrivers {
-                //                 name: self.symbols[asignee_symbol_id].name.to_string(),
-                //                 first_span: (*old_span).clone(),
-                //                 last_span: rel_inst.span.clone(),
-                //             });
+                        (Some((_, span_l)), Some((_, span_r))) => {
+                            self.diagnostics.error(Diagnostic::MultipleEntDrivers {
+                                name: self.symbols[right_symbol_id].name.to_string(),
+                                first_span: (*span_l).clone(),
+                                last_span: (*span_r).clone(),
+                            });
 
-                //             has_errors = true;
-                //         }
+                            has_errors = true;
+                        }
 
-                //         _ => {}
-                //     }
-                // }
+                        _ => {}
+                    }
+                }
 
                 NetItem::RelInst(rel_inst) => {
                     let Ident::Symbol(asignee_symbol_id) = rel_inst.asignee else {
@@ -505,5 +505,100 @@ mod tests {
 
         assert_eq!(result, None);
         assert_eq!(diagnostics.num_errors(), 2);
+    }
+
+    #[test]
+    fn test_net_4() {
+        // net NET {
+        //     input a: Bool;
+        //     input b: Bool; // b driven twice (input, and return of REL)
+
+        //     b := a; // multiple drivers
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "REL".to_string(),
+                    kind: SymbolKind::Rel_t {
+                        input_types: vec![Type::Bool],
+                        return_type: Type::Bool,
+                        
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "NET".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::from([
+                            (
+                                "a".to_string(),
+                                NetPort {
+                                    symbol: 2,
+                                    input: true,
+                                },
+                            ),
+                            (
+                                "b".to_string(),
+                                NetPort {
+                                    symbol: 3,
+                                    input: true,
+                                },
+                            ),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "a".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "b".to_string(),
+                    kind: SymbolKind::Ent(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![Scope {
+                symbols: HashMap::from([
+                    ("REL".to_string(), 0),
+                    ("NET".to_string(), 1),
+                    ("a".to_string(), 2),
+                    ("b".to_string(), 3),
+                ]),
+            }],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_constraints_net(Net {
+            name: Ident::Symbol(1),
+            items: vec![
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Bool,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Input(InputEnt {
+                    param: Param {
+                        name: Ident::Symbol(3),
+                        param_type: Type::Bool,
+                    },
+                    span: Span { line: 0, col: 0 },
+                }),
+                NetItem::Alias(EntAlias {
+                    left: Ident::Symbol(2),
+                    right: Ident::Symbol(3),
+                    span: Span { line: 0, col: 0 },
+                }),
+            ],
+        });
+
+        assert_eq!(result, None);
+        assert_eq!(diagnostics.num_errors(), 1);
     }
 }

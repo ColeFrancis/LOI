@@ -13,6 +13,7 @@
 // limitations under the License.
 
 mod core;
+mod union_find;
 
 use std::collections::HashMap;
 

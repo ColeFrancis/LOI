@@ -452,6 +452,16 @@ output ent_a : Float;
 init ent_a : Float = 1.0;
 ```
 
+### Aliases
+
+Aliases allow you to use different names for the same underlying entity. This is accomplished by "assigning" multiple ents to eachother as follows:
+
+```
+<first ent> := <second ent>;
+```
+
+Both ents must be of the same type. Also, at least one of the ents must have been previously declared through an input, output, init, rel inst, or net inst.
+
 ### Relation instantiations
 
 Relation instantiations allow you to place relations in a network and define their input and output entities. They are defined as follows:

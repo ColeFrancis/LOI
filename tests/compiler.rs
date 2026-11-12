@@ -720,9 +720,9 @@ fn calculator() {
             },
             Interface {
                 inputs: HashMap::from([
-                    ("I1".to_string(), (0, Type::Bool)),
                     ("I2".to_string(), (1, Type::Bool)),
                     ("clk".to_string(), (2, Type::Bool)),
+                    ("I1".to_string(), (0, Type::Bool)),
                     ("sub".to_string(), (3, Type::Bool)),
                 ]),
                 outputs: HashMap::from([
@@ -749,8 +749,13 @@ fn calculator() {
             vec![
                 Event {
                     timestep: 0,
-                    ent_id: 4,
+                    ent_id: 6,
                     new_val: 0,
+                },
+                Event {
+                    timestep: 0,
+                    ent_id: 48,
+                    new_val: 1,
                 },
                 Event {
                     timestep: 0,
@@ -759,27 +764,7 @@ fn calculator() {
                 },
                 Event {
                     timestep: 0,
-                    ent_id: 6,
-                    new_val: 0,
-                },
-                Event {
-                    timestep: 0,
-                    ent_id: 37,
-                    new_val: 1,
-                },
-                Event {
-                    timestep: 0,
-                    ent_id: 40,
-                    new_val: 0,
-                },
-                Event {
-                    timestep: 0,
-                    ent_id: 41,
-                    new_val: 1,
-                },
-                Event {
-                    timestep: 0,
-                    ent_id: 48,
+                    ent_id: 52,
                     new_val: 1,
                 },
                 Event {
@@ -789,8 +774,23 @@ fn calculator() {
                 },
                 Event {
                     timestep: 0,
-                    ent_id: 52,
+                    ent_id: 37,
                     new_val: 1,
+                },
+                Event {
+                    timestep: 0,
+                    ent_id: 4,
+                    new_val: 0,
+                },
+                Event {
+                    timestep: 0,
+                    ent_id: 41,
+                    new_val: 1,
+                },
+                Event {
+                    timestep: 0,
+                    ent_id: 40,
+                    new_val: 0,
                 },
             ],
         ))

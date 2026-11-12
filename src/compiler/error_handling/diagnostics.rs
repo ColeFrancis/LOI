@@ -144,6 +144,13 @@ pub enum Diagnostic {
         op_span: Span,
     },
 
+    // For ent alias when neither side's types are known
+    UnknownEntType { 
+        name_l: String,
+        name_r: String,
+        span: Span,
+    },
+
     // Unary/binary expressions
     IncompatibleOp {
         expr_type: Type,
@@ -432,6 +439,14 @@ impl std::fmt::Display for Diagnostic {
                     f,
                     "Incompatible variable types: {} and {}\nat line {}:{}",
                     left, right, op_span.line, op_span.col
+                )
+            }
+
+            Diagnostic::UnknownEntType { name_l, name_r, span } => {
+                write!(
+                    f,
+                    "At least one type must be known to alias: \"{}\", \"{}\"\nat line {}:{}",
+                    name_l, name_r, span.line, span.col
                 )
             }
 
