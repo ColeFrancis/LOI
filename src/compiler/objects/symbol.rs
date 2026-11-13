@@ -53,6 +53,12 @@ pub enum SymbolKind {
         mapping: usize,
     },
     Ent(Type),
+    // EntArray {
+    //     ent_type: Type,
+    //     start: Expr,
+    //     end: Expr,
+    //     elements: Option<Vec<SymbolId>>,
+    // },
     Rel_t {
         input_types: Vec<Type>,
         return_type: Type,
