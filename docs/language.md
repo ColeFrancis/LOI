@@ -460,6 +460,18 @@ Aliases allow you to use different names for the same underlying entity. This is
 <first ent> := <second ent>;
 ```
 
+for example:
+
+```
+net EXAMPLE {
+    output a: Float;
+
+    init d: Float = 2.0;
+
+    a := d;
+}
+```
+
 Both ents must be of the same type. Also, at least one of the ents must have been previously declared through an input, output, init, rel inst, or net inst.
 
 ### Relation instantiations
