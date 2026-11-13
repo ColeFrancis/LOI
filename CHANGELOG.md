@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added complex number types
 - Added way to specify delay of a relation instantiation
 - Added entity aliases
+- added variables in nets and they can be reassigned in net instantiations
 
 ### Changed
 

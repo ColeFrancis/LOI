@@ -167,7 +167,8 @@ net SECOND {
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 13, col: 5 },
                 },
@@ -199,7 +200,8 @@ net SECOND {
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 20, col: 5 },
                 },
@@ -285,6 +287,7 @@ net SECOND {
                             }),
                             NetItem::NetInst(NetInst {
                                 net: Ident::Symbol(6),
+                                reassigns: vec![],
                                 connections: vec![
                                     Connection {
                                         port: Ident::Symbol(7),

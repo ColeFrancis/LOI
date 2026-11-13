@@ -59,7 +59,7 @@ pub enum SymbolKind {
     },
     Net {
         ports: HashMap<String, NetPort>,
-        // params: HashMap<String, SymbolId>,
+        params: HashMap<String, SymbolId>,
     },
 }
 

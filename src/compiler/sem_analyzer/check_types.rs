@@ -326,10 +326,38 @@ impl<'a> SemAnalyzer<'a> {
                     return None; // not reachable
                 };
 
-                let ports = match &self.symbols[net_id].kind {
-                    SymbolKind::Net { ports } => ports.clone(),
+                let (ports, params) = match &self.symbols[net_id].kind {
+                    SymbolKind::Net { ports, params } => (ports.clone(), params.clone()),
                     _ => return None, // Do not need to check this condition as find_net_port in resolve_net already does.
                 };
+
+                for reassign in &net_inst.reassigns {
+                    let (var_name, reassign_span) = match reassign.name {
+                        Ident::Symbol(id) => (&self.symbols[id].name.clone(), &self.symbols[id].span.clone()),
+                        _ => return None, // Unreachable
+                    };
+
+                    match params.get(var_name) {
+                        Some(inst_var_id) => {
+                            let var_type = match &self.symbols[*inst_var_id].kind {
+                                SymbolKind::Variable(var_type) => var_type.clone(),
+                                _ => unreachable!("Symbolkind should be Var"),
+                            };
+
+                            let reassign_expr_type = self.get_expr_type(&reassign.expr);
+                            self.verify_return_type(&var_type, &reassign_expr_type, &reassign_span)?;
+                        }
+
+                        _ => {
+                            self.diagnostics.error(Diagnostic::NonexistantNetVar {
+                                name: var_name.to_string(),
+                                span: reassign_span.clone(),
+                            });
+
+                            return None;
+                        }
+                    }
+                }
 
                 for connection in &net_inst.connections {
                     let connection_ent_id = match connection.ent {
@@ -884,6 +912,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -952,7 +981,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -986,6 +1016,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1048,7 +1079,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1082,6 +1114,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1144,7 +1177,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1227,6 +1261,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1379,7 +1414,8 @@ mod tests {
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1472,6 +1508,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1634,6 +1671,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1794,6 +1832,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1947,6 +1986,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1991,6 +2031,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2041,6 +2082,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
@@ -2091,6 +2133,7 @@ mod tests {
                     }),
                     NetItem::NetInst(NetInst {
                         net: Ident::Symbol(3),
+                        reassigns: vec![],
                         connections: vec![
                             Connection {
                                 port: Ident::Symbol(4),
@@ -2163,6 +2206,7 @@ mod tests {
                                 }
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2206,7 +2250,8 @@ mod tests {
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2294,6 +2339,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2338,6 +2384,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2388,6 +2435,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
@@ -2463,6 +2511,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2541,7 +2590,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2625,6 +2675,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2743,6 +2794,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2792,7 +2844,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2830,6 +2883,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2877,7 +2931,8 @@ mod tests {
                                 symbol: 1,
                                 input: true,
                             }
-                        ),])
+                        ),]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -2894,5 +2949,137 @@ mod tests {
             ]
         );
         assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_14() {
+        // net TEST {
+        //     ADD {
+        //         n = 1,  // N var in ADD is boolean
+        //     };
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::new(),
+                        params: HashMap::from([
+                            ("n".to_string(), 1),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::new(),
+                        params: HashMap::new(),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(2),
+            items: vec![
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(0),
+                    reassigns: vec![
+                        Reassign {
+                            name: Ident::Symbol(1),
+                            expr: Expr::Literal(Literal::Int(1)),
+                            span: Span { line: 0, col: 0 },
+                        },
+                    ],
+                    connections: vec![],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        });
+
+        assert_eq!(
+            result,
+            Some(Net {
+                name: Ident::Symbol(2),
+                items: vec![
+                    NetItem::Error,
+                ],
+            })
+        );
+        assert_eq!(diagnostics.num_errors(), 1);
+    }
+
+    #[test]
+    fn check_net_15() {
+        // net TEST {
+        //     ADD {
+        //         n = false,  // N var in ADD is boolean
+        //     };
+        // }
+        let mut diagnostics = Diagnostics::new();
+        let mut sem_analyzer = SemAnalyzer {
+            ast: Program { seed: None, items: Vec::new() },
+            symbols: vec![
+                Symbol {
+                    name: "ADD".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::new(),
+                        params: HashMap::from([
+                            ("n".to_string(), 1),
+                        ]),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Bool),
+                    span: Span { line: 0, col: 0 },
+                },
+                Symbol {
+                    name: "TEST".to_string(),
+                    kind: SymbolKind::Net {
+                        ports: HashMap::new(),
+                        params: HashMap::new(),
+                    },
+                    span: Span { line: 0, col: 0 },
+                },
+            ],
+            scopes: vec![],
+
+            diagnostics: &mut diagnostics,
+        };
+
+        let result = sem_analyzer.check_net(Net {
+            name: Ident::Symbol(2),
+            items: vec![
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(0),
+                    reassigns: vec![
+                        Reassign {
+                            name: Ident::Symbol(1),
+                            expr: Expr::Literal(Literal::Bool(false)),
+                            span: Span { line: 0, col: 0 },
+                        },
+                    ],
+                    connections: vec![],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        });
+
+        assert!(!result.is_none());
+        assert_eq!(diagnostics.num_errors(), 0);
     }
 }

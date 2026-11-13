@@ -143,7 +143,8 @@ impl<'a> Synthesis<'a> {
             ent_map,
             &mut relations,
             &mut inits,
-            &mut union_find
+            &mut union_find,
+            HashMap::new(),
         );
         
         let ents = Self::canonicalize(&mut relations, &mut inits, union_find);
@@ -174,7 +175,8 @@ impl<'a> Synthesis<'a> {
     ){
         let mut union_find = UnionFind::new(0);
         let mut inits = Vec::new();
-        Synthesis::new(nets, net_map, symbols, seed, diagnostics).synthesize_net(target_net_idx, ent_map, relations, &mut inits, &mut union_find);
+        let reassign_map = HashMap::new();
+        Synthesis::new(nets, net_map, symbols, seed, diagnostics).synthesize_net(target_net_idx, ent_map, relations, &mut inits, &mut union_find, reassign_map);
 
         *ents = Self::canonicalize(relations, &mut inits, union_find);
     }
@@ -186,6 +188,7 @@ impl<'a> Synthesis<'a> {
         relations: &mut Vec<Relation>,
         inits: &mut Vec<Event>,
         union_find: &mut UnionFind,
+        mut reassigns: HashMap<SymbolId, Expr>,
     ) {
         // make net_map an immutable reference that honly maps for nets and rels
         // make new mutable ent_map that is passed in (not a reference) and a new one is created for each net instantiation
@@ -201,7 +204,18 @@ impl<'a> Synthesis<'a> {
                         None => ChaCha8Rng::from_rng(&mut rand::rng()),
                     };
 
-                    SemAnalyzer::fold_let_inner(var.clone(), true, self.symbols, &mut rng, self.diagnostics);
+                    let mut owned_var = var.clone();
+
+                    let Ident::Symbol(var_id) = owned_var.name else {
+                        unreachable!("Should not be ident str");
+                    };
+
+                    match reassigns.remove(&var_id) {
+                        Some(reassigned_expr) => owned_var.expr = reassigned_expr,
+                        None => {}
+                    }
+
+                    SemAnalyzer::fold_let_inner(owned_var, true, self.symbols, &mut rng, self.diagnostics);
                 }
 
                 NetItem::Input(input) => {
@@ -282,6 +296,16 @@ impl<'a> Synthesis<'a> {
                         unreachable!("net should be in net_map");
                     };
 
+                    let mut reassign_map = HashMap::new();
+
+                    for reassign in &net.reassigns {
+                        let Ident::Symbol(reassign_id) = reassign.name else {
+                            unreachable!("should not be ident string");
+                        };
+
+                        reassign_map.insert(reassign_id, reassign.expr.clone());
+                    }
+
                     for connection in &net.connections {
                         let Ident::Symbol(ent_id) = connection.ent else {
                             unreachable!("should not be ident string");
@@ -302,6 +326,7 @@ impl<'a> Synthesis<'a> {
                         relations,
                         inits,
                         union_find,
+                        reassign_map,
                     );
                 }
 
@@ -513,6 +538,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -671,6 +697,7 @@ mod tests {
                 name: "NET".to_string(),
                 kind: SymbolKind::Net {
                     ports: HashMap::from([]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -822,6 +849,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -864,6 +892,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -936,6 +965,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(1),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(2),
@@ -1105,6 +1135,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1161,6 +1192,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1286,6 +1318,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
@@ -1307,6 +1340,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
@@ -1328,6 +1362,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(3),
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Symbol(4),
@@ -1537,6 +1572,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1704,6 +1740,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1834,6 +1871,7 @@ mod tests {
                             input: false,
                         },
                     )]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1897,6 +1935,7 @@ mod tests {
                             input: false,
                         },
                     )]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -1960,6 +1999,7 @@ mod tests {
                             input: false,
                         },
                     )]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -2045,6 +2085,7 @@ mod tests {
                             input: false,
                         },
                     )]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -2151,6 +2192,7 @@ mod tests {
                             },
                         ),
                     ]),
+                    params: HashMap::new(),
                 },
                 span: Span { line: 0, col: 0 },
             },
@@ -2292,6 +2334,156 @@ mod tests {
                 ent_id: 0,
                 new_val: 1,
             },]
+        );
+    }
+
+    #[test]
+    fn reassign() {
+        // net INNER {
+        //     let val = 1;
+        //     output a: Int;
+
+        //     init a: Int = val;
+        // }
+
+        // net OUTER {
+        //     INNER {
+        //         a := ent_1,
+        //     };
+
+        //     INNER {
+        //         val = 2,
+        //         a := ent_2,
+        //     };
+        // }
+        let mut diagnostics = Diagnostics::new();
+
+        let mut symbol_table = vec![
+            Symbol {
+                name: "ADD_NET".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::from([
+                        (
+                            "a".to_string(),
+                            NetPort {
+                                symbol: 2,
+                                input: false,
+                            },
+                        ),
+                    ]),
+                    params: HashMap::from([
+                        ("val".to_string(), 1),
+                    ]),
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "val".to_string(),
+                kind: SymbolKind::Variable(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "a".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "OUTER".to_string(),
+                kind: SymbolKind::Net {
+                    ports: HashMap::new(),
+                    params: HashMap::new(),
+                },
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "ent_1".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+            Symbol {
+                name: "ent_2".to_string(),
+                kind: SymbolKind::Ent(Type::Int),
+                span: Span { line: 0, col: 0 },
+            },
+        ];
+
+        let net0 = Net {
+            name: Ident::Symbol(0),
+            items: vec![
+                NetItem::Stmt(Statement::Var(Variable {
+                    name: Ident::Symbol(1),
+                    expr: Expr::Literal(Literal::Int(1)),
+                })),
+                NetItem::Output(OutputEnt {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                }),
+                NetItem::Init(EntInit {
+                    param: Param {
+                        name: Ident::Symbol(2),
+                        param_type: Type::Int,
+                    },
+                    val: Expr::Ident(Ident::Symbol(1)),
+                }),
+            ],
+        };
+        let net1 = Net {
+            name: Ident::Symbol(3),
+            items: vec![
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(0),
+                    reassigns: vec![],
+                    connections: vec![
+                        Connection {
+                            port: Ident::Symbol(2),
+                            ent: Ident::Symbol(4),
+                            span: Span { line: 0, col: 0 },
+                        },
+                    ],
+                    span: Span{line: 0, col: 0},
+                }),
+                NetItem::NetInst(NetInst {
+                    net: Ident::Symbol(0),
+                    reassigns: vec![
+                        Reassign {
+                            name: Ident::Symbol(1),
+                            expr: Expr::Literal(Literal::Int(2)),
+                            span: Span { line: 0, col: 0 },
+                        }
+                    ],
+                    connections: vec![
+                        Connection {
+                            port: Ident::Symbol(2),
+                            ent: Ident::Symbol(5),
+                            span: Span { line: 0, col: 0 },
+                        },
+                    ],
+                    span: Span{line: 0, col: 0},
+                }),
+            ],
+        };
+
+        let net_map = HashMap::from([(0, 0), (3, 1)]);
+
+        let (_, _, inits, _) =
+            Synthesis::new(vec![net0, net1], net_map, &mut symbol_table, None, &mut diagnostics).synthesize(1);
+
+        assert_eq!(
+            inits,
+            vec![
+                Event {
+                    timestep: 0,
+                    ent_id: 1,
+                    new_val: 2,
+                },
+                Event {
+                    timestep: 0,
+                    ent_id: 0,
+                    new_val: 1,
+                },
+            ]
         );
     }
 }

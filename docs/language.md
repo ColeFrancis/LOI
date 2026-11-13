@@ -611,3 +611,74 @@ net EXAMPLE {
     };
 }
 ```
+
+### Statements
+
+Just as in the top-level of LOI programs an in block expressions, you can define inline functions and variables within the scope of nets. For example:
+
+```
+net EXAMPLE {
+    let initial_val = 2;
+
+    init a: Int = initial_val;
+    init b: Int = initial_val;
+}
+```
+
+Variables in nets can be reassigned to a different value when the net is reinstantiated. This is done in the braces of a net instantiation as follows:
+
+```
+<variable name> = <new value>
+```
+
+
+For example:
+
+```
+net INNER {
+    let val = 1;
+
+    output a: Int;
+    init a: Int = val;
+}
+
+net OUTER {
+    output out: Int;
+
+    INNER {
+        val = 2, // assining val a new value of 2
+
+        a := out,
+    };
+}
+```
+
+The type of the assigned value must be compatible with the original variables type. For example:
+
+```
+net INNER {
+    let val = 1.0;
+}
+
+net OUTER {
+    INNER {
+        val = 2,
+    }
+}
+```
+
+This is valid because an integer 2 can be implicitly cast into a float 2.0.  However:
+
+ ```
+net INNER {
+    let val = 1;
+}
+
+net OUTER {
+    INNER {
+        val = 2.0,
+    }
+}
+```
+
+This is not valid because an float 2.0 cannot be implicitly cast into an int 1

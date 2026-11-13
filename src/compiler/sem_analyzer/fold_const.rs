@@ -128,6 +128,14 @@ impl<'a> SemAnalyzer<'a> {
                     rel_inst.delay = self.fold_expr(owned_expr, true);
                 }
 
+                NetItem::NetInst(net_inst) => {
+                    for reassign in &mut net_inst.reassigns {
+                        let owned_expr = std::mem::replace(&mut reassign.expr, Expr::Error);
+
+                        reassign.expr = self.fold_expr(owned_expr, true);
+                    }
+                }
+
                 _ => {}
             }
         }
@@ -306,6 +314,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },

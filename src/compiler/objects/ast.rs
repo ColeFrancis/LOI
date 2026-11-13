@@ -317,6 +317,7 @@ pub struct RelInst {
 #[derive(PartialEq, Debug)]
 pub struct NetInst {
     pub net: Ident,
+    pub reassigns: Vec<Reassign>,
     pub connections: Vec<Connection>,
     pub span: Span,
 }
@@ -325,5 +326,12 @@ pub struct NetInst {
 pub struct Connection {
     pub port: Ident,
     pub ent: Ident,
+    pub span: Span,
+}
+
+#[derive(PartialEq, Debug)]
+pub struct Reassign {
+    pub name: Ident,
+    pub expr: Expr,
     pub span: Span,
 }

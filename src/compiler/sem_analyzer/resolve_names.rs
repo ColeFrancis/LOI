@@ -159,6 +159,7 @@ impl<'a> SemAnalyzer<'a> {
             name,
             SymbolKind::Net {
                 ports: HashMap::new(),
+                params: HashMap::new(),
             },
             span,
         )?;
@@ -180,24 +181,26 @@ impl<'a> SemAnalyzer<'a> {
     fn resolve_net_item(&mut self, item: NetItem, net_id: SymbolId) -> Option<NetItem> {
         match item {
             NetItem::Stmt(statement) => match statement {
-                Statement::Var(var) => {
-                    // var.expr = self.resolve_expr(var.expr).unwrap_or(Expr::Error);
+                Statement::Var(mut var) => {
+                    var.expr = self.resolve_expr(var.expr).unwrap_or(Expr::Error);
 
-                    // let (name, span) = self.extract_ident_str(var.name)?; // Should not return None
+                    let (name, span) = self.extract_ident_str(var.name)?; // Should not return None
 
-                    // let id = self.define_symbol(name, SymbolKind::Variable(Type::Unknown), span)?;
+                    let id = self.define_symbol(name.clone(), SymbolKind::Variable(Type::Unknown), span)?;
 
-                    // // Params need to be accessable outside for overriding
-                    // if let SymbolKind::Net { params, .. } = &mut self.symbols[net_id].kind {
-                    //     params.insert(
-                    //         name,
-                    //         id,
-                    //     );
-                    // }
+                    // Params need to be accessable outside for overriding
+                    if let SymbolKind::Net { params, .. } = &mut self.symbols[net_id].kind {
+                        params.insert(
+                            name,
+                            id,
+                        );
+                    }
 
-                    // var.name = Ident::Symbol(id);
+                    var.name = Ident::Symbol(id);
 
-                    self.resolve_variable(var).map(|var| NetItem::Stmt(Statement::Var(var)))
+                    Some(NetItem::Stmt(Statement::Var(var)))
+
+                    // self.resolve_variable(var).map(|var| NetItem::Stmt(Statement::Var(var)))
                 }
                 Statement::Inline(inline) => {
                     self.resolve_inline(inline);
@@ -213,7 +216,7 @@ impl<'a> SemAnalyzer<'a> {
                     self.find_or_define_symbol(&name, SymbolKind::Ent(Type::Unknown), span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
-                if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
+                if let SymbolKind::Net { ports, .. } = &mut self.symbols[net_id].kind {
                     ports.insert(
                         name,
                         NetPort {
@@ -238,7 +241,7 @@ impl<'a> SemAnalyzer<'a> {
                     self.find_or_define_symbol(&name, SymbolKind::Ent(Type::Unknown), span);
 
                 // Ports need to be accessable outside for instantiaing in other nets
-                if let SymbolKind::Net { ports } = &mut self.symbols[net_id].kind {
+                if let SymbolKind::Net { ports, .. } = &mut self.symbols[net_id].kind {
                     ports.insert(
                         name,
                         NetPort {
@@ -323,6 +326,26 @@ impl<'a> SemAnalyzer<'a> {
                 let (name, span) = self.extract_ident_str(net_inst.net)?;
                 let inst_net_id = self.find_symbol(&name, span)?;
 
+                let mut reassigned_vars = HashSet::new();
+
+                for reassign in &mut net_inst.reassigns {
+                    let (name, span) = self.extract_ident_str(reassign.name.clone())?;
+                    let var_id = self.find_net_var(inst_net_id, &name, &span)?;
+
+                    if !reassigned_vars.insert(var_id) {
+                        self.diagnostics.error(Diagnostic::DuplicatePort {
+                            name: name.to_string(),
+                            span,
+                        });
+                        return None;
+                    }
+
+                    reassign.name = Ident::Symbol(var_id);
+
+                    let owned_expr = std::mem::replace(&mut reassign.expr, Expr::Error);
+                    reassign.expr = self.resolve_expr(owned_expr).unwrap_or(Expr::Error);
+                }
+
                 let mut used_ports = HashSet::new();
 
                 for connection in &mut net_inst.connections {
@@ -358,9 +381,37 @@ impl<'a> SemAnalyzer<'a> {
         }
     }
 
+    fn find_net_var(&mut self, net_id: SymbolId, name: &str, span: &Span) -> Option<SymbolId> {
+        match &self.symbols[net_id].kind {
+            SymbolKind::Net { params, .. } => match params.get(name) {
+                Some(id) => Some(*id),
+                None => {
+                    self.diagnostics.error(Diagnostic::UndefinedNetVar {
+                        name: name.to_string(),
+                        span: span.clone(),
+                    });
+
+                    None
+                }
+            },
+            other => {
+                self.diagnostics.error(Diagnostic::UnexpectedIdent {
+                    expected: vec![SymbolKind::Net {
+                        ports: HashMap::new(),
+                        params: HashMap::new(),
+                    }],
+                    found: other.clone(),
+                    span: span.clone(),
+                });
+
+                None
+            }
+        }
+    }
+
     fn find_net_port(&mut self, net_id: SymbolId, name: &str, span: &Span) -> Option<SymbolId> {
         match &self.symbols[net_id].kind {
-            SymbolKind::Net { ports } => match ports.get(name) {
+            SymbolKind::Net { ports, .. } => match ports.get(name) {
                 Some(port) => Some(port.symbol),
                 None => {
                     self.diagnostics.error(Diagnostic::UndefinedPort {
@@ -375,6 +426,7 @@ impl<'a> SemAnalyzer<'a> {
                 self.diagnostics.error(Diagnostic::UnexpectedIdent {
                     expected: vec![SymbolKind::Net {
                         ports: HashMap::new(),
+                        params: HashMap::new(),
                     }],
                     found: other.clone(),
                     span: span.clone(),
@@ -1148,6 +1200,8 @@ mod tests {
         //         A := d,
         //         B := b,
         //     };
+
+        //     let n = 1;
         // }
         let mut diagnostics = Diagnostics::new();
         let mut sem_analyzer = SemAnalyzer {
@@ -1181,6 +1235,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1264,6 +1319,7 @@ mod tests {
                         val: "NET".to_string(),
                         span: Span { line: 0, col: 0 },
                     },
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Str {
@@ -1290,6 +1346,13 @@ mod tests {
                     ],
                     span: Span{line: 0, col: 0},
                 }),
+                NetItem::Stmt(Statement::Var(Variable {
+                    name: Ident::Str {
+                        val: "n".to_string(),
+                        span: Span { line: 0, col: 0 },
+                    },
+                    expr: Expr::Literal(Literal::Int(1)),
+                })),
             ],
         });
 
@@ -1327,6 +1390,7 @@ mod tests {
                     }),
                     NetItem::NetInst(NetInst {
                         net: Ident::Symbol(1),
+                        reassigns: vec![],
                         connections: vec![
                             Connection {
                                 port: Ident::Symbol(2),
@@ -1341,6 +1405,10 @@ mod tests {
                         ],
                         span: Span{line: 0, col: 0},
                     }),
+                    NetItem::Stmt(Statement::Var(Variable {
+                        name: Ident::Symbol(9),
+                        expr: Expr::Literal(Literal::Int(1)),
+                    })),
                 ],
             })
         );
@@ -1374,7 +1442,8 @@ mod tests {
                                     input: true,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1406,7 +1475,10 @@ mod tests {
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::from([
+                            ("n".to_string(), 9),
+                        ]),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1428,6 +1500,11 @@ mod tests {
                 Symbol {
                     name: "d".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
+                    span: Span { line: 0, col: 0 }
+                },
+                Symbol {
+                    name: "n".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
                     span: Span { line: 0, col: 0 }
                 },
             ]
@@ -1472,6 +1549,7 @@ mod tests {
                                 input: true,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1541,6 +1619,7 @@ mod tests {
                         val: "NET".to_string(),
                         span: Span { line: 0, col: 0 },
                     },
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Str {
@@ -1621,6 +1700,7 @@ mod tests {
                                 input: true, // Dont care yet about directions
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -1667,6 +1747,7 @@ mod tests {
                         val: "B".to_string(),
                         span: Span { line: 0, col: 0 },
                     },
+                    reassigns: vec![],
                     connections: vec![
                         Connection {
                             port: Ident::Str {
@@ -1737,10 +1818,12 @@ ent_t SINGLE = {A};
 rel_t ADD (b: Int) -> Int = n + b;
 
 net FIRST {
+    let delay = 1;
+
     input a: Int;
     output q: Int;
 
-    ADD(a) := q;
+    ADD(a) := q @ delay;
 }
 
 net SECOND {
@@ -1748,6 +1831,7 @@ net SECOND {
     output c: SINGLE;
 
     FIRST {
+        delay = 2,
         a := a,
         q := c,
     };
@@ -1810,30 +1894,38 @@ net SECOND {
                             (
                                 "a".to_string(),
                                 NetPort {
-                                    symbol: 7,
+                                    symbol: 8,
                                     input: true,
                                 }
                             ),
                             (
                                 "q".to_string(),
                                 NetPort {
-                                    symbol: 8,
+                                    symbol: 9,
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::from([
+                            ("delay".to_string(), 7),
+                        ]),
                     },
                     span: Span { line: 11, col: 5 },
                 },
                 Symbol {
+                    name: "delay".to_string(),
+                    kind: SymbolKind::Variable(Type::Unknown),
+                    span: Span { line: 12, col: 9 },
+                },
+                Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span { line: 12, col: 11 },
+                    span: Span { line: 14, col: 11 },
                 },
                 Symbol {
                     name: "q".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span { line: 13, col: 12 },
+                    span: Span { line: 15, col: 12 },
                 },
                 Symbol {
                     name: "SECOND".to_string(),
@@ -1842,30 +1934,31 @@ net SECOND {
                             (
                                 "a".to_string(),
                                 NetPort {
-                                    symbol: 10,
+                                    symbol: 11,
                                     input: true,
                                 }
                             ),
                             (
                                 "c".to_string(),
                                 NetPort {
-                                    symbol: 11,
+                                    symbol: 12,
                                     input: false,
                                 }
                             ),
-                        ])
+                        ]),
+                        params: HashMap::new(),
                     },
-                    span: Span { line: 18, col: 5 },
+                    span: Span { line: 20, col: 5 },
                 },
                 Symbol {
                     name: "a".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span { line: 19, col: 11 },
+                    span: Span { line: 21, col: 11 },
                 },
                 Symbol {
                     name: "c".to_string(),
                     kind: SymbolKind::Ent(Type::Unknown),
-                    span: Span { line: 20, col: 12 },
+                    span: Span { line: 22, col: 12 },
                 },
             ]
         );
@@ -1909,59 +2002,70 @@ net SECOND {
                     Item::Net(Net {
                         name: Ident::Symbol(6),
                         items: vec![
+                            NetItem::Stmt(Statement::Var(Variable {
+                                name: Ident::Symbol(7),
+                                expr: Expr::Literal(Literal::Int(1)),
+                            })),
                             NetItem::Input(InputEnt {
-                                param: Param {
-                                    name: Ident::Symbol(7),
-                                    param_type: Type::Int,
-                                },
-                                span: Span { line: 12, col: 5 },
-                            }),
-                            NetItem::Output(OutputEnt {
                                 param: Param {
                                     name: Ident::Symbol(8),
                                     param_type: Type::Int,
                                 },
+                                span: Span { line: 14, col: 5 },
+                            }),
+                            NetItem::Output(OutputEnt {
+                                param: Param {
+                                    name: Ident::Symbol(9),
+                                    param_type: Type::Int,
+                                },
                             }),
                             NetItem::RelInst(RelInst {
-                                asignee: Ident::Symbol(8),
+                                asignee: Ident::Symbol(9),
                                 rel: Ident::Symbol(4),
-                                args: vec![Ident::Symbol(7),],
-                                delay: Expr::Literal(Literal::Int(1)),
-                                span: Span { line: 15, col: 5 },
+                                args: vec![Ident::Symbol(8),],
+                                delay: Expr::Ident(Ident::Symbol(7)),
+                                span: Span { line: 17, col: 5 },
                             }),
                         ],
                     }),
                     Item::Net(Net {
-                        name: Ident::Symbol(9),
+                        name: Ident::Symbol(10),
                         items: vec![
                             NetItem::Input(InputEnt {
                                 param: Param {
-                                    name: Ident::Symbol(10),
+                                    name: Ident::Symbol(11),
                                     param_type: Type::Custom(Ident::Symbol(2)),
                                 },
-                                span: Span { line: 19, col: 5 },
+                                span: Span { line: 21, col: 5 },
                             }),
                             NetItem::Output(OutputEnt {
                                 param: Param {
-                                    name: Ident::Symbol(11),
+                                    name: Ident::Symbol(12),
                                     param_type: Type::Custom(Ident::Symbol(2)),
                                 },
                             }),
                             NetItem::NetInst(NetInst {
                                 net: Ident::Symbol(6),
+                                reassigns: vec![
+                                    Reassign {
+                                        name: Ident::Symbol(7),
+                                        expr: Expr::Literal(Literal::Int(2)),
+                                        span: Span { line: 25, col: 15 },
+                                    }
+                                ],
                                 connections: vec![
-                                    Connection {
-                                        port: Ident::Symbol(7),
-                                        ent: Ident::Symbol(10),
-                                        span: Span { line: 23, col: 11 },
-                                    },
                                     Connection {
                                         port: Ident::Symbol(8),
                                         ent: Ident::Symbol(11),
-                                        span: Span { line: 24, col: 11 },
+                                        span: Span { line: 26, col: 11 },
+                                    },
+                                    Connection {
+                                        port: Ident::Symbol(9),
+                                        ent: Ident::Symbol(12),
+                                        span: Span { line: 27, col: 11 },
                                     },
                                 ],
-                                span: Span{line: 22, col: 5},
+                                span: Span{line: 24, col: 5},
                             }),
                         ],
                     })

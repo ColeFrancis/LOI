@@ -117,8 +117,20 @@ pub enum Diagnostic {
         span: Span,
     },
 
+    // When resolveing reassigns of NetInst
+    UndefinedNetVar {
+        name: String,
+        span: Span,
+    },
+
     // When resolving names of NetInst
     UndefinedPort {
+        name: String,
+        span: Span,
+    },
+
+    // When resolving reassigns of NetInst
+    DuplicateReassign {
         name: String,
         span: Span,
     },
@@ -194,6 +206,11 @@ pub enum Diagnostic {
         expected_len: usize,
         actual_len: usize,
         rel_span: Span,
+    },
+
+    NonexistantNetVar {
+        name: String,
+        span: Span,
     },
 
     NonexistantNetPort {
@@ -396,10 +413,26 @@ impl std::fmt::Display for Diagnostic {
                 )
             }
 
+            Diagnostic::UndefinedNetVar { name, span } => {
+                write!(
+                    f,
+                    "Undefined net variable: \"{}\"\nat line {}:{}",
+                    name, span.line, span.col
+                )
+            }
+
             Diagnostic::UndefinedPort { name, span } => {
                 write!(
                     f,
                     "Undefined net port: \"{}\"\nat line {}:{}",
+                    name, span.line, span.col
+                )
+            }
+
+            Diagnostic::DuplicateReassign { name, span } => {
+                write!(
+                    f,
+                    "Variable \"{}\" reassigned multiple times\nat line {}:{}",
                     name, span.line, span.col
                 )
             }
@@ -536,6 +569,14 @@ impl std::fmt::Display for Diagnostic {
                     f,
                     "Incorrect number of args in relation instantiation. Expected: {}, found: {}\nat line {}:{}",
                     expected_len, actual_len, rel_span.line, rel_span.col
+                )
+            }
+
+            Diagnostic::NonexistantNetVar { name, span } => {
+                write!(
+                    f,
+                    "Net variable \"{}\" reassigned but not found.\nat line {}:{}",
+                    name, span.line, span.col
                 )
             }
 

@@ -218,9 +218,11 @@ impl<'a> Parser<'a> {
         self.expect(TokenKind::LBrace, &SyncRule::NetItem { depth: 0 })?;
 
         let mut connections = Vec::new();
+        let mut reassigns = Vec::new();
 
         while self.peek().kind != TokenKind::RBrace {
-            connections.push(self.parse_connection()?);
+            self.parse_connection_or_reassign(&mut connections, &mut reassigns)?;
+            // connections.push(self.parse_connection()?);
 
             if self.peek().kind == TokenKind::Comma {
                 self.next();
@@ -233,18 +235,36 @@ impl<'a> Parser<'a> {
 
         self.expect(TokenKind::Semicolon, &SyncRule::NetItem { depth: 0 })?;
 
-        Some(NetInst { net, connections, span})
+        Some(NetInst { net, reassigns, connections, span})
     }
 
-    fn parse_connection(&mut self) -> Option<Connection> {
-        let port = self.expect_ident(&SyncRule::NetItem { depth: 1 })?;
+    fn parse_connection_or_reassign(&mut self, connections: &mut Vec<Connection>, reassigns: &mut Vec<Reassign>) -> Option<()> {
+        let name = self.expect_ident(&SyncRule::NetItem { depth: 1 })?;
 
         let span = self.peek().span.clone();
-        self.expect(TokenKind::Connect, &SyncRule::NetItem { depth: 1 })?;
 
-        let ent = self.expect_ident(&SyncRule::NetItem { depth: 1 })?;
+        match self.peek().kind {
+            TokenKind::Equals => {
+                self.next();
 
-        Some(Connection { port, ent, span })
+                let expr = match self.parse_expr(0) {
+                    Some(expr) => expr,
+                    None => Expr::Error,
+                };
+
+                reassigns.push(Reassign { name, expr, span });
+            }
+
+            _ => {
+                self.expect(TokenKind::Connect, &SyncRule::NetItem { depth: 1 })?;
+
+                let ent = self.expect_ident(&SyncRule::NetItem { depth: 1 })?;
+
+                connections.push(Connection { port: name, ent, span })
+            }
+        }
+
+        Some(())
     }
 }
 
@@ -286,6 +306,7 @@ mod tests {
         //     input cin: Bool = false;
 
         //     HALF_ADD {
+        //         n = 1+2,
         //         a := a,
         //         b := b,
         //         sum := h1_sum,
@@ -334,6 +355,12 @@ mod tests {
             Semicolon,
             Ident("HALF_ADD".to_string()),
             LBrace,
+            Ident("n".to_string()),
+            Equals,
+            IntLiteral(1),
+            Plus,
+            IntLiteral(2),
+            Comma,
             Ident("a".to_string()),
             Connect,
             Ident("a".to_string()),
@@ -436,6 +463,19 @@ mod tests {
                     }),
                     NetItem::NetInst(NetInst {
                         net: build_ident_str("HALF_ADD"),
+                        reassigns: vec![
+                            Reassign {
+                                name: build_ident_str("n"),
+                                expr: Expr::Binary(BinaryExpr {
+                                    left: Box::new(Expr::Literal(Literal::Int(1))),
+                                    right: Box::new(Expr::Literal(Literal::Int(2))),
+                                    op: BinaryOp::Add,
+                                    op_span: Span {line: 0, col: 0},
+                                    expr_type: Type::Unknown,
+                                }),
+                                span: Span { line: 0, col: 0 },
+                            }
+                        ],
                         connections: vec![
                             Connection {
                                 port: build_ident_str("a"),
@@ -462,6 +502,7 @@ mod tests {
                     }),
                     NetItem::NetInst(NetInst {
                         net: build_ident_str("HALF_ADD"),
+                        reassigns: vec![],
                         connections: vec![
                             Connection {
                                 port: build_ident_str("a"),

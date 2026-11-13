@@ -133,7 +133,7 @@ impl<'a> SemAnalyzer<'a> {
                         return None; // not reachable
                     };
 
-                    let SymbolKind::Net { ports } = &self.symbols[net_symbol_id].kind else {
+                    let SymbolKind::Net { ports, .. } = &self.symbols[net_symbol_id].kind else {
                         return None; // not reachable
                     };
 
@@ -226,6 +226,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -321,6 +322,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -412,6 +414,7 @@ mod tests {
                                 input: false,
                             },
                         )]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -439,6 +442,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
@@ -493,6 +497,7 @@ mod tests {
                 }),
                 NetItem::NetInst(NetInst {
                     net: Ident::Symbol(1),
+                    reassigns: vec![],
                     connections: vec![Connection {
                         port: Ident::Symbol(2),
                         ent: Ident::Symbol(5),
@@ -547,6 +552,7 @@ mod tests {
                                 },
                             ),
                         ]),
+                        params: HashMap::new(),
                     },
                     span: Span { line: 0, col: 0 },
                 },
