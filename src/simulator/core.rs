@@ -213,7 +213,7 @@ impl Simulator {
         let mut rel_last_called = vec![0; self.netlist.relations.len()]; // make sure each relation called once
         let mut ent_last_driven = vec![0; self.netlist.ents.len()]; // make sure each entitiy only driven once
 
-        // All relations with one input must be called at least once
+        // All relations with no inputs must be called at least once
         let mut relations_to_call = Vec::new();
         if self.scheduler.curr_time == 0 {
             for &rel_id in &self.no_input_rel_ids {
